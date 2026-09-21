@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
-  const [step, setStep] = useState<'email' | 'otp'>('email'); // Tráº¡ng thÃ¡i: nháº­p email hoáº·c nháº­p OTP
+  const [step, setStep] = useState<'email' | 'otp'>('email'); // đăng nhập
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();

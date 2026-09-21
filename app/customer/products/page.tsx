@@ -1,10 +1,23 @@
-'use client';
-import { useEffect, useState } from 'react';
-import { api, getStoredUser, Product } from '@/lib/api';
+"use client";
 
-export default function CustomerProducts() {
-  const [products, setProducts] = useState<Product[]>([]); const [loading, setLoading] = useState(true); const [message, setMessage] = useState('');
-  useEffect(() => { api.getProducts().then(setProducts).catch(e => setMessage(e.message)).finally(() => setLoading(false)); }, []);
-  async function add(item: Product) { const user = getStoredUser(); if (!user?.UserID) { setMessage('Vui lòng đăng nhập trước.'); return; } try { await api.addToCart({ UserID: user.UserID, ProductID: item.ProductID, Quantity: 1, Price: Number(item.DiscountPrice ?? item.Price) }); setMessage('Đã thêm vào giỏ hàng.'); } catch (e) { setMessage(e instanceof Error ? e.message : 'Không thể thêm vào giỏ'); } }
-  return <main className="mx-auto max-w-6xl p-8 text-slate-800"><h1 className="mb-6 text-3xl font-bold">Sản phẩm nổi bật</h1>{message && <p className="mb-4 rounded bg-blue-100 p-3">{message}</p>}{loading ? <p>Đang tải...</p> : <div className="grid grid-cols-1 gap-6 md:grid-cols-3">{products.map(item => <div key={item.ProductID} className="rounded-xl border p-4 shadow-sm"><img src={item.ImageUrl || '/placeholder.png'} alt={item.ProductName} className="mb-3 h-48 w-full rounded-lg object-cover" /><h2 className="text-lg font-bold">{item.ProductName}</h2><p className="font-semibold text-red-600">{Number(item.DiscountPrice ?? item.Price).toLocaleString('vi-VN')} VNĐ</p><button onClick={() => void add(item)} className="mt-3 w-full rounded bg-blue-600 py-2 text-white">Thêm vào giỏ</button></div>)}</div>}</main>;
+import { useEffect, useMemo, useState } from "react";
+import { api, Product } from "@/lib/api";
+import { addToCart } from "@/lib/cart";
+import Link from "next/link";
+
+export default function ProductsPage() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [keyword, setKeyword] = useState("");
+  const [message, setMessage] = useState("");
+
+  useEffect(() => { api.getProducts().then(setProducts).catch(console.error); }, []);
+  const filtered = useMemo(() => products.filter((p) => p.ProductName.toLowerCase().includes(keyword.toLowerCase())), [products, keyword]);
+
+  function add(product: Product) {
+    addToCart({ ProductID: product.ProductID, ProductName: product.ProductName, Price: Number(product.Price), ImageUrl: product.ImageUrl });
+    setMessage(`Đã thêm ${product.ProductName} vào giỏ hàng`);
+    setTimeout(() => setMessage(""), 1800);
+  }
+
+  return <main className="min-h-screen bg-slate-50 px-6 py-10 text-slate-900"><div className="mx-auto max-w-7xl"><div className="mb-8 flex flex-wrap items-end justify-between gap-4"><div><Link href="/" className="font-bold text-emerald-600">← Trang chủ</Link><h1 className="mt-3 text-4xl font-black">Tất cả sản phẩm</h1></div><Link href="/customer/cart" className="rounded-full bg-slate-900 px-5 py-3 font-bold text-white">Giỏ hàng</Link></div><input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="Tìm kiếm sản phẩm..." className="mb-6 w-full rounded-2xl border bg-white px-5 py-4 outline-none focus:border-emerald-500" />{message && <div className="mb-4 rounded-xl bg-emerald-100 p-3 text-emerald-800">{message}</div>}<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">{filtered.map((p) => <article key={p.ProductID} className="rounded-2xl border bg-white p-5 shadow-sm"><div className="flex h-52 items-center justify-center rounded-xl bg-slate-100 p-4"><img src={p.ImageUrl || "/placeholder.png"} alt={p.ProductName} className="max-h-full max-w-full object-contain" /></div><h2 className="mt-4 min-h-12 font-bold">{p.ProductName}</h2><p className="mt-2 text-xl font-black text-emerald-600">{Number(p.Price).toLocaleString("vi-VN")} ₫</p><button onClick={() => add(p)} className="mt-4 w-full rounded-xl bg-emerald-600 py-3 font-bold text-white hover:bg-emerald-700">Thêm vào giỏ</button></article>)}</div></div></main>;
 }
