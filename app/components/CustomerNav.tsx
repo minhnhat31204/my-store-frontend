@@ -2,16 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { getCart } from "@/lib/cart";
-import { getStoredUser, type User } from "@/lib/api";
+import { api, getStoredUser, type User } from "@/lib/api";
+import { useRouter } from "next/navigation";
 
 function SearchIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className="search-icon"
-    >
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="search-icon">
       <circle cx="10.5" cy="10.5" r="6.5" />
       <path d="m16 16 5 5" />
     </svg>
@@ -20,11 +16,7 @@ function SearchIcon() {
 
 function CartIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className="cart-icon"
-    >
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="cart-icon">
       <path d="M3 4h2l2.2 10.2a2 2 0 0 0 2 1.6h7.9a2 2 0 0 0 1.9-1.4L21 7H6" />
       <circle cx="10" cy="20" r="1.3" />
       <circle cx="18" cy="20" r="1.3" />
@@ -43,10 +35,8 @@ export default function CustomerNav({
 }: CustomerNavProps) {
   const [cartCount, setCartCount] = useState(0);
   const [user, setUser] = useState<User | null>(null);
+  const router = useRouter();
 
-  // =========================
-  // LẤY USER ĐANG ĐĂNG NHẬP
-  // =========================
   useEffect(() => {
     const refreshUser = () => {
       setUser(getStoredUser());
@@ -63,86 +53,95 @@ export default function CustomerNav({
     };
   }, []);
 
-  // =========================
-  // CẬP NHẬT GIỎ HÀNG
-  // =========================
   useEffect(() => {
-    const refresh = () => {
-      setCartCount(
-        getCart().reduce(
-          (sum, item) => sum + item.quantity,
-          0
-        )
-      );
+    const fetchCartCount = async () => {
+      try {
+        const storedUser = getStoredUser();
+        if (storedUser && storedUser.UserID) {
+          const cartData = await api.getCart(storedUser.UserID);
+          const total = Array.isArray(cartData)
+            ? cartData.reduce((sum, item) => sum + Number(item.Quantity || 1), 0)
+            : 0;
+          setCartCount(total);
+        } else {
+          setCartCount(0);
+        }
+      } catch (err) {
+        console.error("Lỗi lấy giỏ hàng cho Navbar:", err);
+        setCartCount(0);
+      }
     };
 
-    refresh();
+    fetchCartCount();
 
-    window.addEventListener("cart-updated", refresh);
-    window.addEventListener("storage", refresh);
+    window.addEventListener("cart-updated", fetchCartCount);
+    window.addEventListener("user-updated", fetchCartCount);
+    window.addEventListener("storage", fetchCartCount);
 
     return () => {
-      window.removeEventListener("cart-updated", refresh);
-      window.removeEventListener("storage", refresh);
+      window.removeEventListener("cart-updated", fetchCartCount);
+      window.removeEventListener("user-updated", fetchCartCount);
+      window.removeEventListener("storage", fetchCartCount);
     };
   }, []);
 
-  // =========================
-  // ĐĂNG XUẤT
-  // =========================
   const handleLogout = () => {
     localStorage.removeItem("user");
-
     setUser(null);
-
     window.dispatchEvent(new Event("user-updated"));
-
     window.location.href = "/login";
+  };
+
+  // Xử lý khi người dùng nhập tìm kiếm hoặc nhấn Enter
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const val = event.target.value;
+    if (onSearchChange) {
+      onSearchChange(val);
+    }
+  };
+
+  const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter" && searchValue.trim()) {
+      // Nếu không có hàm onSearchChange riêng từ trang cha, tự động chuyển hướng sang trang sản phẩm kèm từ khóa
+      if (!onSearchChange) {
+        router.push(`/customer/products?search=${encodeURIComponent(searchValue.trim())}`);
+      }
+    }
   };
 
   return (
     <>
       <header className="store-header">
         <div className="header-inner">
-
-          {/* Logo */}
           <Link href="/" className="brand">
             MANB<span>.VN</span>
           </Link>
 
-          {/* Search */}
           <div className="header-search">
             <SearchIcon />
-
             <input
               aria-label="Tìm sản phẩm"
               placeholder="Tìm sản phẩm..."
               value={searchValue}
-              onChange={(event) =>
-                onSearchChange?.(event.target.value)
-              }
+              onChange={handleSearchChange}
+              onKeyDown={handleSearchKeyDown}
             />
           </div>
 
-          {/* Desktop menu */}
           <nav className="desktop-links">
-            <Link href="/">
-              Trang chủ
-            </Link>
+            <Link href="/">Trang chủ</Link>
+            <Link href="/customer/products">Sản phẩm</Link>
+            <Link href="/customer/notifications">Thông báo</Link>
 
-            <Link href="/customer/products">
-              Sản phẩm
-            </Link>
+            {user && (user.Role === 'admin' || (user as any).role === 'admin') && (
+              <Link 
+                href="/admin" 
+                className="font-bold text-emerald-600 hover:text-emerald-700 transition"
+              >
+                Quản trị Admin
+              </Link>
+            )}
 
-            <Link href="/customer/notifications">
-              Thông báo
-            </Link>
-
-            <Link href="/customer/account">
-              Tài khoản
-            </Link>
-
-            {/* Cart */}
             <Link
               href="/customer/cart"
               className="cart-link"
@@ -150,118 +149,89 @@ export default function CustomerNav({
             >
               <span className="cart-icon-wrap">
                 <CartIcon />
-
-                {cartCount > 0 && (
-                  <b className="cart-badge">
-                    {cartCount}
-                  </b>
-                )}
+                {cartCount > 0 && <b className="cart-badge">{cartCount}</b>}
               </span>
             </Link>
           </nav>
 
-          {/* =========================
-              USER ĐÃ ĐĂNG NHẬP
-          ========================= */}
           {user ? (
-            <div className="flex items-center gap-2">
-
+            <div className="flex items-center gap-3">
               <Link
                 href="/customer/account"
-                className="rounded-full bg-white px-4 py-2 text-sm font-bold text-blue-700 hover:bg-blue-50"
+                className="flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-sm font-bold text-blue-700 hover:bg-blue-50 transition shadow-sm"
               >
-                Xin chào, {user.FullName || user.Email}
+                {user.Avatar ? (
+                  <img
+                    src={user.Avatar}
+                    alt={user.FullName || "Avatar"}
+                    className="w-7 h-7 rounded-full object-cover border border-slate-200"
+                  />
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold uppercase">
+                    {(user.FullName || user.Email || "U").charAt(0)}
+                  </div>
+                )}
+                <span>{user.FullName || user.Email}</span>
               </Link>
 
               <button
                 type="button"
                 onClick={handleLogout}
-                className="rounded-full bg-white px-4 py-3 font-bold text-blue-700 hover:bg-blue-50"
+                className="rounded-full bg-white px-4 py-2 font-bold text-blue-700 hover:bg-blue-50 transition shadow-sm text-sm"
               >
                 Đăng xuất
               </button>
-
             </div>
           ) : (
-            /* =========================
-               CHƯA ĐĂNG NHẬP
-            ========================= */
-            <Link
-              href="/login"
-              className="login-button"
-            >
+            <Link href="/login" className="login-button">
               Đăng nhập
             </Link>
           )}
-
         </div>
       </header>
 
-      {/* =========================
-          MOBILE NAV
-      ========================= */}
       <nav className="mobile-bottom-nav">
-
-        <Link
-          href="/"
-          className="mobile-nav-item active"
-        >
+        <Link href="/" className="mobile-nav-item active">
           <span>⌂</span>
           <small>Trang chủ</small>
         </Link>
 
-        <Link
-          href="/customer/products"
-          className="mobile-nav-item"
-        >
+        <Link href="/customer/products" className="mobile-nav-item">
           <span>▦</span>
           <small>Danh mục</small>
         </Link>
 
-        <Link
-          href="/customer/cart"
-          className="mobile-nav-item mobile-cart-item"
-        >
+        <Link href="/customer/cart" className="mobile-nav-item mobile-cart-item">
           <span className="mobile-cart-icon">
             <CartIcon />
-
-            {cartCount > 0 && (
-              <b className="mobile-cart-badge">
-                {cartCount}
-              </b>
-            )}
+            {cartCount > 0 && <b className="mobile-cart-badge">{cartCount}</b>}
           </span>
-
           <small>Giỏ hàng</small>
         </Link>
 
-        <Link
-          href="/customer/notifications"
-          className="mobile-nav-item"
-        >
+        {user && (user.Role === 'admin' || (user as any).role === 'admin') && (
+          <Link href="/admin" className="mobile-nav-item text-emerald-600 font-bold">
+            <span>⚙</span>
+            <small>Admin</small>
+          </Link>
+        )}
+
+        <Link href="/customer/notifications" className="mobile-nav-item">
           <span>♧</span>
           <small>Thông báo</small>
         </Link>
 
         {user ? (
-          <button
-            type="button"
-            className="mobile-nav-item"
-            onClick={handleLogout}
-          >
+          <button type="button" className="mobile-nav-item" onClick={handleLogout}>
             <span>⇥</span>
             <small>Đăng xuất</small>
           </button>
         ) : (
-          <Link
-            href="/customer/account"
-            className="mobile-nav-item"
-          >
+          <Link href="/login" className="mobile-nav-item">
             <span>◉</span>
-            <small>Tài khoản</small>
+            <small>Đăng nhập</small>
           </Link>
         )}
-
       </nav>
     </>
   );

@@ -53,7 +53,7 @@ export default function ProductsPage() {
         ProductID: product.ProductID,
         ProductName: product.ProductName,
         Price: Number(product.Price),
-        ImageUrl: product.ImageUrl,
+        ImageUrl: product.ImageUrl || "",
       });
 
       setMessage(
@@ -79,74 +79,69 @@ export default function ProductsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 pb-24 text-slate-900">
-      <CustomerNav />
+    <main className="store-page">
+      <CustomerNav searchValue={keyword} onSearchChange={setKeyword} />
 
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-        <h1 className="text-4xl font-black">
-          Danh mục sản phẩm
-        </h1>
-
-        <p className="mt-2 text-slate-500">
-          Tìm kiếm thiết bị phù hợp với bạn.
-        </p>
-
-        <input
-          value={keyword}
-          onChange={(e) =>
-            setKeyword(e.target.value)
-          }
-          placeholder="Tìm kiếm sản phẩm..."
-          className="my-6 w-full rounded-2xl border bg-white px-5 py-4 outline-none focus:border-blue-600"
-        />
+      <div className="store-container">
+        <div className="section-heading mt-6">
+          <div>
+            <p>💻 DANH MỤC TOÀN BỘ</p>
+            <h1>Sản phẩm dành cho bạn</h1>
+          </div>
+        </div>
 
         {message && (
-          <div className="mb-4 rounded-xl bg-emerald-100 p-3 text-emerald-800">
+          <div className="success-message mb-4">
             {message}
           </div>
         )}
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((product) => (
-            <article
-              key={product.ProductID}
-              className="rounded-2xl border bg-white p-5 shadow-sm"
-            >
-              <div className="flex h-52 items-center justify-center rounded-xl bg-slate-100 p-4">
-                <img
-                  src={
-                    product.ImageUrl ||
-                    "/placeholder.png"
-                  }
-                  alt={product.ProductName}
-                  className="max-h-full max-w-full object-contain"
-                />
-              </div>
+        <div className="product-grid">
+          {filtered.map((product) => {
+            const price = Number(product.Price);
+            const oldPrice = product.DiscountPrice
+              ? Number(product.DiscountPrice)
+              : Math.round(price * 1.12);
 
-              <h2 className="mt-4 min-h-12 font-bold">
-                {product.ProductName}
-              </h2>
-
-              <p className="mt-2 text-xl font-black text-blue-700">
-                {Number(
-                  product.Price
-                ).toLocaleString("vi-VN")}{" "}
-                ₫
-              </p>
-
-              <button
-                onClick={() => add(product)}
-                disabled={
-                  addingId === product.ProductID
-                }
-                className="mt-4 w-full rounded-xl bg-blue-700 py-3 font-bold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-300"
+            return (
+              <article
+                key={product.ProductID}
+                className="product-card flex flex-col h-full"
               >
-                {addingId === product.ProductID
-                  ? "Đang thêm..."
-                  : "Thêm vào giỏ"}
-              </button>
-            </article>
-          ))}
+                <div className="product-image">
+                  <img
+                    src={product.ImageUrl || "/placeholder.png"}
+                    alt={product.ProductName}
+                  />
+                </div>
+                <div className="product-info flex flex-col flex-grow">
+                  <div className="product-specs">
+                    <span>Hiệu năng cao</span>
+                    <span>Chính hãng</span>
+                  </div>
+                  <div className="discount-tag">TIẾT KIỆM 12%</div>
+                  <p className="shop-label">MANB SHOP</p>
+                  <h3>{product.ProductName}</h3>
+
+                  <div className="mt-auto pt-2">
+                    <div className="price-row">
+                      <strong>{price.toLocaleString("vi-VN")} ₫</strong>
+                      <del>{oldPrice.toLocaleString("vi-VN")} ₫</del>
+                    </div>
+                    <button
+                      onClick={() => add(product)}
+                      disabled={addingId === product.ProductID}
+                      className="add-button disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {addingId === product.ProductID
+                        ? "Đang thêm..."
+                        : "Thêm vào giỏ hàng"}
+                    </button>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
         </div>
       </div>
     </main>

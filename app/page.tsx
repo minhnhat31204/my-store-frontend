@@ -68,7 +68,7 @@ export default function Home() {
       ProductID: product.ProductID,
       ProductName: product.ProductName,
       Price: Number(product.Price),
-      ImageUrl: product.ImageUrl,
+      ImageUrl: product.ImageUrl || "",
     });
 
     setMessage(
@@ -178,20 +178,24 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: () => void }
   const oldPrice = product.DiscountPrice ? Number(product.DiscountPrice) : Math.round(price * 1.12);
 
   return (
-    <article className="product-card">
+    <article className="product-card flex flex-col h-full">
       <div className="product-image">
         <img src={product.ImageUrl || "/placeholder.png"} alt={product.ProductName} />
       </div>
-      <div className="product-info">
+      <div className="product-info flex flex-col flex-grow">
         <div className="product-specs"><span>Hiệu năng cao</span><span>Chính hãng</span></div>
         <div className="discount-tag">TIẾT KIỆM 12%</div>
         <p className="shop-label">MANB SHOP</p>
         <h3>{product.ProductName}</h3>
-        <div className="price-row">
-          <strong>{price.toLocaleString("vi-VN")} ₫</strong>
-          <del>{oldPrice.toLocaleString("vi-VN")} ₫</del>
+        
+        {/* Thêm mt-auto để đẩy toàn bộ phần giá và nút bấm xuống đáy cố định */}
+        <div className="mt-auto pt-2">
+          <div className="price-row">
+            <strong>{price.toLocaleString("vi-VN")} ₫</strong>
+            <del>{oldPrice.toLocaleString("vi-VN")} ₫</del>
+          </div>
+          <button onClick={onAdd} className="add-button">Thêm vào giỏ hàng</button>
         </div>
-        <button onClick={onAdd} className="add-button">Thêm vào giỏ hàng</button>
       </div>
     </article>
   );

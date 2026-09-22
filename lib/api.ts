@@ -139,6 +139,43 @@ export const api = {
       }),
     }),
 
+  // --- BỔ SUNG CÁC HÀM QUÊN MẬT KHẨU (OTP) ---
+  forgotPassword: (payload: { email: string }) =>
+    request<{ message: string }>("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  verifyOtp: (payload: { email: string; otp: string }) =>
+    request<{ message: string }>("/auth/verify-otp", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  resetPassword: (payload: { email: string; otp: string; newPassword: string }) =>
+    request<{ message: string }>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  // =========================
+  // USERS (ADMIN)
+  // =========================
+
+  getUsers: () =>
+    request<User[]>("/users"),
+
+  updateUserRole: (userId: number, role: string) =>
+    request<User>(`/users/${userId}/role`, {
+      method: "PUT",
+      body: JSON.stringify({ role }),
+    }),
+
+  deleteUser: (userId: number) =>
+    request(`/users/${userId}`, {
+      method: "DELETE",
+    }),
+
   // =========================
   // CART
   // =========================
@@ -173,6 +210,11 @@ export const api = {
       method: "DELETE",
     }),
 
+  clearCartByUser: (userId: number) =>
+    request(`/cart/user/${userId}`, {
+      method: "DELETE",
+    }),
+
   // =========================
   // ORDERS
   // =========================
@@ -182,6 +224,20 @@ export const api = {
 
   getOrdersByUser: (userId: number) =>
     request<any[]>(`/orders/user/${userId}`),
+  
+  createOrder: (payload: {
+    UserID: number;
+    FullName: string;
+    Phone: string;
+    ShippingAddress: string;
+    Note?: string;
+    TotalAmount: number;
+    Items: Array<{ ProductID: number; Quantity: number; Price: number }>;
+  }) =>
+    request("/orders", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 };
 
 // =========================
