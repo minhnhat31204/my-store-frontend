@@ -1,0 +1,3 @@
+"use client";
+import CustomerNav from "@/app/components/CustomerNav";
+export default function NotificationsPage(){return <main className="min-h-screen bg-slate-50 pb-24 text-slate-900"><CustomerNav/><div className="mx-auto max-w-3xl px-4 py-8 sm:px-6"><h1 className="text-4xl font-black">Thông báo</h1><div className="mt-8 space-y-3"><div className="rounded-2xl bg-white p-5 shadow-sm"><p className="font-bold">Chào mừng bạn đến MANB SHOP</p><p className="mt-1 text-sm text-slate-500">Khám phá sản phẩm và ưu đãi mới nhất.</p></div><div className="rounded-2xl bg-white p-5 shadow-sm"><p className="font-bold">Theo dõi đơn hàng</p><p className="mt-1 text-sm text-slate-500">Các cập nhật đơn hàng sẽ được hiển thị tại đây.</p></div></div></div></main>}

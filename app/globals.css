@@ -1,28 +1,52 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-
+:root { --blue: #2454d8; --text: #101828; --muted: #667085; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #fff; color: var(--text); font-family: Arial, Helvetica, sans-serif; }
+a { text-decoration: none; }
+.store-page { min-height: 100vh; background: #fff; }
+.store-header { background: var(--blue); color: white; box-shadow: 0 2px 7px #0002; }
+.header-inner, .search-wrap, .store-container { width: min(1250px, calc(100% - 32px)); margin: 0 auto; }
+.header-inner { height: 60px; display: flex; align-items: center; gap: 24px; }
+.brand { color: white; font-size: 25px; font-weight: 900; letter-spacing: -1px; }
+.brand span { color: #dce5ff; }
+.desktop-links { margin-left: auto; display: flex; align-items: center; gap: 27px; font-weight: 700; font-size: 15px; }
+.desktop-links a { color: white; }
+.login-button { background: white; color: var(--blue); border-radius: 24px; padding: 11px 22px; font-weight: 800; }
+.search-wrap { padding: 0 0 13px; }
+.search-wrap input { width: 100%; height: 43px; border: 0; border-radius: 24px; padding: 0 20px; font-size: 15px; outline: none; }
+.store-container { padding-top: 16px; }
+.promo-banner { height: 258px; border-radius: 15px; overflow: hidden; position: relative; display: flex; align-items: center; justify-content: space-between; padding: 20px 12px; background: linear-gradient(105deg, #13a968 0%, #20b86a 55%, #078b63 100%); color: #fff; }
+.promo-copy { margin-left: 80px; z-index: 1; text-shadow: 0 2px 1px #075c39; }
+.promo-copy p { font-size: 24px; font-weight: 900; margin: 0 0 4px; }
+.promo-copy h1 { color: #eaff25; font-size: clamp(26px, 4vw, 52px); line-height: .95; margin: 0; font-weight: 1000; }
+.promo-copy strong { display: block; color: #fff; font-size: 43px; margin-top: 10px; }
+.promo-copy span { display: block; font-weight: 900; margin-top: 10px; font-size: 18px; }
+.promo-laptop { font-size: 180px; transform: rotate(-15deg); opacity: .35; margin-right: 100px; }
+.banner-arrow { width: 31px; height: 44px; border: 0; border-radius: 20px; background: #fff; color: #444; font-size: 31px; z-index: 2; }
+.banner-dots { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 7px; }
+.banner-dots i, .banner-dots b { width: 8px; height: 8px; border-radius: 50%; background: #fff; display: block; }
+.banner-dots b { background: #1855ff; }
+.featured-section { padding: 22px 2px 100px; }
+.section-heading { display: flex; justify-content: space-between; align-items: end; margin-bottom: 18px; }
+.section-heading p { color: var(--blue); font-weight: 800; margin: 0 0 7px; }
+.section-heading h2 { margin: 0; font-size: 27px; font-family: Georgia, serif; }
+.section-heading a { color: var(--blue); font-weight: 800; }
+.product-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 17px; }
+.product-card { border: 1px solid #edf0f5; border-radius: 14px; overflow: hidden; background: white; box-shadow: 0 2px 7px #172b4d0a; min-width: 0; }
+.product-image { height: 180px; display: flex; align-items: center; justify-content: center; padding: 13px; background: #fff; }
+.product-image img { max-height: 100%; max-width: 100%; object-fit: contain; }
+.product-info { padding: 0 15px 16px; }
+.product-specs { display: flex; justify-content: space-between; gap: 6px; font-size: 10px; color: #333; min-height: 20px; }
+.discount-tag { display: inline-block; color: white; background: linear-gradient(90deg, #b53cff, #3455f4); border-radius: 5px; padding: 5px 9px; font-size: 10px; font-weight: 800; margin: 4px 0 13px; }
+.shop-label { color: #98a2b3; font-size: 10px; font-weight: 800; letter-spacing: 1px; margin: 0 0 8px; }
+.product-card h3 { font-size: 14px; line-height: 1.45; min-height: 61px; margin: 0; font-weight: 800; }
+.price-row { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+.price-row strong { color: #2454d8; font-size: 19px; }
+.price-row del { color: #98a2b3; font-size: 11px; }
+.add-button { width: 100%; margin-top: 12px; border: 0; border-radius: 8px; padding: 10px; background: var(--blue); color: white; font-weight: 800; cursor: pointer; }
+.success-message { background: #dcfce7; color: #166534; padding: 10px 14px; border-radius: 8px; margin-bottom: 15px; }
+.error-message { background: #fee2e2; color: #b91c1c; padding: 12px; border-radius: 8px; }
+.mobile-bottom-nav { display: none; }
+@media (max-width: 900px) { .desktop-links { gap: 12px; font-size: 12px; } .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .promo-copy { margin-left: 25px; } .promo-laptop { margin-right: 20px; } }
+@media (max-width: 640px) { .header-inner { height: 56px; } .brand { font-size: 21px; } .desktop-links { display: none; } .login-button { margin-left: auto; padding: 9px 15px; font-size: 12px; } .search-wrap { padding-bottom: 10px; } .store-container { width: calc(100% - 20px); } .promo-banner { height: 180px; } .promo-copy { margin-left: 8px; } .promo-copy p { font-size: 12px; } .promo-copy h1 { font-size: 25px; } .promo-copy strong { font-size: 25px; } .promo-copy span { font-size: 10px; } .promo-laptop { font-size: 90px; margin-right: 0; } .banner-arrow { width: 25px; height: 34px; font-size: 25px; } .section-heading h2 { font-size: 22px; } .section-heading a { font-size: 12px; } .product-grid { gap: 10px; } .product-image { height: 130px; } .product-info { padding: 0 10px 12px; } .product-card h3 { font-size: 12px; min-height: 67px; } .price-row strong { font-size: 15px; } .add-button { font-size: 11px; } .mobile-bottom-nav { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; bottom: 0; left: 0; right: 0; z-index: 50; background: white; border-top: 1px solid #e5e7eb; padding: 6px 2px max(6px, env(safe-area-inset-bottom)); } .mobile-nav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; color: #71717a; font-size: 19px; } .mobile-nav-item small { font-size: 10px; font-weight: 700; } .mobile-nav-item.active { color: var(--blue); } }
