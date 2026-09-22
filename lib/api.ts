@@ -58,9 +58,13 @@ async function request<T>(
 
   if (!response.ok) {
     const message =
-      typeof data === "object" && data !== null && "error" in data
+      typeof data === "object" &&
+      data !== null &&
+      "error" in data
         ? String((data as { error: unknown }).error)
-        : typeof data === "object" && data !== null && "message" in data
+        : typeof data === "object" &&
+            data !== null &&
+            "message" in data
           ? String((data as { message: unknown }).message)
           : `API error: ${response.status}`;
 
@@ -71,38 +75,77 @@ async function request<T>(
 }
 
 export const api = {
-  // Products
-  getProducts: () => request<Product[]>("/products"),
+  // =========================
+  // PRODUCTS
+  // =========================
+
+  getProducts: () =>
+    request<Product[]>("/products"),
+
   createProduct: (payload: Partial<Product>) =>
     request<Product>("/products", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
-  updateProduct: (id: number, payload: Partial<Product>) =>
+
+  updateProduct: (
+    id: number,
+    payload: Partial<Product>
+  ) =>
     request<Product>(`/products/${id}`, {
       method: "PUT",
       body: JSON.stringify(payload),
     }),
+
   deleteProduct: (id: number) =>
-    request(`/products/${id}`, { method: "DELETE" }),
-
-  // Promotions / banners
-  getPromotions: () => request<Promotion[]>("/promotions"),
-
-  // Authentication
-  sendLoginOtp: (email: string) =>
-    request("/auth/send-login-otp", {
-      method: "POST",
-      body: JSON.stringify({ email }),
-    }),
-  verifyLoginOtp: (email: string, otp: string) =>
-    request<{ user: User }>("/auth/verify-login-otp", {
-      method: "POST",
-      body: JSON.stringify({ email, otp }),
+    request(`/products/${id}`, {
+      method: "DELETE",
     }),
 
-  // Cart
-  getCart: (userId: number) => request<any[]>(`/cart/${userId}`),
+  // =========================
+  // PROMOTIONS / BANNERS
+  // =========================
+
+  getPromotions: () =>
+    request<Promotion[]>("/promotions"),
+
+  // =========================
+  // AUTHENTICATION
+  // =========================
+
+  register: (payload: {
+    fullName: string;
+    email: string;
+    password: string;
+    phone: string;
+  }) =>
+    request<{
+      message: string;
+      user: User;
+    }>("/auth/register", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  login: (email: string, password: string) =>
+    request<{
+      message: string;
+      user: User;
+    }>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({
+        email,
+        password,
+      }),
+    }),
+
+  // =========================
+  // CART
+  // =========================
+
+  getCart: (userId: number) =>
+    request<any[]>(`/cart/${userId}`),
+
   addToCart: (payload: {
     UserID: number;
     ProductID: number;
@@ -113,25 +156,47 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
-  updateCart: (id: number, quantity: number) =>
+
+  updateCart: (
+    id: number,
+    quantity: number
+  ) =>
     request(`/cart/${id}`, {
       method: "PUT",
-      body: JSON.stringify({ Quantity: quantity }),
+      body: JSON.stringify({
+        Quantity: quantity,
+      }),
     }),
-  deleteCart: (id: number) =>
-    request(`/cart/${id}`, { method: "DELETE" }),
 
-  // Orders
-  getOrders: () => request<any[]>("/orders"),
+  deleteCart: (id: number) =>
+    request(`/cart/${id}`, {
+      method: "DELETE",
+    }),
+
+  // =========================
+  // ORDERS
+  // =========================
+
+  getOrders: () =>
+    request<any[]>("/orders"),
+
   getOrdersByUser: (userId: number) =>
     request<any[]>(`/orders/user/${userId}`),
 };
 
+// =========================
+// GET USER FROM LOCAL STORAGE
+// =========================
+
 export function getStoredUser(): User | null {
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined") {
+    return null;
+  }
 
   try {
-    return JSON.parse(localStorage.getItem("user") || "null");
+    return JSON.parse(
+      localStorage.getItem("user") || "null"
+    );
   } catch {
     return null;
   }
