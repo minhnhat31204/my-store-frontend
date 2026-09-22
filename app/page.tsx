@@ -62,16 +62,34 @@ export default function Home() {
   const remainingCount = Math.max(filteredProducts.length - visibleCount, 0);
   const currentBanner = promotions[bannerIndex];
 
-  function handleAdd(product: Product) {
-    addToCart({
+  async function handleAdd(product: Product) {
+  try {
+    await addToCart({
       ProductID: product.ProductID,
       ProductName: product.ProductName,
       Price: Number(product.Price),
       ImageUrl: product.ImageUrl,
     });
-    setMessage("Đã thêm sản phẩm vào giỏ hàng");
-    window.setTimeout(() => setMessage(""), 1800);
+
+    setMessage(
+      "Đã thêm sản phẩm vào giỏ hàng"
+    );
+
+    window.setTimeout(() => {
+      setMessage("");
+    }, 1800);
+  } catch (error) {
+    console.error(error);
+
+    setMessage(
+      "Không thể thêm sản phẩm vào giỏ hàng."
+    );
+
+    window.setTimeout(() => {
+      setMessage("");
+    }, 1800);
   }
+}
 
   function changeBanner(step: number) {
     if (!promotions.length) return;
