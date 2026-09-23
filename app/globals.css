@@ -17,11 +17,13 @@ body {
   font-family: "Inter", "Segoe UI", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+.site-content { flex: 1; width: 100%; }
 button, input { font: inherit; }
 a { text-decoration: none; -webkit-tap-highlight-color: transparent; }
 
 .store-page { min-height: 100vh; background: #fff; }
-.store-header { background: var(--blue); color: #fff; box-shadow: 0 2px 8px #102d9126; transform: translateZ(0); backface-visibility: hidden; }
+.store-header { position: sticky; top: 0; z-index: 60; background: var(--blue); color: #fff; box-shadow: 0 2px 8px #102d9126; transform: translateZ(0); backface-visibility: hidden; transition: transform .24s ease; }
+.store-header.nav-hidden { transform: translate3d(0, -105%, 0); pointer-events: none; }
 .header-inner {
   width: min(1250px, calc(100% - 32px));
   min-height: 76px;
@@ -130,7 +132,9 @@ a { text-decoration: none; -webkit-tap-highlight-color: transparent; }
   .section-heading h2 { font-size: 22px; }
   .section-heading a { font-size: 12px; }
   .load-more-button { width: 100%; }
-  .mobile-bottom-nav { position: fixed; transform: translate3d(0, 0, 0); backface-visibility: hidden; will-change: transform; right: 0; bottom: 0; left: 0; z-index: 50; display: grid; grid-template-columns: repeat(5, 1fr); padding: 6px 2px max(6px, env(safe-area-inset-bottom)); border-top: 1px solid #e5e7eb; background: #fff; }
+  body { padding-bottom: calc(58px + env(safe-area-inset-bottom)); }
+  .mobile-bottom-nav { position: fixed; transform: translate3d(0, 0, 0); backface-visibility: hidden; will-change: transform; right: 0; bottom: 0; left: 0; z-index: 50; display: grid; grid-template-columns: repeat(auto-fit, minmax(52px, 1fr)); padding: 6px 2px max(6px, env(safe-area-inset-bottom)); border-top: 1px solid #e5e7eb; background: #fff; transition: transform .24s ease; }
+  .mobile-bottom-nav.nav-hidden { transform: translate3d(0, 110%, 0); pointer-events: none; }
   .mobile-nav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; color: #71717a; font-size: 19px; }
   .mobile-nav-item small { font-size: 10px; font-weight: 800; }
   .mobile-nav-item.active { color: var(--blue); }

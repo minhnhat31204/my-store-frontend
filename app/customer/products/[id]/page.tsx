@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import CustomerNav from "@/app/components/CustomerNav";
 import { addToCart } from "@/lib/cart";
 import { api, Product, ProductReview, ProductVariant } from "@/lib/api";
 
@@ -88,7 +87,6 @@ export default function ProductDetailPage() {
 
   return (
     <main className="store-page min-h-screen">
-      <CustomerNav />
       <div className="store-container py-6 sm:py-10">
         <Link href="/customer/products" className="text-sm font-semibold text-blue-700 hover:underline">
           ← Quay lại danh sách sản phẩm

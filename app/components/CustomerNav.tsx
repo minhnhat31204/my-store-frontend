@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, getStoredUser, type User } from "@/lib/api";
 import { useRouter } from "next/navigation";
 
@@ -35,7 +35,46 @@ export default function CustomerNav({
 }: CustomerNavProps) {
   const [cartCount, setCartCount] = useState(0);
   const [user, setUser] = useState<User | null>(null);
+  const [localSearch, setLocalSearch] = useState(searchValue);
+  const [navVisible, setNavVisible] = useState(true);
+  const lastScrollY = useRef(0);
+  const scrollDelta = useRef(0);
+  const scrollDirection = useRef<"up" | "down" | null>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    lastScrollY.current = window.scrollY;
+
+    const handleScroll = () => {
+      const currentY = Math.max(0, window.scrollY);
+      const delta = currentY - lastScrollY.current;
+      lastScrollY.current = currentY;
+
+      if (currentY < 80) {
+        scrollDelta.current = 0;
+        scrollDirection.current = null;
+        setNavVisible(true);
+        return;
+      }
+
+      if (Math.abs(delta) < 1) return;
+      const direction = delta > 0 ? "down" : "up";
+      if (direction !== scrollDirection.current) {
+        scrollDirection.current = direction;
+        scrollDelta.current = 0;
+      }
+      scrollDelta.current += Math.abs(delta);
+
+      if (direction === "down" && scrollDelta.current >= 12) {
+        setNavVisible(false);
+      } else if (direction === "up" && scrollDelta.current >= 3) {
+        setNavVisible(true);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   useEffect(() => {
     const refreshUser = () => {
@@ -97,21 +136,22 @@ export default function CustomerNav({
     const val = event.target.value;
     if (onSearchChange) {
       onSearchChange(val);
+    } else {
+      setLocalSearch(val);
     }
+    window.dispatchEvent(new CustomEvent("store-search", { detail: val }));
   };
 
   const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter" && searchValue.trim()) {
-      // Nếu không có hàm onSearchChange riêng từ trang cha, tự động chuyển hướng sang trang sản phẩm kèm từ khóa
-      if (!onSearchChange) {
-        router.push(`/customer/products?search=${encodeURIComponent(searchValue.trim())}`);
-      }
+    const value = onSearchChange ? searchValue : localSearch;
+    if (event.key === "Enter" && value.trim()) {
+      router.push(`/customer/products?search=${encodeURIComponent(value.trim())}`);
     }
   };
 
   return (
     <>
-      <header className="store-header">
+      <header className={`store-header${navVisible ? "" : " nav-hidden"}`}>
         <div className="header-inner">
           <Link href="/" className="brand">
             MANB<span>.VN</span>
@@ -122,7 +162,7 @@ export default function CustomerNav({
             <input
               aria-label="Tìm sản phẩm"
               placeholder="Tìm sản phẩm..."
-              value={searchValue}
+              value={onSearchChange ? searchValue : localSearch}
               onChange={handleSearchChange}
               onKeyDown={handleSearchKeyDown}
             />
@@ -190,7 +230,7 @@ export default function CustomerNav({
         </div>
       </header>
 
-      <nav className="mobile-bottom-nav">
+      <nav className={`mobile-bottom-nav${navVisible ? "" : " nav-hidden"}`}>
         <Link href="/" className="mobile-nav-item active">
           <span>⌂</span>
           <small>Trang chủ</small>

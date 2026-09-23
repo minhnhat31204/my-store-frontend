@@ -4,8 +4,6 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { api, Product, Promotion } from "@/lib/api";
 import { addToCart } from "@/lib/cart";
-import CustomerNav from "@/app/components/CustomerNav";
-import Footer from "@/app/components/Footer";
 
 const FALLBACK_BANNER = "/banner-placeholder.jpg";
 
@@ -41,6 +39,14 @@ export default function Home() {
       .then((data) => setPromotions(Array.isArray(data) ? data.filter((item) => getBannerImage(item)) : []))
       .catch(() => setPromotions([]))
       .finally(() => setBannerLoading(false));
+  }, []);
+
+  useEffect(() => {
+    const onSearch = (event: Event) => {
+      setKeyword((event as CustomEvent<string>).detail || "");
+    };
+    window.addEventListener("store-search", onSearch);
+    return () => window.removeEventListener("store-search", onSearch);
   }, []);
 
   useEffect(() => {
@@ -98,8 +104,6 @@ export default function Home() {
 
   return (
     <main className="store-page">
-      <CustomerNav searchValue={keyword} onSearchChange={setKeyword} />
-
       <div className="store-container">
         <section className="promo-banner" aria-label="Banner khuyến mãi">
           {currentBanner ? (
@@ -168,7 +172,6 @@ export default function Home() {
         </section>
       </div>
 
-      <Footer />
     </main>
   );
 }

@@ -5,7 +5,6 @@ import {
   useState,
 } from "react";
 
-import CustomerNav from "@/app/components/CustomerNav";
 
 import {
   CartItem,
@@ -98,7 +97,6 @@ export default function CartPage() {
 
   return (
     <main className="min-h-screen bg-slate-50 pb-24 text-slate-900">
-      <CustomerNav />
 
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
         <h1 className="text-4xl font-black">

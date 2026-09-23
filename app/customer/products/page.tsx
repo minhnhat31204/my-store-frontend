@@ -16,7 +16,6 @@ import {
   addToCart,
 } from "@/lib/cart";
 
-import CustomerNav from "@/app/components/CustomerNav";
 
 export default function ProductsPage() {
   const [products, setProducts] =
@@ -36,6 +35,14 @@ export default function ProductsPage() {
       .getProducts()
       .then(setProducts)
       .catch(console.error);
+
+    const params = new URLSearchParams(window.location.search);
+    setKeyword(params.get("search") || "");
+    const onSearch = (event: Event) => {
+      setKeyword((event as CustomEvent<string>).detail || "");
+    };
+    window.addEventListener("store-search", onSearch);
+    return () => window.removeEventListener("store-search", onSearch);
   }, []);
 
   const filtered = useMemo(() => {
@@ -81,8 +88,6 @@ export default function ProductsPage() {
 
   return (
     <main className="store-page">
-      <CustomerNav searchValue={keyword} onSearchChange={setKeyword} />
-
       <div className="store-container">
         <div className="section-heading mt-6">
           <div>
