@@ -44,11 +44,14 @@ export default function LoginPage() {
         UserID: data.user.UserID,
         FullName: data.user.FullName,
         Email: data.user.Email,
+        Phone: data.user.Phone,
+        Address: data.user.Address,
         Role: data.user.Role,
         Avatar: data.user.Avatar,
       } : null;
       if (!user) throw new Error('Không nhận được thông tin người dùng từ Backend.');
       localStorage.setItem('user', JSON.stringify(user));
+      window.dispatchEvent(new Event('user-updated'));
       router.push(user.Role === 'Admin' ? '/admin/products' : '/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Đăng nhập thất bại');

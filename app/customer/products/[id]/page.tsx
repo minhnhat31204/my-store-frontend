@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { addToCart } from "@/lib/cart";
 import { api, Product, ProductReview, ProductVariant } from "@/lib/api";
+import FavoriteButton from "@/app/components/FavoriteButton";
 
 const formatPrice = (value: number | string) =>
   `${Number(value).toLocaleString("vi-VN")} ₫`;
@@ -98,12 +99,13 @@ export default function ProductDetailPage() {
         {!loading && product && (
           <>
             <section className="mt-6 grid gap-8 rounded-3xl bg-white p-5 shadow-sm md:grid-cols-2 md:p-8">
-              <div className="flex min-h-72 items-center justify-center rounded-2xl bg-slate-50 p-5 sm:min-h-96">
+              <div className="product-image flex min-h-72 items-center justify-center rounded-2xl bg-slate-50 p-5 sm:min-h-96">
                 <img
                   src={product.ImageUrl || "/placeholder.png"}
                   alt={product.ProductName}
                   className="max-h-[420px] w-full object-contain"
                 />
+                <FavoriteButton product={product} />
               </div>
 
               <div className="flex flex-col">

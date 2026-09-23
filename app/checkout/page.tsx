@@ -3,13 +3,34 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { api, getStoredUser } from '@/lib/api';
+import { api, getStoredUser, type User } from '@/lib/api';
+
+const SHIPPING_FEE = 40000;
+const PAYMENT_METHODS = [
+  'ATM nội địa (Vietcombank)',
+  'ATM nội địa (BIDV)',
+  'ATM nội địa (Techcombank)',
+];
+
+function itemPrice(item: any) {
+  return Number(item.DiscountPrice ?? item.Product?.DiscountPrice ?? item.Price ?? item.Product?.Price ?? 0);
+}
+
+function itemName(item: any) {
+  return item.ProductName || item.Product?.ProductName || 'Sản phẩm';
+}
+
+function itemImage(item: any) {
+  return item.ImageUrl || item.Product?.ImageUrl || item.ProductImage || '';
+}
 
 export default function CheckoutPage() {
   const router = useRouter();
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [cartLoading, setCartLoading] = useState(true);
   const [error, setError] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('');
 
   // Form thông tin giao hàng
   const [fullName, setFullName] = useState('');
@@ -28,6 +49,8 @@ export default function CheckoutPage() {
     if (user.FullName) {
       setFullName(user.FullName);
     }
+    setPhone((user as User).Phone || '');
+    setShippingAddress((user as User).Address || '');
 
     // Gọi API lấy giỏ hàng từ Backend dựa vào UserID
     api.getCart(user.UserID)
@@ -37,13 +60,15 @@ export default function CheckoutPage() {
       .catch((err) => {
         console.error('Lỗi khi tải giỏ hàng:', err);
         setError('Không thể tải dữ liệu giỏ hàng từ hệ thống.');
-      });
+      })
+      .finally(() => setCartLoading(false));
   }, [router]);
 
-  const totalAmount = cartItems.reduce(
-    (sum, item) => sum + Number(item.Price || item.Product?.Price || 0) * Number(item.Quantity || 1),
+  const subtotal = cartItems.reduce(
+    (sum, item) => sum + itemPrice(item) * Number(item.Quantity || 1),
     0
   );
+  const totalAmount = subtotal + SHIPPING_FEE;
 
   async function handleCheckout(e: React.FormEvent) {
     e.preventDefault();
@@ -51,6 +76,10 @@ export default function CheckoutPage() {
 
     if (cartItems.length === 0) {
       setError('Giỏ hàng của bạn đang trống.');
+      return;
+    }
+    if (!paymentMethod) {
+      setError('Vui lòng chọn phương thức thanh toán.');
       return;
     }
 
@@ -65,36 +94,23 @@ export default function CheckoutPage() {
 
     try {
       // 1. Gọi API tạo đơn hàng
-      await api.createOrder({
+      const result = await api.createOrder({
         UserID: user.UserID,
-        FullName: fullName,
-        Phone: phone,
+        RecipientName: fullName,
+        RecipientPhone: phone,
         ShippingAddress: shippingAddress,
         Note: note,
         TotalAmount: totalAmount,
+        PaymentMethod: paymentMethod,
+        Status: 'Pending',
         Items: cartItems.map((item) => ({
           ProductID: item.ProductID || item.Product?.ProductID,
-          Quantity: item.Quantity,
-          Price: item.Price || item.Product?.Price,
+          Quantity: Number(item.Quantity || 1),
+          Price: itemPrice(item),
         })),
       });
-
-      // 2. Xóa các sản phẩm trong giỏ hàng ngay trên Client
-      await Promise.all(
-        cartItems.map((item) => {
-          const cartId = item.CartID || item.ID || item.Id;
-          if (cartId) {
-            return api.deleteCart(cartId).catch(() => {});
-          }
-          return Promise.resolve();
-        })
-      );
-
-      // 3. BÁO CHO NAVBAR CẬP NHẬT LẠI SỐ LƯỢNG GIỎ HÀNG NGAY LẬP TỨC
       window.dispatchEvent(new Event('cart-updated'));
-
-      alert('Đặt hàng thành công!');
-      router.push('/customer/orders'); // Chuyển hướng về trang lịch sử đơn hàng
+      router.push(`/customer/orders/${result.order.OrderID}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Thanh toán thất bại.');
     } finally {
@@ -154,6 +170,17 @@ export default function CheckoutPage() {
               />
             </div>
 
+            <fieldset className="space-y-3">
+              <legend className="mb-2 text-sm font-semibold">Phương thức thanh toán</legend>
+              {PAYMENT_METHODS.map((method) => (
+                <label key={method} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-sm ${paymentMethod === method ? 'border-blue-600 bg-blue-50' : 'border-slate-200'}`}>
+                  <input type="radio" name="paymentMethod" value={method} checked={paymentMethod === method} onChange={() => setPaymentMethod(method)} />
+                  <span>{method}</span>
+                </label>
+              ))}
+              <p className="text-xs leading-5 text-slate-500">Đơn được tạo ở trạng thái chờ xác nhận. Backend hiện chưa có cổng xử lý giao dịch trực tuyến.</p>
+            </fieldset>
+
             <div>
               <label className="mb-1 block text-sm font-semibold">Ghi chú (tuỳ chọn)</label>
               <input
@@ -167,10 +194,10 @@ export default function CheckoutPage() {
 
             <button
               type="submit"
-              disabled={loading || cartItems.length === 0}
+              disabled={loading || cartLoading || cartItems.length === 0}
               className="w-full rounded-xl bg-blue-600 py-3 font-bold text-white transition hover:bg-blue-700 disabled:bg-blue-300"
             >
-              {loading ? 'Đang xử lý đơn hàng...' : 'Hoàn tất đặt hàng'}
+              {loading ? 'Đang tạo đơn hàng...' : 'Xác nhận đặt hàng'}
             </button>
 
             <div className="text-center mt-4">
@@ -185,13 +212,15 @@ export default function CheckoutPage() {
             <h2 className="text-xl font-bold mb-4">Đơn hàng của bạn</h2>
             
             <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto mb-4 pr-1">
-              {cartItems.length === 0 ? (
+              {cartLoading ? (
+                <p className="py-4 text-center text-sm text-slate-500">Đang tải giỏ hàng...</p>
+              ) : cartItems.length === 0 ? (
                 <p className="py-4 text-center text-sm text-slate-500">Giỏ hàng trống</p>
               ) : (
                 cartItems.map((item, idx) => {
-                  const imageUrl = item.Image || item.ProductImage || item.ImageUrl || item.Product?.Image || '';
-                  const productName = item.ProductName || item.Product?.ProductName || 'Sản phẩm';
-                  const itemPrice = Number(item.Price || item.Product?.Price || 0);
+                  const imageUrl = itemImage(item);
+                  const productName = itemName(item);
+                  const price = itemPrice(item);
                   const itemQty = Number(item.Quantity || 1);
 
                   return (
@@ -217,7 +246,7 @@ export default function CheckoutPage() {
                       </div>
 
                       <span className="font-bold text-blue-600 whitespace-nowrap ml-2">
-                        {(itemPrice * itemQty).toLocaleString('vi-VN')} ₫
+                        {(price * itemQty).toLocaleString('vi-VN')} ₫
                       </span>
                     </div>
                   );
@@ -226,6 +255,13 @@ export default function CheckoutPage() {
             </div>
 
             <div className="border-t border-slate-200 pt-4 flex justify-between items-center text-lg font-black">
+              <span>Tạm tính:</span>
+              <span className="text-blue-600 whitespace-nowrap">{subtotal.toLocaleString('vi-VN')} ₫</span>
+            </div>
+            <div className="mt-2 flex justify-between text-sm text-slate-600">
+              <span>Phí vận chuyển</span><span>{SHIPPING_FEE.toLocaleString('vi-VN')} ₫</span>
+            </div>
+            <div className="mt-3 border-t border-slate-200 pt-4 flex justify-between items-center text-lg font-black">
               <span>Tổng thanh toán:</span>
               <span className="text-blue-600 whitespace-nowrap">{totalAmount.toLocaleString('vi-VN')} ₫</span>
             </div>

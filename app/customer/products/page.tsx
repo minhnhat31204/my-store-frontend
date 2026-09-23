@@ -11,6 +11,7 @@ import {
   Product,
 } from "@/lib/api";
 import Link from "next/link";
+import FavoriteButton from "@/app/components/FavoriteButton";
 
 import {
   addToCart,
@@ -122,6 +123,7 @@ export default function ProductsPage() {
                       alt={product.ProductName}
                     />
                   </Link>
+                  <FavoriteButton product={product} />
                 </div>
                 <div className="product-info flex flex-col flex-grow">
                   {discountPercent > 0 && <div className="discount-tag">TIẾT KIỆM {discountPercent}%</div>}

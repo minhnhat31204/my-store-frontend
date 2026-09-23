@@ -171,6 +171,7 @@ export default function CustomerNav({
           <nav className="desktop-links">
             <Link href="/">Trang chủ</Link>
             <Link href="/customer/products">Sản phẩm</Link>
+            <Link href="/customer/favorites">Yêu thích</Link>
             <Link href="/customer/notifications">Thông báo</Link>
 
             {user && (user.Role === 'admin' || (user as any).role === 'admin') && (
@@ -247,6 +248,11 @@ export default function CustomerNav({
             {cartCount > 0 && <b className="mobile-cart-badge">{cartCount}</b>}
           </span>
           <small>Giỏ hàng</small>
+        </Link>
+
+        <Link href="/customer/favorites" className="mobile-nav-item">
+          <span>♡</span>
+          <small>Yêu thích</small>
         </Link>
 
         {user && (user.Role === 'admin' || (user as any).role === 'admin') && (

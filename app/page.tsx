@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { api, Product, Promotion } from "@/lib/api";
 import { addToCart } from "@/lib/cart";
+import FavoriteButton from "@/app/components/FavoriteButton";
 
 const FALLBACK_BANNER = "/banner-placeholder.jpg";
 
@@ -189,6 +190,7 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: () => void }
         <Link href={`/customer/products/${product.ProductID}`} aria-label={`Xem chi tiết ${product.ProductName}`}>
           <img src={product.ImageUrl || "/placeholder.png"} alt={product.ProductName} />
         </Link>
+        <FavoriteButton product={product} />
       </div>
       <div className="product-info flex flex-col flex-grow">
         {discountPercent > 0 && <div className="discount-tag">TIẾT KIỆM {discountPercent}%</div>}

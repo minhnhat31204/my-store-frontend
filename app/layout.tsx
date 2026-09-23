@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Geist, Geist_Mono } from 'next/font/google';
 import CustomerNav from './components/CustomerNav';
 import Footer from './components/Footer';
+import { FavoritesProvider } from './components/FavoritesProvider';
 import './globals.css';
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
@@ -15,7 +16,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="vi" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <CustomerNav />
-        <div className="site-content">{children}</div>
+        <FavoritesProvider>
+          <div className="site-content">{children}</div>
+        </FavoritesProvider>
         <Footer />
       </body>
     </html>
