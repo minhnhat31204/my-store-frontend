@@ -51,6 +51,7 @@ export type ProductVariant = {
   Configuration?: string | null;
   Price?: number | string | null;
   StockQuantity?: number | null;
+  ImageUrl?: string;
 };
 
 export type ProductReview = {

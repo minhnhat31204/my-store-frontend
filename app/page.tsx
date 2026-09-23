@@ -70,33 +70,33 @@ export default function Home() {
   const currentBanner = promotions[bannerIndex];
 
   async function handleAdd(product: Product) {
-  try {
-    await addToCart({
-      ProductID: product.ProductID,
-      ProductName: product.ProductName,
-      Price: Number(product.Price),
-      ImageUrl: product.ImageUrl || "",
-    });
+    try {
+      await addToCart({
+        ProductID: product.ProductID,
+        ProductName: product.ProductName,
+        Price: Number(product.Price),
+        ImageUrl: product.ImageUrl || "",
+      });
 
-    setMessage(
-      "Đã thêm sản phẩm vào giỏ hàng"
-    );
+      setMessage(
+        "Đã thêm sản phẩm vào giỏ hàng"
+      );
 
-    window.setTimeout(() => {
-      setMessage("");
-    }, 1800);
-  } catch (error) {
-    console.error(error);
+      window.setTimeout(() => {
+        setMessage("");
+      }, 1800);
+    } catch (error) {
+      console.error(error);
 
-    setMessage(
-      "Không thể thêm sản phẩm vào giỏ hàng."
-    );
+      setMessage(
+        "Không thể thêm sản phẩm vào giỏ hàng."
+      );
 
-    window.setTimeout(() => {
-      setMessage("");
-    }, 1800);
+      window.setTimeout(() => {
+        setMessage("");
+      }, 1800);
+    }
   }
-}
 
   function changeBanner(step: number) {
     if (!promotions.length) return;
@@ -172,7 +172,6 @@ export default function Home() {
           )}
         </section>
       </div>
-
     </main>
   );
 }
@@ -184,11 +183,16 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: () => void }
     ? Math.round(((oldPrice - price) / oldPrice) * 100)
     : 0;
 
+  // Xử lý tách lấy ảnh đầu tiên và kiểm tra xem có phải là đường dẫn URL hợp lệ hay không
+  const rawImg = product.ImageUrl ? product.ImageUrl.split(',')[0].trim() : "";
+  const isValidUrl = rawImg.startsWith("http://") || rawImg.startsWith("https://") || rawImg.startsWith("/");
+  const displayImage = isValidUrl ? rawImg : "/placeholder.png";
+
   return (
     <article className="product-card flex flex-col h-full">
       <div className="product-image">
         <Link href={`/customer/products/${product.ProductID}`} aria-label={`Xem chi tiết ${product.ProductName}`}>
-          <img src={product.ImageUrl || "/placeholder.png"} alt={product.ProductName} />
+          <img src={displayImage} alt={product.ProductName} />
         </Link>
         <FavoriteButton product={product} />
       </div>
@@ -197,7 +201,6 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: () => void }
         <p className="shop-label">MANB SHOP</p>
         <h3><Link href={`/customer/products/${product.ProductID}`} className="hover:text-blue-700">{product.ProductName}</Link></h3>
         
-        {/* Thêm mt-auto để đẩy toàn bộ phần giá và nút bấm xuống đáy cố định */}
         <div className="mt-auto pt-2">
           <div className="price-row">
             <strong>{price.toLocaleString("vi-VN")} ₫</strong>

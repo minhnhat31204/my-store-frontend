@@ -22,6 +22,10 @@ export default function ProductDetailPage() {
   const [message, setMessage] = useState("");
   const [adding, setAdding] = useState(false);
 
+  // States cho Ảnh & Biến thể được chọn
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+
   useEffect(() => {
     if (!Number.isInteger(productId) || productId <= 0) {
       setError("Sản phẩm không hợp lệ.");
@@ -42,7 +46,14 @@ export default function ProductDetailPage() {
       .finally(() => active && setLoading(false));
 
     api.getProductVariants()
-      .then((items) => active && setVariants(items.filter((item) => item.ProductID === productId)))
+      .then((items) => {
+        if (!active) return;
+        const itemVariants = items.filter((item) => item.ProductID === productId);
+        setVariants(itemVariants);
+        if (itemVariants.length > 0) {
+          setSelectedVariant(itemVariants[0]);
+        }
+      })
       .catch(() => active && setVariants([]));
 
     api.getProductReviews(productId)
@@ -51,6 +62,43 @@ export default function ProductDetailPage() {
 
     return () => { active = false; };
   }, [productId]);
+
+  // Tổng hợp danh sách ảnh (tách chuỗi theo dấu phẩy, chuẩn hóa URL domain backend)
+  const allImages = useMemo(() => {
+    if (!product) return ["/placeholder.png"];
+
+    const rawList: string[] = [];
+
+    // Tách các ảnh của sản phẩm chính phân cách bởi dấu phẩy
+    if (product.ImageUrl) {
+      product.ImageUrl.split(",").forEach((item) => {
+        const trimmed = item.trim();
+        if (trimmed) rawList.push(trimmed);
+      });
+    }
+
+    // Tách các ảnh từ biến thể (nếu có)
+    variants.forEach((v) => {
+      if (v.ImageUrl) {
+        v.ImageUrl.split(",").forEach((item) => {
+          const trimmed = item.trim();
+          if (trimmed && !rawList.includes(trimmed)) {
+            rawList.push(trimmed);
+          }
+        });
+      }
+    });
+
+    if (rawList.length === 0) return ["/placeholder.png"];
+
+    // Thêm domain http://localhost:5000 cho các đường dẫn nội bộ /uploads/...
+    return rawList.map((img) => {
+      if (img.startsWith("/uploads/")) {
+        return `http://localhost:5000${img}`;
+      }
+      return img;
+    });
+  }, [product, variants]);
 
   const relatedProducts = useMemo(() => {
     if (!product) return [];
@@ -67,15 +115,19 @@ export default function ProductDetailPage() {
     ? reviews.reduce((total, review) => total + Number(review.Rating || 0), 0) / reviews.length
     : 0;
 
+  // Giá và tồn kho hiển thị thay đổi linh hoạt theo biến thể được chọn
+  const displayPrice = selectedVariant?.Price ? Number(selectedVariant.Price) : Number(product?.DiscountPrice || product?.Price || 0);
+  const displayStock = selectedVariant ? selectedVariant.StockQuantity : product?.StockQuantity;
+
   async function handleAddToCart() {
     if (!product) return;
     setAdding(true);
     try {
       await addToCart({
         ProductID: product.ProductID,
-        ProductName: product.ProductName,
-        Price: Number(product.DiscountPrice || product.Price),
-        ImageUrl: product.ImageUrl || "",
+        ProductName: `${product.ProductName}${selectedVariant ? ` (${[selectedVariant.Color, selectedVariant.Configuration].filter(Boolean).join(" - ")})` : ""}`,
+        Price: displayPrice,
+        ImageUrl: allImages[0] || "",
       });
       setMessage("Đã thêm sản phẩm vào giỏ hàng.");
     } catch {
@@ -99,15 +151,57 @@ export default function ProductDetailPage() {
         {!loading && product && (
           <>
             <section className="mt-6 grid gap-8 rounded-3xl bg-white p-5 shadow-sm md:grid-cols-2 md:p-8">
-              <div className="product-image flex min-h-72 items-center justify-center rounded-2xl bg-slate-50 p-5 sm:min-h-96">
-                <img
-                  src={product.ImageUrl || "/placeholder.png"}
-                  alt={product.ProductName}
-                  className="max-h-[420px] w-full object-contain"
-                />
-                <FavoriteButton product={product} />
+              {/* KHUNG ẢNH CÓ SLIDER & THUMBNAILS */}
+              <div className="flex flex-col gap-4">
+                <div className="product-image relative flex min-h-72 items-center justify-center rounded-2xl bg-slate-50 p-5 sm:min-h-96">
+                  <img
+                    src={allImages[selectedImageIndex] || "/placeholder.png"}
+                    alt={product.ProductName}
+                    className="max-h-[420px] w-full object-contain transition-all duration-300"
+                  />
+                  <FavoriteButton product={product} />
+
+                  {/* Nút bấm chuyển ảnh qua lại nếu có nhiều hơn 1 ảnh */}
+                  {allImages.length > 1 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1))}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow hover:bg-white"
+                        aria-label="Ảnh trước"
+                      >
+                        ‹
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1))}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow hover:bg-white"
+                        aria-label="Ảnh tiếp theo"
+                      >
+                        ›
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {/* Danh sách ảnh thu nhỏ (Thumbnails) */}
+                {allImages.length > 1 && (
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {allImages.map((img, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setSelectedImageIndex(idx)}
+                        className={`h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl border-2 transition ${selectedImageIndex === idx ? "border-blue-600 shadow-md" : "border-slate-200 opacity-70 hover:opacity-100"}`}
+                      >
+                        <img src={img} alt="" className="h-full w-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
+              {/* THÔNG TIN & BỘ CHỌN BIẾN THỂ */}
               <div className="flex flex-col">
                 <p className="text-sm font-bold uppercase tracking-wide text-blue-700">MANB SHOP</p>
                 <h1 className="mt-2 text-2xl font-black text-slate-900 sm:text-3xl">{product.ProductName}</h1>
@@ -116,15 +210,43 @@ export default function ProductDetailPage() {
                     <a href="#reviews" className="font-semibold text-amber-600">★ {averageRating.toFixed(1)} · {reviews.length} đánh giá</a>
                   ) : <span>Chưa có đánh giá</span>}
                   <span>•</span>
-                  <span>{Number(product.StockQuantity ?? 0) > 0 ? `Còn ${product.StockQuantity} sản phẩm` : "Liên hệ để kiểm tra hàng"}</span>
+                  <span>{Number(displayStock ?? 0) > 0 ? `Còn ${displayStock} sản phẩm` : "Tạm hết hàng"}</span>
                 </div>
 
                 <div className="mt-6 flex flex-wrap items-baseline gap-3">
-                  <strong className="text-3xl font-black text-blue-800">{formatPrice(product.DiscountPrice || product.Price)}</strong>
-                  {product.DiscountPrice && Number(product.DiscountPrice) < Number(product.Price) && (
+                  <strong className="text-3xl font-black text-blue-800">{formatPrice(displayPrice)}</strong>
+                  {product.DiscountPrice && Number(product.DiscountPrice) < Number(product.Price) && !selectedVariant?.Price && (
                     <del className="text-slate-400">{formatPrice(product.Price)}</del>
                   )}
                 </div>
+
+                {/* BỘ CHỌN PHIÊN BẢN / MÀU SẮC */}
+                {variants.length > 0 && (
+                  <div className="mt-6">
+                    <label className="font-bold text-slate-900">Chọn phiên bản / Màu sắc:</label>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {variants.map((v) => {
+                        const isSelected = selectedVariant?.VariantID === v.VariantID;
+                        const labelText = [v.Color, v.Configuration].filter(Boolean).join(" - ") || "Tiêu chuẩn";
+                        return (
+                          <button
+                            key={v.VariantID}
+                            type="button"
+                            onClick={() => setSelectedVariant(v)}
+                            className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
+                              isSelected
+                                ? "border-blue-600 bg-blue-50 text-blue-700 shadow-sm"
+                                : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                            }`}
+                          >
+                            {labelText}
+                            {v.Price ? ` (${formatPrice(v.Price)})` : ""}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {product.Description && (
                   <div className="mt-6">
@@ -145,33 +267,22 @@ export default function ProductDetailPage() {
                         <dd className="mt-1 font-semibold text-slate-800">{value}</dd>
                       </div>
                     ))}
-                    {!product.CPU && !product.RAM && !product.Storage && !product.Display && !product.RefreshRate && !product.Series && (
-                      <p className="col-span-2 text-slate-500">Chưa có thông số chi tiết.</p>
-                    )}
                   </dl>
                 </div>
 
-                {variants.length > 0 && (
-                  <div className="mt-6">
-                    <h2 className="font-bold text-slate-900">Phiên bản hiện có</h2>
-                    <ul className="mt-3 space-y-2">
-                      {variants.map((variant) => (
-                        <li key={variant.VariantID} className="flex flex-wrap justify-between gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm">
-                          <span className="font-medium text-slate-800">{[variant.Color, variant.Configuration].filter(Boolean).join(" · ") || "Phiên bản tiêu chuẩn"}</span>
-                          <span className="text-slate-600">{variant.Price ? formatPrice(variant.Price) : "Theo giá sản phẩm"} · Còn {variant.StockQuantity ?? 0}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
                 {message && <p role="status" className="mt-4 rounded-xl bg-blue-50 p-3 text-sm text-blue-800">{message}</p>}
-                <button onClick={handleAddToCart} disabled={adding} className="add-button mt-7 w-full disabled:cursor-wait disabled:opacity-60">
-                  {adding ? "Đang thêm vào giỏ..." : "Thêm vào giỏ hàng"}
+                
+                <button 
+                  onClick={handleAddToCart} 
+                  disabled={adding || Number(displayStock ?? 0) <= 0} 
+                  className="add-button mt-7 w-full disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {adding ? "Đang thêm vào giỏ..." : Number(displayStock ?? 0) <= 0 ? "Hết hàng" : "Thêm vào giỏ hàng"}
                 </button>
               </div>
             </section>
 
+            {/* Đánh giá sản phẩm */}
             <section id="reviews" className="mt-10 rounded-3xl bg-white p-5 shadow-sm sm:p-8">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
@@ -204,6 +315,7 @@ export default function ProductDetailPage() {
               )}
             </section>
 
+            {/* Sản phẩm liên quan */}
             {relatedProducts.length > 0 && (
               <section className="mt-10">
                 <div className="section-heading">
@@ -213,7 +325,7 @@ export default function ProductDetailPage() {
                 <div className="product-grid">
                   {relatedProducts.map((item) => (
                     <Link key={item.ProductID} href={`/customer/products/${item.ProductID}`} className="product-card block p-4 transition hover:-translate-y-1 hover:shadow-lg">
-                      <div className="product-image"><img src={item.ImageUrl || "/placeholder.png"} alt={item.ProductName} /></div>
+                      <div className="product-image"><img src={item.ImageUrl ? (item.ImageUrl.startsWith('/uploads/') ? `http://localhost:5000${item.ImageUrl.split(',')[0].trim()}` : item.ImageUrl.split(',')[0].trim()) : "/placeholder.png"} alt={item.ProductName} /></div>
                       <h3 className="mt-3 font-bold text-slate-900">{item.ProductName}</h3>
                       <p className="mt-2 font-black text-blue-800">{formatPrice(item.DiscountPrice || item.Price)}</p>
                     </Link>
