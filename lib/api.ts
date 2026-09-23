@@ -89,6 +89,13 @@ export type StoreOrder = {
   PaymentMethod?: string | null;
   DiscountAmount?: number | string | null;
   OrderItems?: OrderItem[];
+  Payments?: Array<{
+    PaymentTransactionID: number;
+    Status: string;
+    Amount: number | string;
+    CreatedAt?: string | null;
+    PaidAt?: string | null;
+  }>;
 };
 
 async function request<T>(
@@ -296,6 +303,15 @@ export const api = {
 
   getOrdersByUser: (userId: number) =>
     request<StoreOrder[]>(`/orders/user/${userId}`),
+
+  createPayOSPayment: (orderId: number, userId: number) =>
+    request<{ orderId: number; paymentStatus: string; checkoutUrl: string; qrCode: string }>(`/orders/${orderId}/payos-payment`, {
+      method: "POST",
+      body: JSON.stringify({ UserID: userId }),
+    }),
+
+  getPaymentStatus: (orderId: number, userId: number) =>
+    request<{ payment: NonNullable<StoreOrder["Payments"]>[number] | null }>(`/orders/${orderId}/payment-status?userId=${userId}`),
   
   createOrder: (payload: {
     UserID: number;

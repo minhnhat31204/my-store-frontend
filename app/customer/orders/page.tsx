@@ -58,7 +58,7 @@ export default function OrdersPage() {
                       : "Ngày đặt chưa cập nhật"}
                   </p>
                 </div>
-                <span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-bold text-blue-700">{statusLabel(order.Status)}</span>
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-bold text-blue-700">{order.PaymentMethod === "PayOS" && order.Payments?.[0]?.Status !== "PAID" ? "Chờ thanh toán" : statusLabel(order.Status)}</span>
               </div>
               <p className="mt-4 line-clamp-2 text-sm text-slate-600">
                 {order.OrderItems?.length

@@ -6,11 +6,6 @@ import Link from 'next/link';
 import { api, getStoredUser, type User } from '@/lib/api';
 
 const SHIPPING_FEE = 40000;
-const PAYMENT_METHODS = [
-  'ATM nội địa (Vietcombank)',
-  'ATM nội địa (BIDV)',
-  'ATM nội địa (Techcombank)',
-];
 
 function itemPrice(item: any) {
   return Number(item.DiscountPrice ?? item.Product?.DiscountPrice ?? item.Price ?? item.Product?.Price ?? 0);
@@ -30,7 +25,6 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [cartLoading, setCartLoading] = useState(true);
   const [error, setError] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('');
 
   // Form thông tin giao hàng
   const [fullName, setFullName] = useState('');
@@ -78,11 +72,6 @@ export default function CheckoutPage() {
       setError('Giỏ hàng của bạn đang trống.');
       return;
     }
-    if (!paymentMethod) {
-      setError('Vui lòng chọn phương thức thanh toán.');
-      return;
-    }
-
     const user = getStoredUser();
     if (!user) {
       alert('Vui lòng đăng nhập trước khi thanh toán!');
@@ -91,6 +80,7 @@ export default function CheckoutPage() {
     }
 
     setLoading(true);
+    let createdOrderId: number | null = null;
 
     try {
       // 1. Gọi API tạo đơn hàng
@@ -101,7 +91,7 @@ export default function CheckoutPage() {
         ShippingAddress: shippingAddress,
         Note: note,
         TotalAmount: totalAmount,
-        PaymentMethod: paymentMethod,
+        PaymentMethod: 'PayOS',
         Status: 'Pending',
         Items: cartItems.map((item) => ({
           ProductID: item.ProductID || item.Product?.ProductID,
@@ -109,10 +99,16 @@ export default function CheckoutPage() {
           Price: itemPrice(item),
         })),
       });
+      createdOrderId = result.order.OrderID;
       window.dispatchEvent(new Event('cart-updated'));
-      router.push(`/customer/orders/${result.order.OrderID}`);
+      const payment = await api.createPayOSPayment(result.order.OrderID, user.UserID);
+      window.location.assign(payment.checkoutUrl);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Thanh toán thất bại.');
+      if (createdOrderId) {
+        router.push(`/customer/orders/${createdOrderId}?payment=retry`);
+      } else {
+        setError(err instanceof Error ? err.message : 'Không thể tạo đơn hàng.');
+      }
     } finally {
       setLoading(false);
     }
@@ -172,13 +168,11 @@ export default function CheckoutPage() {
 
             <fieldset className="space-y-3">
               <legend className="mb-2 text-sm font-semibold">Phương thức thanh toán</legend>
-              {PAYMENT_METHODS.map((method) => (
-                <label key={method} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-sm ${paymentMethod === method ? 'border-blue-600 bg-blue-50' : 'border-slate-200'}`}>
-                  <input type="radio" name="paymentMethod" value={method} checked={paymentMethod === method} onChange={() => setPaymentMethod(method)} />
-                  <span>{method}</span>
-                </label>
-              ))}
-              <p className="text-xs leading-5 text-slate-500">Đơn được tạo ở trạng thái chờ xác nhận. Backend hiện chưa có cổng xử lý giao dịch trực tuyến.</p>
+              <div className="flex items-center gap-3 rounded-xl border border-blue-600 bg-blue-50 p-3 text-sm">
+                <span aria-hidden="true" className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-700 text-xs font-bold text-white">✓</span>
+                <span className="font-semibold">PayOS · Chuyển khoản QR / ngân hàng</span>
+              </div>
+              <p className="text-xs leading-5 text-slate-500">Sau khi xác nhận đơn, bạn sẽ được chuyển đến trang thanh toán PayOS bảo mật.</p>
             </fieldset>
 
             <div>
@@ -197,7 +191,7 @@ export default function CheckoutPage() {
               disabled={loading || cartLoading || cartItems.length === 0}
               className="w-full rounded-xl bg-blue-600 py-3 font-bold text-white transition hover:bg-blue-700 disabled:bg-blue-300"
             >
-              {loading ? 'Đang tạo đơn hàng...' : 'Xác nhận đặt hàng'}
+              {loading ? 'Đang chuyển đến PayOS...' : 'Đặt hàng và thanh toán'}
             </button>
 
             <div className="text-center mt-4">

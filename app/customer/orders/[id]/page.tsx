@@ -24,6 +24,8 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<StoreOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [paymentBusy, setPaymentBusy] = useState(false);
+  const [paymentError, setPaymentError] = useState("");
 
   useEffect(() => {
     const user = getStoredUser();
@@ -47,6 +49,35 @@ export default function OrderDetailPage() {
       .finally(() => setLoading(false));
   }, [orderId]);
 
+  useEffect(() => {
+    const user = getStoredUser();
+    if (!user || !order || order.PaymentMethod !== "PayOS" || order.Payments?.[0]?.Status === "PAID") return;
+    const timer = window.setInterval(() => {
+      api.getPaymentStatus(orderId, user.UserID)
+        .then(({ payment }) => {
+          if (!payment) return;
+          setOrder((current) => current ? { ...current, Payments: [payment] } : current);
+        })
+        .catch(() => {});
+    }, 3000);
+    return () => window.clearInterval(timer);
+  }, [order, orderId]);
+
+  async function retryPayment() {
+    const user = getStoredUser();
+    if (!user) return;
+    setPaymentBusy(true);
+    setPaymentError("");
+    try {
+      const payment = await api.createPayOSPayment(orderId, user.UserID);
+      window.location.assign(payment.checkoutUrl);
+    } catch (err) {
+      setPaymentError(err instanceof Error ? err.message : "Không tạo được link PayOS.");
+    } finally {
+      setPaymentBusy(false);
+    }
+  }
+
   const items = order?.OrderItems || [];
   const itemSubtotal = items.reduce((sum, item) => sum + Number(item.UnitPrice || 0) * Number(item.Quantity || 0), 0);
   const discount = Number(order?.DiscountAmount || 0);
@@ -66,7 +97,7 @@ export default function OrderDetailPage() {
                 <p className="text-sm font-bold uppercase tracking-wide text-blue-700">Thông tin đơn hàng</p>
                 <h1 className="mt-1 text-3xl font-black">Đơn hàng #{order.OrderID}</h1>
               </div>
-              <span className="rounded-full bg-blue-100 px-4 py-2 text-sm font-bold text-blue-800">{statusLabel(order.Status)}</span>
+              <span className="rounded-full bg-blue-100 px-4 py-2 text-sm font-bold text-blue-800">{order.PaymentMethod === "PayOS" && order.Payments?.[0]?.Status !== "PAID" ? "Chờ thanh toán" : statusLabel(order.Status)}</span>
             </div>
 
             <section className="mt-6 grid gap-5 md:grid-cols-2">
@@ -84,6 +115,7 @@ export default function OrderDetailPage() {
                 <dl className="mt-4 space-y-3 text-sm">
                   <div className="flex justify-between gap-4"><dt className="text-slate-500">Ngày đặt</dt><dd className="text-right font-semibold">{order.OrderDate && !Number.isNaN(Date.parse(order.OrderDate)) ? new Date(order.OrderDate).toLocaleString("vi-VN") : "Chưa cập nhật"}</dd></div>
                   <div className="flex justify-between gap-4"><dt className="text-slate-500">Phương thức</dt><dd className="text-right font-semibold">{order.PaymentMethod || "Chưa cập nhật"}</dd></div>
+                  {order.PaymentMethod === "PayOS" && <div className="flex justify-between gap-4"><dt className="text-slate-500">Thanh toán</dt><dd className={`text-right font-bold ${order.Payments?.[0]?.Status === "PAID" ? "text-emerald-700" : "text-amber-700"}`}>{order.Payments?.[0]?.Status === "PAID" ? "Đã thanh toán" : order.Payments?.[0]?.Status === "FAILED" ? "Thanh toán lỗi" : "Đang chờ thanh toán"}</dd></div>}
                   <div className="flex justify-between gap-4"><dt className="text-slate-500">Tạm tính</dt><dd className="text-right font-semibold">{currency(itemSubtotal)}</dd></div>
                   <div className="flex justify-between gap-4"><dt className="text-slate-500">Phí giao hàng</dt><dd className="text-right font-semibold">{currency(shipping)}</dd></div>
                   {discount > 0 && <div className="flex justify-between gap-4"><dt className="text-slate-500">Giảm giá</dt><dd className="text-right font-semibold text-emerald-700">−{currency(discount)}</dd></div>}
@@ -91,6 +123,15 @@ export default function OrderDetailPage() {
                 </dl>
               </div>
             </section>
+
+            {order.PaymentMethod === "PayOS" && order.Payments?.[0]?.Status !== "PAID" && (
+              <section className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+                <p className="font-bold text-amber-900">Đơn hàng đang chờ thanh toán PayOS</p>
+                <p className="mt-1 text-sm text-amber-800">Nếu bạn vừa thanh toán, trạng thái sẽ tự cập nhật sau khi PayOS xác nhận.</p>
+                {paymentError && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">{paymentError}</p>}
+                <button type="button" onClick={retryPayment} disabled={paymentBusy} className="mt-4 rounded-xl bg-blue-700 px-5 py-3 font-bold text-white disabled:opacity-60">{paymentBusy ? "Đang mở PayOS..." : "Mở lại trang thanh toán"}</button>
+              </section>
+            )}
 
             <section className="mt-5 rounded-2xl bg-white p-5 shadow-sm">
               <h2 className="font-black">Sản phẩm đã đặt ({items.length})</h2>
