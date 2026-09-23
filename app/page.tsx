@@ -174,25 +174,29 @@ export default function Home() {
 }
 
 function ProductCard({ product, onAdd }: { product: Product; onAdd: () => void }) {
-  const price = Number(product.Price);
-  const oldPrice = product.DiscountPrice ? Number(product.DiscountPrice) : Math.round(price * 1.12);
+  const price = Number(product.DiscountPrice || product.Price);
+  const oldPrice = Number(product.Price);
+  const discountPercent = oldPrice > price
+    ? Math.round(((oldPrice - price) / oldPrice) * 100)
+    : 0;
 
   return (
     <article className="product-card flex flex-col h-full">
       <div className="product-image">
-        <img src={product.ImageUrl || "/placeholder.png"} alt={product.ProductName} />
+        <Link href={`/customer/products/${product.ProductID}`} aria-label={`Xem chi tiết ${product.ProductName}`}>
+          <img src={product.ImageUrl || "/placeholder.png"} alt={product.ProductName} />
+        </Link>
       </div>
       <div className="product-info flex flex-col flex-grow">
-        <div className="product-specs"><span>Hiệu năng cao</span><span>Chính hãng</span></div>
-        <div className="discount-tag">TIẾT KIỆM 12%</div>
+        {discountPercent > 0 && <div className="discount-tag">TIẾT KIỆM {discountPercent}%</div>}
         <p className="shop-label">MANB SHOP</p>
-        <h3>{product.ProductName}</h3>
+        <h3><Link href={`/customer/products/${product.ProductID}`} className="hover:text-blue-700">{product.ProductName}</Link></h3>
         
         {/* Thêm mt-auto để đẩy toàn bộ phần giá và nút bấm xuống đáy cố định */}
         <div className="mt-auto pt-2">
           <div className="price-row">
             <strong>{price.toLocaleString("vi-VN")} ₫</strong>
-            <del>{oldPrice.toLocaleString("vi-VN")} ₫</del>
+            {oldPrice > price && <del>{oldPrice.toLocaleString("vi-VN")} ₫</del>}
           </div>
           <button onClick={onAdd} className="add-button">Thêm vào giỏ hàng</button>
         </div>

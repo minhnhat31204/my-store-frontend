@@ -11,6 +11,12 @@ export type Product = {
   StockQuantity?: number;
   ImageUrl?: string | null;
   CategoryID?: number | null;
+  CPU?: string | null;
+  RAM?: string | null;
+  Storage?: string | null;
+  Display?: string | null;
+  RefreshRate?: string | null;
+  Series?: string | null;
 };
 
 export type User = {
@@ -32,6 +38,24 @@ export type Promotion = {
   Image?: string | null;
   Url?: string | null;
   IsActive?: boolean;
+};
+
+export type ProductVariant = {
+  VariantID: number;
+  ProductID: number;
+  Color?: string | null;
+  Configuration?: string | null;
+  Price?: number | string | null;
+  StockQuantity?: number | null;
+};
+
+export type ProductReview = {
+  ReviewID: number;
+  ProductID: number;
+  Rating: number | string;
+  Comment?: string | null;
+  ReviewDate?: string | null;
+  User?: { FullName?: string | null; Avatar?: string | null } | null;
 };
 
 async function request<T>(
@@ -81,6 +105,12 @@ export const api = {
 
   getProducts: () =>
     request<Product[]>("/products"),
+
+  getProductVariants: () =>
+    request<ProductVariant[]>("/product-variants"),
+
+  getProductReviews: (productId: number) =>
+    request<ProductReview[]>(`/reviews/product/${productId}`),
 
   createProduct: (payload: Partial<Product>) =>
     request<Product>("/products", {
