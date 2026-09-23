@@ -194,13 +194,7 @@ export const api = {
   // AUTHENTICATION
   // =========================
 
-  sendRegisterOtp: (phone: string) =>
-    request<{ message: string }>('/auth/register/send-otp', {
-      method: 'POST',
-      body: JSON.stringify({ phone }),
-    }),
-
-  register: (payload: { phone: string; otp: string; password: string }) =>
+  register: (payload: { phone: string; firebaseIdToken: string; password: string }) =>
     request<{
       message: string;
       user: User;
@@ -227,13 +221,13 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
-  verifyPasswordResetOtp: (payload: { channel: 'phone' | 'email'; phone?: string; email?: string; otp: string }) =>
+  verifyPasswordResetOtp: (payload: { channel: 'phone' | 'email'; phone?: string; email?: string; otp?: string; firebaseIdToken?: string }) =>
     request<{ message: string }>("/auth/forgot-password/verify-otp", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
 
-  resetPassword: (payload: { channel: 'phone' | 'email'; phone?: string; email?: string; newPassword: string }) =>
+  resetPassword: (payload: { channel: 'phone' | 'email'; phone?: string; email?: string; newPassword: string; firebaseIdToken?: string }) =>
     request<{ message: string }>("/auth/forgot-password/reset", {
       method: "POST",
       body: JSON.stringify(payload),

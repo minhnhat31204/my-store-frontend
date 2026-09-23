@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { clearFirebasePhoneVerifier, sendFirebasePhoneOtp } from '@/lib/firebase-phone-auth';
+import type { ConfirmationResult } from 'firebase/auth';
 
 type Step = 'login' | 'forgot_contact' | 'forgot_otp' | 'forgot_new';
 
@@ -20,6 +22,8 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [phoneConfirmation, setPhoneConfirmation] = useState<ConfirmationResult | null>(null);
+  const [firebaseIdToken, setFirebaseIdToken] = useState('');
   const router = useRouter();
 
   useEffect(() => {
@@ -66,7 +70,11 @@ export default function LoginPage() {
     resetNotice();
     setLoading(true);
     try {
-      await api.sendPasswordResetOtp(resetContactPayload());
+      if (channel === 'phone') {
+        setPhoneConfirmation(await sendFirebasePhoneOtp(contact.trim(), 'reset-recaptcha'));
+      } else {
+        await api.sendPasswordResetOtp(resetContactPayload());
+      }
       setStep('forgot_otp');
       setCountdown(60);
       setMessage(channel === 'phone' ? 'Nếu số điện thoại khớp tài khoản, mã OTP sẽ được gửi qua SMS.' : 'Nếu email khớp tài khoản, mã OTP sẽ được gửi đến email đó.');
@@ -88,7 +96,15 @@ export default function LoginPage() {
     if (!/^\d{6}$/.test(otp)) return setError('Mã OTP phải gồm 6 chữ số.');
     setLoading(true);
     try {
-      await api.verifyPasswordResetOtp({ ...resetContactPayload(), otp });
+      if (channel === 'phone') {
+        if (!phoneConfirmation) throw new Error('Hãy gửi mã xác thực trước.');
+        const credential = await phoneConfirmation.confirm(otp);
+        const token = await credential.user.getIdToken();
+        await api.verifyPasswordResetOtp({ ...resetContactPayload(), firebaseIdToken: token });
+        setFirebaseIdToken(token);
+      } else {
+        await api.verifyPasswordResetOtp({ ...resetContactPayload(), otp });
+      }
       setStep('forgot_new');
       setMessage('Mã xác thực hợp lệ. Hãy đặt mật khẩu mới.');
     } catch (err) {
@@ -105,7 +121,7 @@ export default function LoginPage() {
     if (newPassword !== confirmPassword) return setError('Mật khẩu nhập lại không khớp.');
     setLoading(true);
     try {
-      await api.resetPassword({ ...resetContactPayload(), newPassword });
+      await api.resetPassword({ ...resetContactPayload(), newPassword, ...(channel === 'phone' ? { firebaseIdToken } : {}) });
       setStep('login');
       setPassword('');
       setNewPassword('');
@@ -162,6 +178,7 @@ export default function LoginPage() {
           </form>}
 
           {step === 'forgot_contact' && <form onSubmit={handleSendResetOtp} className="space-y-4">
+            <div id="reset-recaptcha" />
             <fieldset className="space-y-2">
               <legend className="mb-2 text-sm font-semibold">Phương thức nhận OTP</legend>
               <label className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 ${channel === 'phone' ? 'border-blue-600 bg-blue-50' : 'border-slate-200'}`}>
@@ -175,7 +192,7 @@ export default function LoginPage() {
             </fieldset>
             <div>
               <label htmlFor="reset-contact" className="mb-1 block text-sm font-semibold">{channel === 'phone' ? 'Số điện thoại tài khoản' : 'Email khôi phục'}</label>
-              <input id="reset-contact" type={channel === 'phone' ? 'tel' : 'email'} inputMode={channel === 'phone' ? 'tel' : 'email'} required value={contact} onChange={(e) => setContact(e.target.value)} placeholder={channel === 'phone' ? '0901234567' : 'email@example.com'} className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500" />
+              <input id="reset-contact" type={channel === 'phone' ? 'tel' : 'email'} inputMode={channel === 'phone' ? 'tel' : 'email'} required value={contact} onChange={(e) => { setContact(e.target.value); setPhoneConfirmation(null); setFirebaseIdToken(''); clearFirebasePhoneVerifier(); }} placeholder={channel === 'phone' ? '0901234567' : 'email@example.com'} className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500" />
             </div>
             <button type="submit" disabled={loading} className="w-full rounded-xl bg-blue-600 py-3 font-bold text-white hover:bg-blue-700 disabled:opacity-50">{loading ? 'Đang gửi mã…' : 'Gửi mã OTP'}</button>
             <button type="button" onClick={() => { setStep('login'); resetNotice(); }} className="w-full py-2 text-sm font-semibold text-slate-600 hover:underline">← Quay lại đăng nhập</button>
