@@ -24,6 +24,8 @@ export type User = {
   FullName?: string;
   Email: string;
   Phone?: string | null;
+  RecoveryEmail?: string | null;
+  RecoveryEmailVerified?: boolean;
   Address?: string | null;
   Role?: string;
   Avatar?: string | null;
@@ -192,12 +194,13 @@ export const api = {
   // AUTHENTICATION
   // =========================
 
-  register: (payload: {
-    fullName: string;
-    email: string;
-    password: string;
-    phone: string;
-  }) =>
+  sendRegisterOtp: (phone: string) =>
+    request<{ message: string }>('/auth/register/send-otp', {
+      method: 'POST',
+      body: JSON.stringify({ phone }),
+    }),
+
+  register: (payload: { phone: string; otp: string; password: string }) =>
     request<{
       message: string;
       user: User;
@@ -206,35 +209,46 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
-  login: (email: string, password: string) =>
+  login: (phone: string, password: string) =>
     request<{
       message: string;
       user: User;
     }>("/auth/login", {
       method: "POST",
       body: JSON.stringify({
-        email,
+        phone,
         password,
       }),
     }),
 
-  // --- BỔ SUNG CÁC HÀM QUÊN MẬT KHẨU (OTP) ---
-  forgotPassword: (payload: { email: string }) =>
-    request<{ message: string }>("/auth/forgot-password", {
+  sendPasswordResetOtp: (payload: { channel: 'phone' | 'email'; phone?: string; email?: string }) =>
+    request<{ message: string }>("/auth/forgot-password/send-otp", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
 
-  verifyOtp: (payload: { email: string; otp: string }) =>
-    request<{ message: string }>("/auth/verify-otp", {
+  verifyPasswordResetOtp: (payload: { channel: 'phone' | 'email'; phone?: string; email?: string; otp: string }) =>
+    request<{ message: string }>("/auth/forgot-password/verify-otp", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
 
-  resetPassword: (payload: { email: string; otp: string; newPassword: string }) =>
-    request<{ message: string }>("/auth/reset-password", {
+  resetPassword: (payload: { channel: 'phone' | 'email'; phone?: string; email?: string; newPassword: string }) =>
+    request<{ message: string }>("/auth/forgot-password/reset", {
       method: "POST",
       body: JSON.stringify(payload),
+    }),
+
+  sendEmailVerificationOtp: (userId: number, email: string, currentPassword: string) =>
+    request<{ message: string }>("/auth/email/send-otp", {
+      method: "POST",
+      body: JSON.stringify({ userId, email, currentPassword }),
+    }),
+
+  verifyEmailOtp: (userId: number, email: string, otp: string) =>
+    request<{ message: string; user: User }>("/auth/email/verify-otp", {
+      method: "POST",
+      body: JSON.stringify({ userId, email, otp }),
     }),
 
   // =========================
