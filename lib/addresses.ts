@@ -5,8 +5,18 @@ export type ShippingAddress = {
   recipientName: string;
   phone: string;
   address: string;
+  provinceCode?: string;
+  provinceName?: string;
+  wardCode?: string;
+  wardName?: string;
+  latitude?: number;
+  longitude?: number;
   isDefault: boolean;
 };
+
+export function formatShippingAddress(address: Pick<ShippingAddress, "address" | "wardName" | "provinceName">) {
+  return [address.address, address.wardName, address.provinceName].filter(Boolean).join(", ");
+}
 
 const key = (userId: number) => `manb-addresses-${userId}`;
 

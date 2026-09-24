@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api, getStoredUser, type User } from '@/lib/api';
 import type { Voucher } from '@/lib/api';
-import { getAddresses, getSelectedAddressId, saveSelectedAddressId, type ShippingAddress } from '@/lib/addresses';
+import { formatShippingAddress, getAddresses, getSelectedAddressId, saveSelectedAddressId, type ShippingAddress } from '@/lib/addresses';
 import { voucherDiscount, voucherStorageKey } from '@/lib/vouchers';
 
 const SHIPPING_FEE = 40000;
@@ -56,7 +56,7 @@ export default function CheckoutPage() {
       setSelectedAddressId(selectedAddress.id);
       setFullName(selectedAddress.recipientName);
       setPhone(selectedAddress.phone);
-      setShippingAddress(selectedAddress.address);
+      setShippingAddress(formatShippingAddress(selectedAddress));
     } else {
       setFullName(user.FullName || '');
       setPhone((user as User).Phone || '');
@@ -91,7 +91,7 @@ export default function CheckoutPage() {
     if (item) {
       setFullName(item.recipientName);
       setPhone(item.phone);
-      setShippingAddress(item.address);
+        setShippingAddress(formatShippingAddress(item));
       const user = getStoredUser();
       if (user) saveSelectedAddressId(user.UserID, id);
     }
@@ -168,7 +168,7 @@ export default function CheckoutPage() {
 
             <div className="rounded-xl border border-blue-100 bg-blue-50 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2"><label htmlFor="saved-address" className="text-sm font-bold">Địa chỉ đã lưu</label><Link href="/customer/addresses" className="text-sm font-bold text-blue-700">Quản lý sổ địa chỉ →</Link></div>
-              {addresses.length ? <select id="saved-address" value={selectedAddressId} onChange={(e) => selectAddress(e.target.value)} className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="">Nhập địa chỉ khác</option>{addresses.map((item) => <option key={item.id} value={item.id}>{item.recipientName} · {item.phone} · {item.address}</option>)}</select> : <p className="mt-2 text-xs text-slate-600">Bạn chưa lưu địa chỉ. <Link href="/customer/addresses" className="font-bold text-blue-700">Thêm địa chỉ</Link></p>}
+                {addresses.length ? <select id="saved-address" value={selectedAddressId} onChange={(e) => selectAddress(e.target.value)} className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="">Nhập địa chỉ khác</option>{addresses.map((item) => <option key={item.id} value={item.id}>{item.recipientName} · {item.phone} · {formatShippingAddress(item)}</option>)}</select> : <p className="mt-2 text-xs text-slate-600">Bạn chưa lưu địa chỉ. <Link href="/customer/addresses" className="font-bold text-blue-700">Thêm địa chỉ</Link></p>}
             </div>
 
             <div>
