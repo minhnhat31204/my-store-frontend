@@ -74,7 +74,7 @@ export default function Home() {
       await addToCart({
         ProductID: product.ProductID,
         ProductName: product.ProductName,
-        Price: Number(product.Price),
+        Price: Number(product.DiscountPrice || product.Price),
         ImageUrl: product.ImageUrl || "",
       });
 

@@ -12,6 +12,8 @@ import {
   updateCartItem,
   removeFromCart,
 } from "@/lib/cart";
+import { api, getStoredUser, type Voucher } from "@/lib/api";
+import { voucherDiscount, voucherStorageKey } from "@/lib/vouchers";
 
 export default function CartPage() {
   const [cart, setCart] =
@@ -22,6 +24,7 @@ export default function CartPage() {
 
   const [error, setError] =
     useState("");
+  const [voucher, setVoucher] = useState<Voucher | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -31,6 +34,14 @@ export default function CartPage() {
         const items = await loadCart();
 
         setCart(items);
+        const user = getStoredUser();
+        if (user) {
+          const voucherId = Number(localStorage.getItem(voucherStorageKey(user.UserID)));
+          if (voucherId) {
+            const vouchers = await api.getVouchers();
+            setVoucher(vouchers.find((item) => item.VoucherID === voucherId) || null);
+          }
+        }
       } catch (err) {
         console.error(err);
 
@@ -94,6 +105,7 @@ export default function CartPage() {
         item.quantity,
     0
   );
+  const discount = voucherDiscount(voucher, total);
 
   return (
     <main className="min-h-screen bg-slate-50 pb-24 text-slate-900">
@@ -206,12 +218,18 @@ export default function CartPage() {
             </div>
 
             <aside className="h-fit rounded-2xl bg-white p-6 shadow-sm">
-              <p className="text-slate-500">
-                Tạm tính
-              </p>
-
-              <p className="mt-2 text-3xl font-black text-blue-700">
-                {total.toLocaleString(
+              <div className="mb-5 rounded-xl border border-dashed border-blue-300 bg-blue-50 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div><p className="font-bold">{voucher ? `Voucher ${voucher.Code}` : "Mã giảm giá"}</p><p className="mt-1 text-xs text-slate-600">{voucher ? `${Number(voucher.DiscountPercentage) || 0}% · giảm ${discount.toLocaleString("vi-VN")} ₫` : "Chọn mã để giảm giá đơn hàng"}</p></div>
+                  <a href="/customer/vouchers" className="shrink-0 font-bold text-blue-700">{voucher ? "Đổi mã" : "Chọn mã"}</a>
+                </div>
+                {voucher && <button onClick={() => { const user = getStoredUser(); if (user) localStorage.removeItem(voucherStorageKey(user.UserID)); setVoucher(null); }} className="mt-2 text-xs font-semibold text-red-600">Bỏ voucher</button>}
+              </div>
+              <div className="flex justify-between text-sm text-slate-600"><span>Tạm tính</span><span>{total.toLocaleString("vi-VN")} ₫</span></div>
+              {discount > 0 && <div className="mt-3 flex justify-between text-sm font-semibold text-emerald-700"><span>Giảm voucher</span><span>−{discount.toLocaleString("vi-VN")} ₫</span></div>}
+              <p className="mt-4 border-t pt-4 text-sm font-semibold text-slate-600">Tổng sau giảm</p>
+              <p className="mt-1 text-3xl font-black text-blue-700">
+                {Math.max(0, total - discount).toLocaleString(
                   "vi-VN"
                 )}{" "}
                 ₫

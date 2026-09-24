@@ -107,6 +107,7 @@ export default function AccountPage() {
             </section>
 
             <div className="mt-6 grid gap-3 border-t border-slate-100 pt-6">
+              <Link href="/customer/addresses" className="rounded-xl border px-4 py-3 font-semibold hover:bg-slate-50">Sổ địa chỉ giao hàng →</Link>
               <Link href="/customer/orders" className="rounded-xl border px-4 py-3 font-semibold hover:bg-slate-50">Lịch sử đơn hàng →</Link>
               <button onClick={logout} className="rounded-xl bg-red-600 px-4 py-3 font-bold text-white">Đăng xuất</button>
             </div>

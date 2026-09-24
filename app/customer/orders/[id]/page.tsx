@@ -118,7 +118,7 @@ export default function OrderDetailPage() {
                   {order.PaymentMethod === "PayOS" && <div className="flex justify-between gap-4"><dt className="text-slate-500">Thanh toán</dt><dd className={`text-right font-bold ${order.Payments?.[0]?.Status === "PAID" ? "text-emerald-700" : "text-amber-700"}`}>{order.Payments?.[0]?.Status === "PAID" ? "Đã thanh toán" : order.Payments?.[0]?.Status === "FAILED" ? "Thanh toán lỗi" : "Đang chờ thanh toán"}</dd></div>}
                   <div className="flex justify-between gap-4"><dt className="text-slate-500">Tạm tính</dt><dd className="text-right font-semibold">{currency(itemSubtotal)}</dd></div>
                   <div className="flex justify-between gap-4"><dt className="text-slate-500">Phí giao hàng</dt><dd className="text-right font-semibold">{currency(shipping)}</dd></div>
-                  {discount > 0 && <div className="flex justify-between gap-4"><dt className="text-slate-500">Giảm giá</dt><dd className="text-right font-semibold text-emerald-700">−{currency(discount)}</dd></div>}
+                  {discount > 0 && <div className="flex justify-between gap-4"><dt className="text-slate-500">Voucher{order.VoucherCode ? ` (${order.VoucherCode})` : ""}</dt><dd className="text-right font-semibold text-emerald-700">−{currency(discount)}</dd></div>}
                   <div className="flex justify-between gap-4 border-t border-slate-100 pt-3 text-base"><dt className="font-black">Tổng cộng</dt><dd className="text-right font-black text-blue-800">{currency(order.TotalAmount)}</dd></div>
                 </dl>
               </div>

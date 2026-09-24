@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Footer() {
   return (
     <footer className="store-footer">
@@ -8,9 +10,10 @@ export default function Footer() {
         </div>
         <div>
           <h3>Hỗ trợ khách hàng</h3>
-          <p>Chính sách mua hàng</p>
-          <p>Chính sách đổi trả</p>
-          <p>Liên hệ hỗ trợ</p>
+          <p><Link href="/customer/policies">Chính sách & điều khoản</Link></p>
+          <p><Link href="/customer/showrooms">Hệ thống showroom</Link></p>
+          <p><Link href="/customer/addresses">Sổ địa chỉ</Link></p>
+          <p><Link href="/customer/vouchers">Mã giảm giá</Link></p>
         </div>
         <div>
           <h3>Liên hệ</h3>

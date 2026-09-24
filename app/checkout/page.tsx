@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api, getStoredUser, type User } from '@/lib/api';
+import type { Voucher } from '@/lib/api';
+import { getAddresses, getSelectedAddressId, saveSelectedAddressId, type ShippingAddress } from '@/lib/addresses';
+import { voucherDiscount, voucherStorageKey } from '@/lib/vouchers';
 
 const SHIPPING_FEE = 40000;
 
@@ -31,6 +34,9 @@ export default function CheckoutPage() {
   const [phone, setPhone] = useState('');
   const [shippingAddress, setShippingAddress] = useState('');
   const [note, setNote] = useState('');
+  const [addresses, setAddresses] = useState<ShippingAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState('');
+  const [voucher, setVoucher] = useState<Voucher | null>(null);
 
   useEffect(() => {
     const user = getStoredUser();
@@ -40,11 +46,25 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (user.FullName) {
-      setFullName(user.FullName);
+    const savedAddresses = getAddresses(user);
+    setAddresses(savedAddresses);
+    const preferredId = getSelectedAddressId(user.UserID);
+    const selectedAddress = savedAddresses.find((item) => item.id === preferredId)
+      || savedAddresses.find((item) => item.isDefault)
+      || savedAddresses[0];
+    if (selectedAddress) {
+      setSelectedAddressId(selectedAddress.id);
+      setFullName(selectedAddress.recipientName);
+      setPhone(selectedAddress.phone);
+      setShippingAddress(selectedAddress.address);
+    } else {
+      setFullName(user.FullName || '');
+      setPhone((user as User).Phone || '');
+      setShippingAddress((user as User).Address || '');
     }
-    setPhone((user as User).Phone || '');
-    setShippingAddress((user as User).Address || '');
+
+    const voucherId = Number(localStorage.getItem(voucherStorageKey(user.UserID)));
+    if (voucherId) api.getVouchers().then((items) => setVoucher(items.find((item) => item.VoucherID === voucherId) || null)).catch(() => {});
 
     // Gọi API lấy giỏ hàng từ Backend dựa vào UserID
     api.getCart(user.UserID)
@@ -62,7 +82,20 @@ export default function CheckoutPage() {
     (sum, item) => sum + itemPrice(item) * Number(item.Quantity || 1),
     0
   );
-  const totalAmount = subtotal + SHIPPING_FEE;
+  const discountAmount = voucherDiscount(voucher, subtotal);
+  const totalAmount = Math.max(0, subtotal - discountAmount) + SHIPPING_FEE;
+
+  function selectAddress(id: string) {
+    setSelectedAddressId(id);
+    const item = addresses.find((address) => address.id === id);
+    if (item) {
+      setFullName(item.recipientName);
+      setPhone(item.phone);
+      setShippingAddress(item.address);
+      const user = getStoredUser();
+      if (user) saveSelectedAddressId(user.UserID, id);
+    }
+  }
 
   async function handleCheckout(e: React.FormEvent) {
     e.preventDefault();
@@ -93,6 +126,9 @@ export default function CheckoutPage() {
         TotalAmount: totalAmount,
         PaymentMethod: 'PayOS',
         Status: 'Pending',
+        DiscountAmount: discountAmount,
+        VoucherCode: discountAmount > 0 ? voucher?.Code : undefined,
+        VoucherID: discountAmount > 0 ? voucher?.VoucherID : undefined,
         Items: cartItems.map((item) => ({
           ProductID: item.ProductID || item.Product?.ProductID,
           Quantity: Number(item.Quantity || 1),
@@ -129,6 +165,11 @@ export default function CheckoutPage() {
           {/* Form thông tin giao hàng */}
           <form onSubmit={handleCheckout} className="rounded-3xl bg-white p-6 shadow-sm space-y-4">
             <h2 className="text-xl font-bold mb-4">Thông tin nhận hàng</h2>
+
+            <div className="rounded-xl border border-blue-100 bg-blue-50 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2"><label htmlFor="saved-address" className="text-sm font-bold">Địa chỉ đã lưu</label><Link href="/customer/addresses" className="text-sm font-bold text-blue-700">Quản lý sổ địa chỉ →</Link></div>
+              {addresses.length ? <select id="saved-address" value={selectedAddressId} onChange={(e) => selectAddress(e.target.value)} className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="">Nhập địa chỉ khác</option>{addresses.map((item) => <option key={item.id} value={item.id}>{item.recipientName} · {item.phone} · {item.address}</option>)}</select> : <p className="mt-2 text-xs text-slate-600">Bạn chưa lưu địa chỉ. <Link href="/customer/addresses" className="font-bold text-blue-700">Thêm địa chỉ</Link></p>}
+            </div>
 
             <div>
               <label className="mb-1 block text-sm font-semibold">Họ và tên</label>
@@ -248,10 +289,10 @@ export default function CheckoutPage() {
               )}
             </div>
 
-            <div className="border-t border-slate-200 pt-4 flex justify-between items-center text-lg font-black">
-              <span>Tạm tính:</span>
-              <span className="text-blue-600 whitespace-nowrap">{subtotal.toLocaleString('vi-VN')} ₫</span>
+            <div className="border-t border-slate-200 pt-4 flex justify-between items-center text-sm">
+              <span>Tạm tính:</span><span>{subtotal.toLocaleString('vi-VN')} ₫</span>
             </div>
+            {discountAmount > 0 && <div className="mt-2 flex justify-between text-sm font-semibold text-emerald-700"><span>Voucher {voucher?.Code ? `(${voucher.Code})` : ''}</span><span>−{discountAmount.toLocaleString('vi-VN')} ₫</span></div>}
             <div className="mt-2 flex justify-between text-sm text-slate-600">
               <span>Phí vận chuyển</span><span>{SHIPPING_FEE.toLocaleString('vi-VN')} ₫</span>
             </div>

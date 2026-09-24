@@ -44,6 +44,18 @@ export type Promotion = {
   IsActive?: boolean;
 };
 
+export type StoreCategory = { CategoryID: number; CategoryName: string; ImageUrl?: string | null };
+export type Voucher = {
+  VoucherID: number;
+  Code: string;
+  Name: string;
+  ImageUrl?: string | null;
+  DiscountPercentage?: number | string | null;
+  MaxDiscountAmount?: number | string | null;
+  ExpiryDate?: string | null;
+  IsActive?: boolean;
+};
+
 export type ProductVariant = {
   VariantID: number;
   ProductID: number;
@@ -91,6 +103,8 @@ export type StoreOrder = {
   Note?: string | null;
   PaymentMethod?: string | null;
   DiscountAmount?: number | string | null;
+  VoucherCode?: string | null;
+  VoucherID?: number | null;
   OrderItems?: OrderItem[];
   Payments?: Array<{
     PaymentTransactionID: number;
@@ -148,6 +162,10 @@ export const api = {
 
   getProducts: () =>
     request<Product[]>("/products"),
+
+  getCategories: () => request<StoreCategory[]>("/categories"),
+
+  getVouchers: () => request<Voucher[]>("/vouchers"),
 
   getProductVariants: () =>
     request<ProductVariant[]>("/product-variants"),
@@ -332,6 +350,8 @@ export const api = {
     PaymentMethod: string;
     Status?: string;
     DiscountAmount?: number;
+    VoucherCode?: string;
+    VoucherID?: number;
     Items: Array<{ ProductID: number; Quantity: number; Price: number }>;
   }) =>
     request<{ message: string; order: StoreOrder }>("/orders", {
