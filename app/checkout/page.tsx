@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api, getStoredUser, type User } from '@/lib/api';
 import type { Voucher } from '@/lib/api';
-import { formatShippingAddress, getAddresses, getSelectedAddressId, saveSelectedAddressId, type ShippingAddress } from '@/lib/addresses';
+import { formatShippingAddress, getLegacyAddresses, getSelectedAddressId, loadAddresses, saveSelectedAddressId, type ShippingAddress } from '@/lib/addresses';
 import { voucherDiscount, voucherStorageKey } from '@/lib/vouchers';
 
 const SHIPPING_FEE = 40000;
@@ -27,6 +27,7 @@ export default function CheckoutPage() {
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [cartLoading, setCartLoading] = useState(true);
+  const [addressLoading, setAddressLoading] = useState(true);
   const [error, setError] = useState('');
 
   // Form thông tin giao hàng
@@ -46,22 +47,29 @@ export default function CheckoutPage() {
       return;
     }
 
-    const savedAddresses = getAddresses(user);
-    setAddresses(savedAddresses);
-    const preferredId = getSelectedAddressId(user.UserID);
-    const selectedAddress = savedAddresses.find((item) => item.id === preferredId)
-      || savedAddresses.find((item) => item.isDefault)
-      || savedAddresses[0];
-    if (selectedAddress) {
-      setSelectedAddressId(selectedAddress.id);
-      setFullName(selectedAddress.recipientName);
-      setPhone(selectedAddress.phone);
-      setShippingAddress(formatShippingAddress(selectedAddress));
-    } else {
-      setFullName(user.FullName || '');
-      setPhone((user as User).Phone || '');
-      setShippingAddress((user as User).Address || '');
-    }
+    loadAddresses(user)
+      .catch((error) => {
+        console.error('Lỗi khi tải sổ địa chỉ:', error);
+        return getLegacyAddresses(user);
+      })
+      .then((savedAddresses) => {
+        setAddresses(savedAddresses);
+        const preferredId = getSelectedAddressId(user.UserID);
+        const selectedAddress = savedAddresses.find((item) => item.id === preferredId)
+          || savedAddresses.find((item) => item.isDefault)
+          || savedAddresses[0];
+        if (selectedAddress) {
+          setSelectedAddressId(selectedAddress.id);
+          setFullName(selectedAddress.recipientName);
+          setPhone(selectedAddress.phone);
+          setShippingAddress(formatShippingAddress(selectedAddress));
+        } else {
+          setFullName(user.FullName || '');
+          setPhone((user as User).Phone || '');
+          setShippingAddress((user as User).Address || '');
+        }
+      })
+      .finally(() => setAddressLoading(false));
 
     const voucherId = Number(localStorage.getItem(voucherStorageKey(user.UserID)));
     if (voucherId) api.getVouchers().then((items) => setVoucher(items.find((item) => item.VoucherID === voucherId) || null)).catch(() => {});
@@ -229,7 +237,7 @@ export default function CheckoutPage() {
 
             <button
               type="submit"
-              disabled={loading || cartLoading || cartItems.length === 0}
+              disabled={loading || cartLoading || addressLoading || cartItems.length === 0}
               className="w-full rounded-xl bg-blue-600 py-3 font-bold text-white transition hover:bg-blue-700 disabled:bg-blue-300"
             >
               {loading ? 'Đang chuyển đến PayOS...' : 'Đặt hàng và thanh toán'}

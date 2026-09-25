@@ -1,4 +1,4 @@
-import type { User } from "@/lib/api";
+import { api, type User, type UserAddressRecord } from "@/lib/api";
 
 export type ShippingAddress = {
   id: string;
@@ -20,12 +20,30 @@ export function formatShippingAddress(address: Pick<ShippingAddress, "address" |
 
 const key = (userId: number) => `manb-addresses-${userId}`;
 
-export function getAddresses(user: User): ShippingAddress[] {
+export function fromAddressRecord(record: UserAddressRecord): ShippingAddress {
+  const latitude = record.Latitude == null ? undefined : Number(record.Latitude);
+  const longitude = record.Longitude == null ? undefined : Number(record.Longitude);
+  return {
+    id: String(record.AddressID),
+    recipientName: record.RecipientName,
+    phone: record.RecipientPhone,
+    address: record.AddressLine,
+    provinceCode: record.ProvinceCode || undefined,
+    provinceName: record.ProvinceName || undefined,
+    wardCode: record.WardCode || undefined,
+    wardName: record.WardName || undefined,
+    latitude: Number.isFinite(latitude) ? latitude : undefined,
+    longitude: Number.isFinite(longitude) ? longitude : undefined,
+    isDefault: Boolean(record.IsDefault),
+  };
+}
+
+export function getLegacyAddresses(user: User): ShippingAddress[] {
   if (typeof window === "undefined") return [];
   try {
-    const saved = JSON.parse(localStorage.getItem(key(user.UserID)) || "[]");
+    const saved: unknown = JSON.parse(localStorage.getItem(key(user.UserID)) || "[]");
     if (Array.isArray(saved) && saved.length) return saved as ShippingAddress[];
-  } catch { /* Recover using the profile's current address below. */ }
+  } catch { /* Fall back to the address on the account profile. */ }
   if (!user.Address) return [];
   return [{
     id: `profile-${user.UserID}`,
@@ -36,8 +54,14 @@ export function getAddresses(user: User): ShippingAddress[] {
   }];
 }
 
-export function saveAddresses(userId: number, addresses: ShippingAddress[]) {
-  localStorage.setItem(key(userId), JSON.stringify(addresses));
+export async function loadAddresses(user: User): Promise<ShippingAddress[]> {
+  const savedOnServer = await api.getUserAddresses(user.UserID);
+  if (savedOnServer.length) return savedOnServer.map(fromAddressRecord);
+
+  const legacy = getLegacyAddresses(user);
+  if (!legacy.length) return [];
+  const imported = await api.importUserAddresses(user.UserID, legacy);
+  return imported.map(fromAddressRecord);
 }
 
 export function getSelectedAddressId(userId: number) {

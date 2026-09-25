@@ -56,6 +56,34 @@ export type Voucher = {
   IsActive?: boolean;
 };
 
+export type UserAddressRecord = {
+  AddressID: number;
+  UserID: number;
+  RecipientName: string;
+  RecipientPhone: string;
+  AddressLine: string;
+  ProvinceCode?: string | null;
+  ProvinceName?: string | null;
+  WardCode?: string | null;
+  WardName?: string | null;
+  Latitude?: number | string | null;
+  Longitude?: number | string | null;
+  IsDefault: boolean;
+};
+
+export type UserAddressPayload = {
+  RecipientName: string;
+  RecipientPhone: string;
+  AddressLine: string;
+  ProvinceCode?: string | null;
+  ProvinceName?: string | null;
+  WardCode?: string | null;
+  WardName?: string | null;
+  Latitude?: number | null;
+  Longitude?: number | null;
+  IsDefault?: boolean;
+};
+
 export type ProductVariant = {
   VariantID: number;
   ProductID: number;
@@ -279,6 +307,42 @@ export const api = {
 
   deleteUser: (userId: number) =>
     request(`/users/${userId}`, {
+      method: "DELETE",
+    }),
+
+  getUserAddresses: (userId: number) =>
+    request<UserAddressRecord[]>(`/addresses/user/${userId}`),
+
+  importUserAddresses: (userId: number, addresses: Array<{
+    recipientName: string; phone: string; address: string;
+    provinceCode?: string; provinceName?: string; wardCode?: string; wardName?: string;
+    latitude?: number; longitude?: number; isDefault?: boolean;
+  }>) =>
+    request<UserAddressRecord[]>(`/addresses/user/${userId}/import`, {
+      method: "POST",
+      body: JSON.stringify({ addresses }),
+    }),
+
+  createUserAddress: (userId: number, payload: UserAddressPayload) =>
+    request<UserAddressRecord>(`/addresses/user/${userId}`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  updateUserAddress: (userId: number, addressId: number, payload: Partial<UserAddressPayload>) =>
+    request<UserAddressRecord>(`/addresses/user/${userId}/${addressId}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  setDefaultUserAddress: (userId: number, addressId: number) =>
+    request<UserAddressRecord>(`/addresses/user/${userId}/${addressId}/default`, {
+      method: "PUT",
+      body: JSON.stringify({}),
+    }),
+
+  deleteUserAddress: (userId: number, addressId: number) =>
+    request<{ message: string }>(`/addresses/user/${userId}/${addressId}`, {
       method: "DELETE",
     }),
 
