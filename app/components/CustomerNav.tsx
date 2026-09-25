@@ -34,12 +34,16 @@ export default function CustomerNav({
   onSearchChange,
 }: CustomerNavProps) {
   const [cartCount, setCartCount] = useState(0);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [user, setUser] = useState<User | null>(null);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState(searchValue);
   const [navVisible, setNavVisible] = useState(true);
   const lastScrollY = useRef(0);
   const scrollDelta = useRef(0);
   const scrollDirection = useRef<"up" | "down" | null>(null);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
+  const accountButtonRef = useRef<HTMLButtonElement>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -124,9 +128,61 @@ export default function CustomerNav({
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    const fetchUnreadNotifications = async () => {
+      const storedUser = getStoredUser();
+      if (!storedUser?.UserID) {
+        if (active) setUnreadNotifications(0);
+        return;
+      }
+      try {
+        const result = await api.getNotifications(storedUser.UserID);
+        if (active) setUnreadNotifications(result.unreadCount);
+      } catch {
+        if (active) setUnreadNotifications(0);
+      }
+    };
+
+    void fetchUnreadNotifications();
+    const timer = window.setInterval(fetchUnreadNotifications, 30_000);
+    window.addEventListener("user-updated", fetchUnreadNotifications);
+    window.addEventListener("notifications-updated", fetchUnreadNotifications);
+    window.addEventListener("storage", fetchUnreadNotifications);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("user-updated", fetchUnreadNotifications);
+      window.removeEventListener("notifications-updated", fetchUnreadNotifications);
+      window.removeEventListener("storage", fetchUnreadNotifications);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (event.target instanceof Node && !accountMenuRef.current?.contains(event.target)) {
+        setAccountMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setAccountMenuOpen(false);
+        accountButtonRef.current?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [accountMenuOpen]);
+
   const handleLogout = () => {
     localStorage.removeItem("user");
     setUser(null);
+    setAccountMenuOpen(false);
     window.dispatchEvent(new Event("user-updated"));
     window.location.href = "/login";
   };
@@ -172,7 +228,7 @@ export default function CustomerNav({
             <Link href="/">Trang chủ</Link>
             <Link href="/customer/products">Sản phẩm</Link>
             <Link href="/customer/favorites">Yêu thích</Link>
-            <Link href="/customer/notifications">Thông báo</Link>
+            <Link href="/customer/notifications" className="relative">Thông báo{unreadNotifications > 0 && <span className="ml-1 inline-flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-black leading-none text-white">{unreadNotifications > 99 ? "99+" : unreadNotifications}</span>}</Link>
 
             {user && (user.Role === 'admin' || (user as any).role === 'admin') && (
               <Link 
@@ -196,32 +252,41 @@ export default function CustomerNav({
           </nav>
 
           {user ? (
-            <div className="flex items-center gap-3">
-              <Link
-                href="/customer/account"
-                className="flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-sm font-bold text-blue-700 hover:bg-blue-50 transition shadow-sm"
+            <div className="relative flex items-center" ref={accountMenuRef}>
+              <button
+                ref={accountButtonRef}
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded={accountMenuOpen}
+                aria-label={`Menu tài khoản${user.FullName ? ` của ${user.FullName}` : ""}`}
+                title={user.FullName || user.Email}
+                onClick={() => setAccountMenuOpen((open) => !open)}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white p-1 shadow-sm transition hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               >
                 {user.Avatar ? (
                   <img
                     src={user.Avatar}
-                    alt={user.FullName || "Avatar"}
-                    className="w-7 h-7 rounded-full object-cover border border-slate-200"
+                    alt=""
+                    className="h-8 w-8 rounded-full border border-slate-200 object-cover"
                   />
                 ) : (
-                  <div className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold uppercase">
+                  <div aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-xs font-bold uppercase text-white">
                     {(user.FullName || user.Email || "U").charAt(0)}
                   </div>
                 )}
-                <span>{user.FullName || user.Email}</span>
-              </Link>
-
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="rounded-full bg-white px-4 py-2 font-bold text-blue-700 hover:bg-blue-50 transition shadow-sm text-sm"
-              >
-                Đăng xuất
               </button>
+              {accountMenuOpen && <div role="menu" aria-label="Chức năng tài khoản" className="absolute right-0 top-full z-[70] mt-3 w-64 rounded-2xl border border-slate-200 bg-white p-2 text-slate-800 shadow-xl">
+                <div className="border-b border-slate-100 px-3 py-2">
+                  <p className="truncate text-sm font-black">{user.FullName || "Tài khoản của tôi"}</p>
+                  <p className="truncate text-xs text-slate-500">{user.Email}</p>
+                </div>
+                <Link role="menuitem" href="/customer/account" onClick={() => setAccountMenuOpen(false)} className="mt-1 block rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">Thông tin tài khoản</Link>
+                <Link role="menuitem" href="/customer/orders" onClick={() => setAccountMenuOpen(false)} className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">Đơn hàng &amp; trạng thái</Link>
+                <Link role="menuitem" href="/customer/addresses" onClick={() => setAccountMenuOpen(false)} className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">Sổ địa chỉ</Link>
+                <Link role="menuitem" href="/customer/notifications" onClick={() => setAccountMenuOpen(false)} className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"><span>Thông báo</span>{unreadNotifications > 0 && <span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-black text-white">{unreadNotifications > 99 ? "99+" : unreadNotifications}</span>}</Link>
+                <div className="my-1 border-t border-slate-100" />
+                <button role="menuitem" type="button" onClick={handleLogout} className="w-full rounded-xl px-3 py-2.5 text-left text-sm font-bold text-red-600 transition hover:bg-red-50">Đăng xuất</button>
+              </div>}
             </div>
           ) : (
             <Link href="/login" className="login-button">
@@ -264,15 +329,10 @@ export default function CustomerNav({
 
         <Link href="/customer/notifications" className="mobile-nav-item">
           <span>♧</span>
-          <small>Thông báo</small>
+          <small>Thông báo{unreadNotifications > 0 ? ` (${unreadNotifications > 99 ? "99+" : unreadNotifications})` : ""}</small>
         </Link>
 
-        {user ? (
-          <button type="button" className="mobile-nav-item" onClick={handleLogout}>
-            <span>⇥</span>
-            <small>Đăng xuất</small>
-          </button>
-        ) : (
+        {!user && (
           <Link href="/login" className="mobile-nav-item">
             <span>◉</span>
             <small>Đăng nhập</small>

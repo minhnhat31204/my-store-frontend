@@ -143,6 +143,17 @@ export type StoreOrder = {
   }>;
 };
 
+export type OrderNotification = {
+  NotificationID: number;
+  UserID: number;
+  OrderID?: number | null;
+  Type: string;
+  Title: string;
+  Message: string;
+  IsRead: boolean;
+  CreatedAt: string;
+};
+
 async function request<T>(
   path: string,
   options: RequestInit = {}
@@ -403,6 +414,18 @@ export const api = {
 
   getPaymentStatus: (orderId: number, userId: number) =>
     request<{ payment: NonNullable<StoreOrder["Payments"]>[number] | null }>(`/orders/${orderId}/payment-status?userId=${userId}`),
+
+  getNotifications: (userId: number) =>
+    request<{ notifications: OrderNotification[]; unreadCount: number }>(`/notifications/user/${userId}`),
+
+  setNotificationRead: (userId: number, notificationId: number, isRead: boolean) =>
+    request<{ success: boolean }>(`/notifications/user/${userId}/${notificationId}/read`, {
+      method: "PATCH",
+      body: JSON.stringify({ IsRead: isRead }),
+    }),
+
+  markAllNotificationsRead: (userId: number) =>
+    request<{ success: boolean }>(`/notifications/user/${userId}/read-all`, { method: "PATCH" }),
   
   createOrder: (payload: {
     UserID: number;
