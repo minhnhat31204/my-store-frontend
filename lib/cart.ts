@@ -1,4 +1,4 @@
-import { api, getStoredUser } from "@/lib/api";
+import { api, getPrimaryProductImage, getStoredUser } from "@/lib/api";
 
 export type CartItem = {
   ID?: number;
@@ -7,6 +7,7 @@ export type CartItem = {
   Price: number;
   DiscountPrice?: number;
   ImageUrl?: string;
+  StockQuantity?: number;
   quantity: number;
 };
 
@@ -52,7 +53,8 @@ function mapBackendCartItem(item: any): CartItem {
       item.DiscountPrice != null
         ? Number(item.DiscountPrice)
         : undefined,
-    ImageUrl: item.ImageUrl || "",
+    ImageUrl: getPrimaryProductImage(item.ImageUrl),
+    StockQuantity: Number(item.StockQuantity ?? item.Product?.StockQuantity ?? 0),
     quantity: Number(item.Quantity ?? 1),
   };
 }
@@ -111,8 +113,14 @@ export async function addToCart(
     );
 
     if (found) {
+      if (product.StockQuantity !== undefined && found.quantity + 1 > product.StockQuantity) {
+        throw new Error(`Sản phẩm chỉ còn ${product.StockQuantity} sản phẩm trong kho.`);
+      }
       found.quantity += 1;
     } else {
+      if (product.StockQuantity !== undefined && product.StockQuantity < 1) {
+        throw new Error("Sản phẩm hiện đã hết hàng.");
+      }
       cart.push({
         ...product,
         quantity: 1,
@@ -163,6 +171,9 @@ export async function updateCartItem(
   // Chưa đăng nhập → localStorage
   if (!user) {
     const cart = getCart();
+    if (item.StockQuantity !== undefined && quantity > item.StockQuantity) {
+      throw new Error(`Sản phẩm chỉ còn ${item.StockQuantity} sản phẩm trong kho.`);
+    }
 
     const next = cart
       .map((cartItem) =>

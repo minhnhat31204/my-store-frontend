@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useFavorites } from "@/app/components/FavoritesProvider";
 import FavoriteButton from "@/app/components/FavoriteButton";
+import { getPrimaryProductImage } from "@/lib/api";
 
 export default function FavoritesPage() {
   const { products, loading } = useFavorites();
@@ -28,7 +29,7 @@ export default function FavoritesPage() {
                 <article key={product.ProductID} className="product-card flex flex-col">
                   <div className="product-image">
                     <Link href={`/customer/products/${product.ProductID}`} aria-label={`Xem chi tiết ${product.ProductName}`}>
-                      <img src={product.ImageUrl || "/placeholder.png"} alt={product.ProductName} />
+                      <img src={getPrimaryProductImage(product.ImageUrl) || "/placeholder.png"} alt={product.ProductName} />
                     </Link>
                     <FavoriteButton product={product} />
                   </div>

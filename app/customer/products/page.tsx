@@ -8,6 +8,7 @@ import {
 
 import {
   api,
+  getPrimaryProductImage,
   Product,
 } from "@/lib/api";
 import type { StoreCategory } from "@/lib/api";
@@ -80,7 +81,8 @@ export default function ProductsPage() {
         ProductID: product.ProductID,
         ProductName: product.ProductName,
         Price: Number(product.DiscountPrice || product.Price),
-        ImageUrl: product.ImageUrl || "",
+        ImageUrl: getPrimaryProductImage(product.ImageUrl),
+        StockQuantity: Number(product.StockQuantity ?? 0),
       });
 
       setMessage(
@@ -94,7 +96,7 @@ export default function ProductsPage() {
       console.error(error);
 
       setMessage(
-        "Không thể thêm sản phẩm vào giỏ hàng."
+        error instanceof Error ? error.message : "Không thể thêm sản phẩm vào giỏ hàng."
       );
 
       setTimeout(() => {
@@ -144,7 +146,7 @@ export default function ProductsPage() {
                 <div className="product-image">
                   <Link href={`/customer/products/${product.ProductID}`} aria-label={`Xem chi tiết ${product.ProductName}`}>
                     <img
-                      src={product.ImageUrl || "/placeholder.png"}
+                      src={getPrimaryProductImage(product.ImageUrl) || "/placeholder.png"}
                       alt={product.ProductName}
                     />
                   </Link>
@@ -160,13 +162,18 @@ export default function ProductsPage() {
                       <strong>{price.toLocaleString("vi-VN")} ₫</strong>
                       {oldPrice > price && <del>{oldPrice.toLocaleString("vi-VN")} ₫</del>}
                     </div>
+                    <p className={`mb-2 text-xs font-semibold ${Number(product.StockQuantity ?? 0) > 0 ? "text-slate-500" : "text-red-600"}`}>
+                      {Number(product.StockQuantity ?? 0) > 0 ? `Còn ${product.StockQuantity} sản phẩm` : "Tạm hết hàng"}
+                    </p>
                     <button
                       onClick={() => add(product)}
-                      disabled={addingId === product.ProductID}
+                      disabled={addingId === product.ProductID || Number(product.StockQuantity ?? 0) <= 0}
                       className="add-button disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {addingId === product.ProductID
                         ? "Đang thêm..."
+                        : Number(product.StockQuantity ?? 0) <= 0
+                        ? "Hết hàng"
                         : "Thêm vào giỏ hàng"}
                     </button>
                   </div>

@@ -17,10 +17,11 @@ const ORDER_TABS: { id: OrderBucket; label: string }[] = [
 ];
 
 function orderBucket(order: StoreOrder): Exclude<OrderBucket, "all"> {
+  const value = (order.Status || "Pending").trim().toLowerCase();
+  if (["cancelled", "canceled"].includes(value)) return "cancelled";
   const paymentStatus = order.Payments?.[0]?.Status?.toUpperCase();
   if (order.PaymentMethod === "PayOS" && paymentStatus !== "PAID") return "payment";
 
-  const value = (order.Status || "Pending").trim().toLowerCase();
   if (["shipping", "shipped", "delivering", "on delivery"].includes(value)) return "shipping";
   if (["completed", "delivered"].includes(value)) return "delivered";
   if (["cancelled", "canceled"].includes(value)) return "cancelled";

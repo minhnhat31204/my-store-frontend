@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { api, getStoredUser, type User } from "@/lib/api";
+import { api, getStoredUser, resolveApiAssetUrl, type User } from "@/lib/api";
 import { useRouter } from "next/navigation";
 
 function SearchIcon() {
@@ -36,6 +36,7 @@ export default function CustomerNav({
   const [cartCount, setCartCount] = useState(0);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [user, setUser] = useState<User | null>(null);
+  const isAdmin = String(user?.Role || (user as (User & { role?: string }) | null)?.role || '').toLowerCase() === 'admin';
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState(searchValue);
   const [navVisible, setNavVisible] = useState(true);
@@ -181,6 +182,7 @@ export default function CustomerNav({
 
   const handleLogout = () => {
     localStorage.removeItem("user");
+    localStorage.removeItem("sessionToken");
     setUser(null);
     setAccountMenuOpen(false);
     window.dispatchEvent(new Event("user-updated"));
@@ -230,15 +232,6 @@ export default function CustomerNav({
             <Link href="/customer/favorites">Yêu thích</Link>
             <Link href="/customer/notifications" className="relative">Thông báo{unreadNotifications > 0 && <span className="ml-1 inline-flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-black leading-none text-white">{unreadNotifications > 99 ? "99+" : unreadNotifications}</span>}</Link>
 
-            {user && (user.Role === 'admin' || (user as any).role === 'admin') && (
-              <Link 
-                href="/admin" 
-                className="font-bold text-emerald-600 hover:text-emerald-700 transition"
-              >
-                Quản trị Admin
-              </Link>
-            )}
-
             <Link
               href="/customer/cart"
               className="cart-link"
@@ -265,7 +258,7 @@ export default function CustomerNav({
               >
                 {user.Avatar ? (
                   <img
-                    src={user.Avatar}
+                    src={resolveApiAssetUrl(user.Avatar)}
                     alt=""
                     className="h-8 w-8 rounded-full border border-slate-200 object-cover"
                   />
@@ -285,6 +278,14 @@ export default function CustomerNav({
                 <Link role="menuitem" href="/customer/addresses" onClick={() => setAccountMenuOpen(false)} className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">Sổ địa chỉ</Link>
                 <Link role="menuitem" href="/customer/notifications" onClick={() => setAccountMenuOpen(false)} className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"><span>Thông báo</span>{unreadNotifications > 0 && <span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-black text-white">{unreadNotifications > 99 ? "99+" : unreadNotifications}</span>}</Link>
                 <div className="my-1 border-t border-slate-100" />
+                {isAdmin && <Link role="menuitem" href="/admin" onClick={() => setAccountMenuOpen(false)} className="mb-1 flex items-center gap-3 rounded-xl bg-gradient-to-r from-indigo-800 via-blue-800 to-slate-900 px-3 py-3 text-white shadow-md transition hover:from-indigo-700 hover:via-blue-700 hover:to-slate-800">
+                  <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/15 text-lg">⚙</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-black">Bảng quản trị</span>
+                    <span className="mt-0.5 block text-[11px] text-blue-100">Sản phẩm · đơn hàng · người dùng</span>
+                  </span>
+                  <span className="rounded-full border border-white/25 bg-white/10 px-2 py-1 text-[9px] font-black tracking-wider text-blue-100">ADMIN</span>
+                </Link>}
                 <button role="menuitem" type="button" onClick={handleLogout} className="w-full rounded-xl px-3 py-2.5 text-left text-sm font-bold text-red-600 transition hover:bg-red-50">Đăng xuất</button>
               </div>}
             </div>
@@ -319,13 +320,6 @@ export default function CustomerNav({
           <span>♡</span>
           <small>Yêu thích</small>
         </Link>
-
-        {user && (user.Role === 'admin' || (user as any).role === 'admin') && (
-          <Link href="/admin" className="mobile-nav-item text-emerald-600 font-bold">
-            <span>⚙</span>
-            <small>Admin</small>
-          </Link>
-        )}
 
         <Link href="/customer/notifications" className="mobile-nav-item">
           <span>♧</span>

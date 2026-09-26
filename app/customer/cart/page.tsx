@@ -12,7 +12,7 @@ import {
   updateCartItem,
   removeFromCart,
 } from "@/lib/cart";
-import { api, getStoredUser, type Voucher } from "@/lib/api";
+import { api, getPrimaryProductImage, getStoredUser, type Voucher } from "@/lib/api";
 import { voucherDiscount, voucherStorageKey } from "@/lib/vouchers";
 
 export default function CartPage() {
@@ -73,9 +73,7 @@ export default function CartPage() {
     } catch (err) {
       console.error(err);
 
-      setError(
-        "Không thể cập nhật giỏ hàng."
-      );
+      setError(err instanceof Error ? err.message : "Không thể cập nhật giỏ hàng.");
     }
   }
 
@@ -153,7 +151,7 @@ export default function CartPage() {
                 >
                   <img
                     src={
-                      item.ImageUrl ||
+                      getPrimaryProductImage(item.ImageUrl) ||
                       "/placeholder.png"
                     }
                     alt={item.ProductName}
@@ -174,6 +172,10 @@ export default function CartPage() {
                       ₫
                     </p>
 
+                    {item.StockQuantity !== undefined && <p className={`mt-2 text-xs font-semibold ${item.StockQuantity > 0 ? "text-slate-500" : "text-red-600"}`}>
+                      {item.StockQuantity > 0 ? `Còn ${item.StockQuantity} sản phẩm` : "Sản phẩm hiện đã hết hàng"}
+                    </p>}
+                    {Number(item.StockQuantity ?? 0) > 0 && item.quantity > Number(item.StockQuantity) && <p className="mt-1 text-xs font-semibold text-red-600">Số lượng trong giỏ vượt tồn kho, vui lòng giảm xuống.</p>}
                     <div className="mt-3 flex items-center gap-3">
                       <button
                         onClick={() =>
@@ -198,7 +200,8 @@ export default function CartPage() {
                             item.quantity + 1
                           )
                         }
-                        className="h-8 w-8 rounded-full border hover:bg-slate-100"
+                        disabled={item.StockQuantity !== undefined && item.quantity >= item.StockQuantity}
+                        className="h-8 w-8 rounded-full border hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         +
                       </button>
@@ -236,8 +239,10 @@ export default function CartPage() {
               </p>
 
               <a
-                href="/checkout"
-                className="mt-6 block w-full rounded-xl bg-blue-700 py-3 text-center font-bold text-white hover:bg-blue-800"
+                href={cart.some((item) => item.StockQuantity !== undefined && (item.StockQuantity <= 0 || item.quantity > item.StockQuantity)) ? undefined : "/checkout"}
+                aria-disabled={cart.some((item) => item.StockQuantity !== undefined && (item.StockQuantity <= 0 || item.quantity > item.StockQuantity))}
+                onClick={(event) => { if (cart.some((item) => item.StockQuantity !== undefined && (item.StockQuantity <= 0 || item.quantity > item.StockQuantity))) { event.preventDefault(); setError("Hãy điều chỉnh số lượng sản phẩm theo tồn kho trước khi thanh toán."); } }}
+                className="mt-6 block w-full rounded-xl bg-blue-700 py-3 text-center font-bold text-white hover:bg-blue-800 aria-disabled:pointer-events-none aria-disabled:opacity-50"
               >
                 Tiến hành thanh toán
               </a>

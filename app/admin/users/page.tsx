@@ -2,8 +2,10 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, User } from '@/lib/api';
+import { useAdminGuard } from '@/lib/useAdminGuard';
 
 export default function AdminUsers() {
+  useAdminGuard();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

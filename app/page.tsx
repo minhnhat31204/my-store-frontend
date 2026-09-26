@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { api, Product, Promotion } from "@/lib/api";
+import { api, getPrimaryProductImage, Product, Promotion } from "@/lib/api";
 import { addToCart } from "@/lib/cart";
 import FavoriteButton from "@/app/components/FavoriteButton";
 
@@ -75,7 +75,8 @@ export default function Home() {
         ProductID: product.ProductID,
         ProductName: product.ProductName,
         Price: Number(product.DiscountPrice || product.Price),
-        ImageUrl: product.ImageUrl || "",
+        ImageUrl: getPrimaryProductImage(product.ImageUrl),
+        StockQuantity: Number(product.StockQuantity ?? 0),
       });
 
       setMessage(
@@ -89,7 +90,7 @@ export default function Home() {
       console.error(error);
 
       setMessage(
-        "Không thể thêm sản phẩm vào giỏ hàng."
+        error instanceof Error ? error.message : "Không thể thêm sản phẩm vào giỏ hàng."
       );
 
       window.setTimeout(() => {
@@ -184,9 +185,7 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: () => void }
     : 0;
 
   // Xử lý tách lấy ảnh đầu tiên và kiểm tra xem có phải là đường dẫn URL hợp lệ hay không
-  const rawImg = product.ImageUrl ? product.ImageUrl.split(',')[0].trim() : "";
-  const isValidUrl = rawImg.startsWith("http://") || rawImg.startsWith("https://") || rawImg.startsWith("/");
-  const displayImage = isValidUrl ? rawImg : "/placeholder.png";
+  const displayImage = getPrimaryProductImage(product.ImageUrl) || "/placeholder.png";
 
   return (
     <article className="product-card flex flex-col h-full">
@@ -206,7 +205,8 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: () => void }
             <strong>{price.toLocaleString("vi-VN")} ₫</strong>
             {oldPrice > price && <del>{oldPrice.toLocaleString("vi-VN")} ₫</del>}
           </div>
-          <button onClick={onAdd} className="add-button">Thêm vào giỏ hàng</button>
+          <p className={`mb-2 text-xs font-semibold ${Number(product.StockQuantity ?? 0) > 0 ? "text-slate-500" : "text-red-600"}`}>{Number(product.StockQuantity ?? 0) > 0 ? `Còn ${product.StockQuantity} sản phẩm` : "Tạm hết hàng"}</p>
+          <button onClick={onAdd} disabled={Number(product.StockQuantity ?? 0) <= 0} className="add-button disabled:cursor-not-allowed disabled:opacity-60">{Number(product.StockQuantity ?? 0) > 0 ? "Thêm vào giỏ hàng" : "Hết hàng"}</button>
         </div>
       </div>
     </article>

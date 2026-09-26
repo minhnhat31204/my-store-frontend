@@ -1,11 +1,13 @@
 'use client';
 import { FormEvent, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { api, Product } from '@/lib/api';
+import { api, getPrimaryProductImage, Product, resolveApiAssetUrl } from '@/lib/api';
+import { useAdminGuard } from '@/lib/useAdminGuard';
 
-const emptyForm = { ProductName: '', Price: '', StockQuantity: '0', ImageUrl: '', Description: '' };
+const emptyForm = { ProductName: '', Price: '', StockQuantity: '0', Description: '' };
 
 export default function AdminProducts() {
+  useAdminGuard();
   const [products, setProducts] = useState<Product[]>([]);
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -17,6 +19,7 @@ export default function AdminProducts() {
   // State quản lý danh sách nhiều ảnh cho sản phẩm
   const [imageList, setImageList] = useState<string[]>([]);
   const [urlInput, setUrlInput] = useState('');
+  const [uploadingImages, setUploadingImages] = useState(false);
 
   async function load() {
     setLoading(true); 
@@ -39,6 +42,7 @@ export default function AdminProducts() {
     setForm(emptyForm); 
     setImageList([]);
     setUrlInput('');
+    setError('');
     setOpen(true); 
   }
 
@@ -48,7 +52,6 @@ export default function AdminProducts() {
       ProductName: item.ProductName || '', 
       Price: String(item.Price ?? ''), 
       StockQuantity: String(item.StockQuantity ?? 0), 
-      ImageUrl: item.ImageUrl || '', 
       Description: item.Description || '' 
     });
     
@@ -57,15 +60,26 @@ export default function AdminProducts() {
     
     setImageList(uniqueImgs);
     setUrlInput('');
+    setError('');
     setOpen(true);
   }
 
   // Thêm ảnh từ URL vào danh sách
   function handleAddImageUrl() {
     if (!urlInput.trim()) return;
-    const newImages = [...imageList, urlInput.trim()];
-    setImageList(newImages);
-    setForm(prev => ({ ...prev, ImageUrl: newImages[0] || '' }));
+    let parsed: URL;
+    try {
+      parsed = new URL(urlInput.trim());
+    } catch {
+      setError('URL ảnh không hợp lệ.');
+      return;
+    }
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      setError('URL ảnh phải bắt đầu bằng http:// hoặc https://.');
+      return;
+    }
+    setImageList(current => current.includes(parsed.toString()) ? current : [...current, parsed.toString()]);
+    setError('');
     setUrlInput('');
   }
 
@@ -76,38 +90,24 @@ export default function AdminProducts() {
 
     const fileArray = Array.from(files);
     setError('');
+    setUploadingImages(true);
+    const uploadedUrls: string[] = [];
 
     try {
-      const uploadedUrls: string[] = [];
-
       for (const file of fileArray) {
-        const formData = new FormData();
-        formData.append('image', file); // 'image' phải khớp với multer ở backend
-
-        // Gọi API lên Backend port 5000 (hoặc thay đổi cho khớp server của bạn)
-        const res = await fetch('http://localhost:5000/api/products/upload', {
-            method: 'POST',
-            body: formData,
-          });
-        const data = await res.json();
-
+        const data = await api.uploadProductImage(file);
         if (data.success && data.url) {
-          const fullUrl = `http://localhost:5000${data.url}`;
-          uploadedUrls.push(fullUrl);
+          uploadedUrls.push(data.url);
         } else {
           throw new Error(data.message || 'Upload thất bại');
         }
       }
-
-      setImageList(prev => {
-        const newImages = [...prev, ...uploadedUrls];
-        setForm(f => ({ ...f, ImageUrl: newImages[0] || '' }));
-        return newImages;
-      });
     } catch (err) {
       console.error('Lỗi khi tải file ảnh lên server:', err);
-      setError('Không thể tải file ảnh lên server backend');
+      setError(err instanceof Error ? err.message : 'Không thể tải ảnh lên backend.');
     } finally {
+      if (uploadedUrls.length) setImageList(current => [...current, ...uploadedUrls]);
+      setUploadingImages(false);
       e.target.value = '';
     }
   }
@@ -116,7 +116,6 @@ export default function AdminProducts() {
   function handleRemoveImage(index: number) {
     const newImages = imageList.filter((_, i) => i !== index);
     setImageList(newImages);
-    setForm(prev => ({ ...prev, ImageUrl: newImages[0] || '' }));
   }
 
   async function save(e: FormEvent) {
@@ -124,7 +123,7 @@ export default function AdminProducts() {
     setSaving(true); 
     setError('');
 
-    const combinedImageUrl = imageList.join(',') || form.ImageUrl.trim() || null;
+    const combinedImageUrl = imageList.join(',') || null;
 
     const payload = { 
       ProductName: form.ProductName.trim(), 
@@ -176,8 +175,8 @@ export default function AdminProducts() {
             </Link>
             <h1 className="text-2xl font-bold">Quản lý sản phẩm</h1>
           </div>
-          <button 
-            onClick={openCreate} 
+            <button
+              onClick={openCreate}
             className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 transition shadow-sm"
           >
             + Thêm sản phẩm
@@ -207,7 +206,7 @@ export default function AdminProducts() {
                     <td className="p-3">
                       {item.ImageUrl ? (
                         <img 
-                          src={item.ImageUrl ? item.ImageUrl.split(',')[0].trim() : ''} 
+                          src={getPrimaryProductImage(item.ImageUrl)}
                           alt={item.ProductName} 
                           className="w-12 h-12 object-cover rounded-lg border border-slate-200 bg-slate-100" 
                         />
@@ -249,6 +248,7 @@ export default function AdminProducts() {
               <h2 className="text-xl font-bold text-slate-900 border-b pb-3">
                 {editingId === null ? 'Thêm sản phẩm mới' : 'Chỉnh sửa sản phẩm'}
               </h2>
+              {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p>}
               
               <div>
                 <label className="block text-sm font-medium text-slate-700">Tên sản phẩm *</label>
@@ -299,6 +299,7 @@ export default function AdminProducts() {
                   <button 
                     type="button"
                     onClick={handleAddImageUrl}
+                    disabled={uploadingImages || !urlInput.trim()}
                     className="rounded-lg bg-slate-800 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-900"
                   >
                     Thêm URL
@@ -308,12 +309,13 @@ export default function AdminProducts() {
                 {/* 2. Chọn File từ máy */}
                 <div>
                   <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition w-full justify-center">
-                    <span>📁 Chọn ảnh từ máy tính</span>
+                    <span>{uploadingImages ? '⏳ Đang tải ảnh…' : '📁 Chọn một hoặc nhiều ảnh từ máy tính'}</span>
                     <input 
                       type="file" 
-                      accept="image/*" 
+                      accept="image/jpeg,image/png,image/webp,image/gif"
                       multiple 
                       onChange={handleFileChange} 
+                      disabled={uploadingImages}
                       className="hidden" 
                     />
                   </label>
@@ -324,7 +326,7 @@ export default function AdminProducts() {
                   <div className="mt-3 flex flex-wrap gap-2 pt-2 border-t border-slate-100">
                     {imageList.map((img, idx) => (
                       <div key={idx} className="relative group h-16 w-16 rounded-lg border border-slate-200 overflow-hidden bg-slate-100">
-                        <img src={img} alt="" className="h-full w-full object-cover" />
+                        <img src={resolveApiAssetUrl(img)} alt="" className="h-full w-full object-cover" />
                         {idx === 0 && (
                           <span className="absolute bottom-0 inset-x-0 bg-blue-600/80 text-[9px] text-white text-center font-bold">
                             Chính
@@ -363,7 +365,7 @@ export default function AdminProducts() {
                   Hủy
                 </button>
                 <button 
-                  disabled={saving} 
+                  disabled={saving || uploadingImages}
                   className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-bold text-white hover:bg-emerald-700 transition disabled:opacity-50"
                 >
                   {saving ? 'Đang lưu...' : 'Lưu'}

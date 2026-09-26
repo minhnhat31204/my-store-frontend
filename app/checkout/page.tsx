@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { api, getStoredUser, type User } from '@/lib/api';
+import { api, getPrimaryProductImage, getStoredUser, type User } from '@/lib/api';
 import type { Voucher } from '@/lib/api';
 import { formatShippingAddress, getLegacyAddresses, getSelectedAddressId, loadAddresses, saveSelectedAddressId, type ShippingAddress } from '@/lib/addresses';
 import { voucherDiscount, voucherStorageKey } from '@/lib/vouchers';
@@ -19,7 +19,7 @@ function itemName(item: any) {
 }
 
 function itemImage(item: any) {
-  return item.ImageUrl || item.Product?.ImageUrl || item.ProductImage || '';
+  return getPrimaryProductImage(item.ImageUrl || item.Product?.ImageUrl || item.ProductImage || '');
 }
 
 export default function CheckoutPage() {

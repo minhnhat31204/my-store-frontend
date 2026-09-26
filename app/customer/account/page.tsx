@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { api, getStoredUser, type User } from '@/lib/api';
+import { useEffect, useRef, useState } from 'react';
+import { api, getStoredUser, resolveApiAssetUrl, type User } from '@/lib/api';
 
 export default function AccountPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -13,12 +13,71 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [profileName, setProfileName] = useState('');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState('');
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileMessage, setProfileMessage] = useState('');
+  const [profileError, setProfileError] = useState('');
+  const avatarInput = useRef<HTMLInputElement>(null);
+  const avatarPreviewUrl = useRef<string | null>(null);
 
   useEffect(() => {
     const stored = getStoredUser();
     setUser(stored);
+    setProfileName(stored?.FullName || '');
     setEmail(stored?.RecoveryEmail || '');
   }, []);
+
+  useEffect(() => () => {
+    if (avatarPreviewUrl.current) URL.revokeObjectURL(avatarPreviewUrl.current);
+  }, []);
+
+  function chooseAvatar(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
+      setProfileError('Chọn ảnh JPG, PNG, WEBP hoặc GIF.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setProfileError('Ảnh đại diện tối đa 5 MB.');
+      return;
+    }
+    if (avatarPreviewUrl.current) URL.revokeObjectURL(avatarPreviewUrl.current);
+    const preview = URL.createObjectURL(file);
+    avatarPreviewUrl.current = preview;
+    setAvatarPreview(preview);
+    setAvatarFile(file);
+    setProfileError('');
+    setProfileMessage('');
+  }
+
+  async function saveProfile(event: React.FormEvent) {
+    event.preventDefault();
+    if (!user) return;
+    setProfileLoading(true);
+    setProfileError('');
+    setProfileMessage('');
+    try {
+      const result = await api.updateUserProfile(user.UserID, profileName.trim(), avatarFile || undefined);
+      const updated = { ...user, ...result.user };
+      setUser(updated);
+      setProfileName(updated.FullName || '');
+      localStorage.setItem('user', JSON.stringify(updated));
+      window.dispatchEvent(new Event('user-updated'));
+      setAvatarFile(null);
+      setAvatarPreview('');
+      if (avatarPreviewUrl.current) URL.revokeObjectURL(avatarPreviewUrl.current);
+      avatarPreviewUrl.current = null;
+      setProfileMessage('Đã lưu thay đổi hồ sơ.');
+    } catch (err) {
+      setProfileError(err instanceof Error ? err.message : 'Không lưu được hồ sơ.');
+    } finally {
+      setProfileLoading(false);
+    }
+  }
 
   async function sendOtp(e: React.FormEvent) {
     e.preventDefault();
@@ -62,6 +121,7 @@ export default function AccountPage() {
 
   function logout() {
     localStorage.removeItem('user');
+    localStorage.removeItem('sessionToken');
     setUser(null);
     window.dispatchEvent(new Event('user-updated'));
   }
@@ -73,12 +133,32 @@ export default function AccountPage() {
         <div className="mt-8 rounded-2xl bg-white p-6 shadow-sm">
           {user ? <>
             <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-2xl font-black text-blue-700">{(user.FullName || user.Phone || 'K').charAt(0).toUpperCase()}</div>
+              {avatarPreview || user.Avatar ? <img src={avatarPreview || resolveApiAssetUrl(user.Avatar)} alt="Ảnh đại diện" className="h-16 w-16 rounded-full border border-slate-200 object-cover" /> : <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-2xl font-black text-blue-700">{(user.FullName || user.Phone || 'K').charAt(0).toUpperCase()}</div>}
               <div>
                 <h2 className="text-xl font-bold">{user.FullName || 'Khách hàng'}</h2>
                 <p className="text-slate-500">{user.Phone || 'Chưa có số điện thoại'}</p>
               </div>
             </div>
+
+            <section className="mt-7 border-t border-slate-100 pt-6">
+              <h3 className="text-lg font-black">Thông tin hiển thị</h3>
+              <p className="mt-1 text-sm text-slate-600">Đổi tên hiển thị và ảnh đại diện của bạn.</p>
+              <form onSubmit={saveProfile} className="mt-4 space-y-4">
+                <div>
+                  <label htmlFor="profile-name" className="mb-1 block text-sm font-semibold">Tên hiển thị</label>
+                  <input id="profile-name" type="text" autoComplete="name" maxLength={100} required value={profileName} onChange={(event) => setProfileName(event.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500" />
+                </div>
+                <div>
+                  <span className="mb-2 block text-sm font-semibold">Ảnh đại diện</span>
+                  <input ref={avatarInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={chooseAvatar} className="hidden" />
+                  <button type="button" onClick={() => avatarInput.current?.click()} className="rounded-xl border border-blue-700 px-4 py-2.5 font-bold text-blue-700 hover:bg-blue-50">Chọn ảnh từ máy</button>
+                  <span className="ml-3 text-sm text-slate-500">{avatarFile ? avatarFile.name : 'JPG, PNG, WEBP hoặc GIF · tối đa 5 MB'}</span>
+                </div>
+                {profileError && <p role="alert" className="text-sm font-semibold text-red-700">{profileError}</p>}
+                {profileMessage && <p role="status" className="text-sm font-semibold text-emerald-700">{profileMessage}</p>}
+                <button type="submit" disabled={profileLoading || !profileName.trim()} className="rounded-xl bg-blue-700 px-5 py-3 font-bold text-white disabled:opacity-50">{profileLoading ? 'Đang lưu…' : 'Lưu thay đổi'}</button>
+              </form>
+            </section>
 
             <section className="mt-7 border-t border-slate-100 pt-6">
               <h3 className="text-lg font-black">Email khôi phục</h3>

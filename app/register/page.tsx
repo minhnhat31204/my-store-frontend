@@ -1,17 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { clearFirebasePhoneVerifier, sendFirebasePhoneOtp } from '@/lib/firebase-phone-auth';
-import type { ConfirmationResult } from 'firebase/auth';
 
 export default function RegisterPage() {
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
-  const confirmation = useRef<ConfirmationResult | null>(null);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -24,10 +21,9 @@ export default function RegisterPage() {
     setMessage('');
     setLoading(true);
     try {
-      confirmation.current = null;
-      confirmation.current = await sendFirebasePhoneOtp(phone.trim(), 'register-recaptcha');
+      const result = await api.sendRegistrationOtp(phone.trim());
       setOtpSent(true);
-      setMessage('Mã xác thực đã được gửi đến số điện thoại của bạn.');
+      setMessage(result.message);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không gửi được mã xác thực.');
     } finally {
@@ -43,10 +39,7 @@ export default function RegisterPage() {
     if (password !== confirmPassword) return setError('Mật khẩu nhập lại không khớp.');
     setLoading(true);
     try {
-      if (!confirmation.current) return setError('Vui lòng gửi mã xác thực trước.');
-      const credential = await confirmation.current.confirm(otp);
-      const firebaseIdToken = await credential.user.getIdToken();
-      await api.register({ phone: phone.trim(), firebaseIdToken, password });
+      await api.register({ phone: phone.trim(), otp, password });
       router.push('/login?registered=1');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Đăng ký thất bại.');
@@ -68,19 +61,18 @@ export default function RegisterPage() {
           {error && <div role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-center text-sm text-red-700">{error}</div>}
           {message && <div role="status" className="mb-4 rounded-xl bg-emerald-50 p-3 text-center text-sm text-emerald-700">{message}</div>}
 
-          <div id="register-recaptcha" />
           <form onSubmit={handleRegister} className="space-y-4">
             <div>
               <label htmlFor="register-phone" className="mb-1 block text-sm font-semibold">Số điện thoại</label>
               <div className="flex gap-2">
-                <input id="register-phone" type="tel" inputMode="tel" autoComplete="tel" required value={phone} onChange={(e) => { setPhone(e.target.value); setOtpSent(false); setOtp(''); confirmation.current = null; clearFirebasePhoneVerifier(); }} placeholder="0901234567" className="min-w-0 flex-1 rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500" />
+                <input id="register-phone" type="tel" inputMode="tel" autoComplete="tel" required value={phone} onChange={(e) => { setPhone(e.target.value); setOtpSent(false); setOtp(''); }} placeholder="0901234567" className="min-w-0 flex-1 rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500" />
                 <button type="button" onClick={sendOtp} disabled={loading || !phone.trim()} className="shrink-0 rounded-xl border border-blue-600 px-3 text-sm font-bold text-blue-700 disabled:opacity-50">{loading ? 'Đang gửi…' : otpSent ? 'Gửi lại mã' : 'Gửi OTP'}</button>
               </div>
             </div>
 
             {otpSent && <div>
-              <label htmlFor="register-otp" className="mb-1 block text-sm font-semibold">Mã xác thực SMS</label>
-              <input id="register-otp" type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6} required value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} placeholder="Nhập mã 6 số" className="w-full rounded-xl border border-slate-200 px-4 py-3 text-center text-xl font-bold tracking-[0.35em] outline-none focus:border-blue-500" />
+              <label htmlFor="register-otp" className="mb-1 block text-sm font-semibold">Mã xác thực số điện thoại</label>
+              <input id="register-otp" type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6} required value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} placeholder="123456" className="w-full rounded-xl border border-slate-200 px-4 py-3 text-center text-xl font-bold tracking-[0.35em] outline-none focus:border-blue-500" />
             </div>}
 
             <div>

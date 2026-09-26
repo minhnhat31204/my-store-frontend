@@ -130,9 +130,13 @@ export type StoreOrder = {
   ShippingAddress?: string | null;
   Note?: string | null;
   PaymentMethod?: string | null;
+  CarrierName?: string | null;
+  TrackingNumber?: string | null;
+  EstimatedDelivery?: string | null;
   DiscountAmount?: number | string | null;
   VoucherCode?: string | null;
   VoucherID?: number | null;
+  User?: { FullName?: string | null; Email?: string | null; Phone?: string | null } | null;
   OrderItems?: OrderItem[];
   Payments?: Array<{
     PaymentTransactionID: number;
@@ -140,6 +144,7 @@ export type StoreOrder = {
     Amount: number | string;
     CreatedAt?: string | null;
     PaidAt?: string | null;
+    orderStatus?: string;
   }>;
 };
 
@@ -158,10 +163,11 @@ async function request<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
+  const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(options.headers || {}),
     },
     cache: "no-store",
@@ -227,6 +233,15 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
+  uploadProductImage: (file: File) => {
+    const body = new FormData();
+    body.set('image', file);
+    return request<{ success: boolean; url?: string; message?: string }>("/products/upload", {
+      method: "POST",
+      body,
+    });
+  },
+
   updateProduct: (
     id: number,
     payload: Partial<Product>
@@ -252,7 +267,13 @@ export const api = {
   // AUTHENTICATION
   // =========================
 
-  register: (payload: { phone: string; firebaseIdToken: string; password: string }) =>
+  sendRegistrationOtp: (phone: string) =>
+    request<{ message: string }>("/auth/register/send-otp", {
+      method: "POST",
+      body: JSON.stringify({ phone }),
+    }),
+
+  register: (payload: { phone: string; otp: string; password: string }) =>
     request<{
       message: string;
       user: User;
@@ -279,13 +300,13 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
-  verifyPasswordResetOtp: (payload: { channel: 'phone' | 'email'; phone?: string; email?: string; otp?: string; firebaseIdToken?: string }) =>
+  verifyPasswordResetOtp: (payload: { channel: 'phone' | 'email'; phone?: string; email?: string; otp?: string }) =>
     request<{ message: string }>("/auth/forgot-password/verify-otp", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
 
-  resetPassword: (payload: { channel: 'phone' | 'email'; phone?: string; email?: string; newPassword: string; firebaseIdToken?: string }) =>
+  resetPassword: (payload: { channel: 'phone' | 'email'; phone?: string; email?: string; newPassword: string }) =>
     request<{ message: string }>("/auth/forgot-password/reset", {
       method: "POST",
       body: JSON.stringify(payload),
@@ -309,6 +330,16 @@ export const api = {
 
   getUsers: () =>
     request<User[]>("/users"),
+
+  updateUserProfile: (userId: number, fullName: string, avatar?: File) => {
+    const body = new FormData();
+    body.set('fullName', fullName);
+    if (avatar) body.set('avatar', avatar);
+    return request<{ message: string; user: User }>(`/users/${userId}/profile`, {
+      method: 'PUT',
+      body,
+    });
+  },
 
   updateUserRole: (userId: number, role: string) =>
     request<User>(`/users/${userId}/role`, {
@@ -401,7 +432,28 @@ export const api = {
   // =========================
 
   getOrders: () =>
-    request<any[]>("/orders"),
+    request<StoreOrder[]>("/orders"),
+
+  getOrderStatusHistory: (orderId: number) =>
+    request<OrderStatusHistory[]>(`/orders/${orderId}/history`),
+
+  updateOrderShipping: (orderId: number, payload: Pick<StoreOrder, 'CarrierName' | 'TrackingNumber' | 'EstimatedDelivery'>) =>
+    request<{ message: string; order: StoreOrder }>(`/orders/${orderId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+
+  updateOrderStatus: (orderId: number, status: string) =>
+    request<{ message: string; order: StoreOrder }>(`/orders/${orderId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ Status: status }),
+    }),
+
+  cancelOrder: (orderId: number, userId: number) =>
+    request<{ message: string; order: StoreOrder }>(`/orders/${orderId}/cancel`, {
+      method: "POST",
+      body: JSON.stringify({ UserID: userId }),
+    }),
 
   getOrdersByUser: (userId: number) =>
     request<StoreOrder[]>(`/orders/user/${userId}`),
@@ -413,7 +465,7 @@ export const api = {
     }),
 
   getPaymentStatus: (orderId: number, userId: number) =>
-    request<{ payment: NonNullable<StoreOrder["Payments"]>[number] | null }>(`/orders/${orderId}/payment-status?userId=${userId}`),
+    request<{ payment: NonNullable<StoreOrder["Payments"]>[number] | null; orderStatus?: string }>(`/orders/${orderId}/payment-status?userId=${userId}`),
 
   getNotifications: (userId: number) =>
     request<{ notifications: OrderNotification[]; unreadCount: number }>(`/notifications/user/${userId}`),
@@ -446,6 +498,33 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 };
+
+export type OrderStatusHistory = {
+  StatusHistoryID: number;
+  OrderID: number;
+  ActorUserID?: number | null;
+  PreviousStatus?: string | null;
+  NewStatus: string;
+  Note?: string | null;
+  ChangedAt: string;
+  Actor?: { FullName?: string | null; Email?: string | null } | null;
+};
+
+export function resolveApiAssetUrl(value?: string | null): string {
+  if (!value) return '';
+  try {
+    const apiUrl = new URL(API_URL);
+    apiUrl.pathname = apiUrl.pathname.replace(/\/api\/?$/, '');
+    return new URL(value, `${apiUrl.origin}${apiUrl.pathname}/`).toString();
+  } catch {
+    return value;
+  }
+}
+
+export function getPrimaryProductImage(value?: string | null): string {
+  const firstImage = value?.split(',').map((image) => image.trim()).find(Boolean);
+  return resolveApiAssetUrl(firstImage);
+}
 
 // =========================
 // GET USER FROM LOCAL STORAGE

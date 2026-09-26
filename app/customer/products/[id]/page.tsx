@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { addToCart } from "@/lib/cart";
-import { api, Product, ProductReview, ProductVariant } from "@/lib/api";
+import { api, getPrimaryProductImage, Product, ProductReview, ProductVariant, resolveApiAssetUrl } from "@/lib/api";
 import FavoriteButton from "@/app/components/FavoriteButton";
 
 const formatPrice = (value: number | string) =>
@@ -34,6 +34,7 @@ export default function ProductDetailPage() {
     }
 
     let active = true;
+    setSelectedImageIndex(0);
     api.getProducts()
       .then((items) => {
         if (!active) return;
@@ -91,14 +92,16 @@ export default function ProductDetailPage() {
 
     if (rawList.length === 0) return ["/placeholder.png"];
 
-    // Thêm domain http://localhost:5000 cho các đường dẫn nội bộ /uploads/...
-    return rawList.map((img) => {
-      if (img.startsWith("/uploads/")) {
-        return `http://localhost:5000${img}`;
-      }
-      return img;
-    });
+    return rawList.map(resolveApiAssetUrl);
   }, [product, variants]);
+
+  useEffect(() => {
+    if (allImages.length <= 1) return;
+    const timer = window.setInterval(() => {
+      setSelectedImageIndex((current) => (current + 1) % allImages.length);
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [allImages.length, selectedImageIndex]);
 
   const relatedProducts = useMemo(() => {
     if (!product) return [];
@@ -128,10 +131,11 @@ export default function ProductDetailPage() {
         ProductName: `${product.ProductName}${selectedVariant ? ` (${[selectedVariant.Color, selectedVariant.Configuration].filter(Boolean).join(" - ")})` : ""}`,
         Price: displayPrice,
         ImageUrl: allImages[0] || "",
+        StockQuantity: Number(displayStock ?? 0),
       });
       setMessage("Đã thêm sản phẩm vào giỏ hàng.");
-    } catch {
-      setMessage("Không thể thêm sản phẩm vào giỏ hàng.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Không thể thêm sản phẩm vào giỏ hàng.");
     } finally {
       setAdding(false);
       window.setTimeout(() => setMessage(""), 2200);
@@ -192,6 +196,8 @@ export default function ProductDetailPage() {
                         key={idx}
                         type="button"
                         onClick={() => setSelectedImageIndex(idx)}
+                        aria-label={`Xem ảnh ${idx + 1}`}
+                        aria-pressed={selectedImageIndex === idx}
                         className={`h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl border-2 transition ${selectedImageIndex === idx ? "border-blue-600 shadow-md" : "border-slate-200 opacity-70 hover:opacity-100"}`}
                       >
                         <img src={img} alt="" className="h-full w-full object-cover" />
@@ -325,7 +331,7 @@ export default function ProductDetailPage() {
                 <div className="product-grid">
                   {relatedProducts.map((item) => (
                     <Link key={item.ProductID} href={`/customer/products/${item.ProductID}`} className="product-card block p-4 transition hover:-translate-y-1 hover:shadow-lg">
-                      <div className="product-image"><img src={item.ImageUrl ? (item.ImageUrl.startsWith('/uploads/') ? `http://localhost:5000${item.ImageUrl.split(',')[0].trim()}` : item.ImageUrl.split(',')[0].trim()) : "/placeholder.png"} alt={item.ProductName} /></div>
+                      <div className="product-image"><img src={getPrimaryProductImage(item.ImageUrl) || "/placeholder.png"} alt={item.ProductName} /></div>
                       <h3 className="mt-3 font-bold text-slate-900">{item.ProductName}</h3>
                       <p className="mt-2 font-black text-blue-800">{formatPrice(item.DiscountPrice || item.Price)}</p>
                     </Link>
