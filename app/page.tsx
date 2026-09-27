@@ -146,7 +146,7 @@ export default function Home() {
         <section className="featured-section">
           <div className="section-heading">
             <div>
-              <p>🔥 SẢN PHẨM NỔI BẬT</p>
+              <p>SẢN PHẨM NỔI BẬT</p>
               <h2>Sản phẩm dành cho bạn</h2>
             </div>
             <Link href="/customer/products">Xem tất cả →</Link>

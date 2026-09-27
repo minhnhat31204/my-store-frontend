@@ -59,26 +59,26 @@ a { text-decoration: none; -webkit-tap-highlight-color: transparent; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  width: 44px;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
   border-radius: 999px;
   color: #fff;
   transition: all .2s ease;
 }
 .cart-link:hover {
-  background: rgba(255, 255, 255, 0.24);
-  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.26);
+  border-color: rgba(255, 255, 255, 0.5);
   color: #fff;
   transform: translateY(-1px);
 }
 .cart-icon-wrap { position: relative; display: inline-flex; align-items: center; justify-content: center; }
-.cart-icon { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.cart-icon { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .cart-badge {
   position: absolute;
-  top: -8px;
-  right: -10px;
+  top: -6px;
+  right: -8px;
   z-index: 2;
   display: inline-flex;
   align-items: center;

@@ -22,11 +22,15 @@ export type Product = {
 export type User = {
   UserID: number;
   FullName?: string;
+  Username?: string | null;
+  Bio?: string | null;
   Email: string;
   Phone?: string | null;
   RecoveryEmail?: string | null;
   RecoveryEmailVerified?: boolean;
   Address?: string | null;
+  Gender?: string | null;
+  Birthday?: string | null;
   Role?: string;
   Avatar?: string | null;
 };
@@ -331,10 +335,40 @@ export const api = {
   getUsers: () =>
     request<User[]>("/users"),
 
-  updateUserProfile: (userId: number, fullName: string, avatar?: File) => {
+  changePassword: (userId: number, currentPassword: string, newPassword: string) =>
+    request<{ message: string }>("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ userId, currentPassword, newPassword }),
+    }),
+
+  updateUserProfile: (
+    userId: number,
+    payload: {
+      fullName: string;
+      username?: string;
+      bio?: string;
+      gender?: string;
+      birthday?: string;
+      phone?: string;
+      address?: string;
+      avatar?: File | Blob;
+    }
+  ) => {
     const body = new FormData();
-    body.set('fullName', fullName);
-    if (avatar) body.set('avatar', avatar);
+    body.set('fullName', payload.fullName);
+    if (payload.username !== undefined) body.set('username', payload.username);
+    if (payload.bio !== undefined) body.set('bio', payload.bio);
+    if (payload.gender !== undefined) body.set('gender', payload.gender);
+    if (payload.birthday !== undefined) body.set('birthday', payload.birthday);
+    if (payload.phone !== undefined) body.set('phone', payload.phone);
+    if (payload.address !== undefined) body.set('address', payload.address);
+    if (payload.avatar) {
+      if (payload.avatar instanceof File) {
+        body.set('avatar', payload.avatar);
+      } else {
+        body.set('avatar', payload.avatar, 'avatar.png');
+      }
+    }
     return request<{ message: string; user: User }>(`/users/${userId}/profile`, {
       method: 'PUT',
       body,
