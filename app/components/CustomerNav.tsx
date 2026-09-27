@@ -229,9 +229,10 @@ export default function CustomerNav({
           <nav className="desktop-links">
             <Link href="/">Trang chủ</Link>
             <Link href="/customer/products">Sản phẩm</Link>
-            <Link href="/customer/favorites">Yêu thích</Link>
             <Link href="/customer/notifications" className="relative">Thông báo{unreadNotifications > 0 && <span className="ml-1 inline-flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-black leading-none text-white">{unreadNotifications > 99 ? "99+" : unreadNotifications}</span>}</Link>
+          </nav>
 
+          <div className="header-actions">
             <Link
               href="/customer/cart"
               className="cart-link"
@@ -242,58 +243,59 @@ export default function CustomerNav({
                 {cartCount > 0 && <b className="cart-badge">{cartCount}</b>}
               </span>
             </Link>
-          </nav>
 
-          {user ? (
-            <div className="relative flex items-center" ref={accountMenuRef}>
-              <button
-                ref={accountButtonRef}
-                type="button"
-                aria-haspopup="menu"
-                aria-expanded={accountMenuOpen}
-                aria-label={`Menu tài khoản${user.FullName ? ` của ${user.FullName}` : ""}`}
-                title={user.FullName || user.Email}
-                onClick={() => setAccountMenuOpen((open) => !open)}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-white p-1 shadow-sm transition hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-              >
-                {user.Avatar ? (
-                  <img
-                    src={resolveApiAssetUrl(user.Avatar)}
-                    alt=""
-                    className="h-8 w-8 rounded-full border border-slate-200 object-cover"
-                  />
-                ) : (
-                  <div aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-xs font-bold uppercase text-white">
-                    {(user.FullName || user.Email || "U").charAt(0)}
+            {user ? (
+              <div className="relative flex items-center" ref={accountMenuRef}>
+                <button
+                  ref={accountButtonRef}
+                  type="button"
+                  aria-haspopup="menu"
+                  aria-expanded={accountMenuOpen}
+                  aria-label={`Menu tài khoản${user.FullName ? ` của ${user.FullName}` : ""}`}
+                  title={user.FullName || user.Email}
+                  onClick={() => setAccountMenuOpen((open) => !open)}
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white p-1 shadow-sm transition hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                >
+                  {user.Avatar ? (
+                    <img
+                      src={resolveApiAssetUrl(user.Avatar)}
+                      alt=""
+                      className="h-8 w-8 rounded-full border border-slate-200 object-cover"
+                    />
+                  ) : (
+                    <div aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-xs font-bold uppercase text-white">
+                      {(user.FullName || user.Email || "U").charAt(0)}
+                    </div>
+                  )}
+                </button>
+                {accountMenuOpen && <div role="menu" aria-label="Chức năng tài khoản" className="absolute right-0 top-full z-[70] mt-3 w-72 rounded-2xl border border-slate-200 bg-white p-2 text-slate-800 shadow-xl">
+                  <div className="border-b border-slate-100 px-3 py-2.5">
+                    <p className="truncate text-sm font-black text-slate-900">{user.FullName || "Tài khoản của tôi"}</p>
+                    <p className="truncate text-xs text-slate-500">{user.Email}</p>
                   </div>
-                )}
-              </button>
-              {accountMenuOpen && <div role="menu" aria-label="Chức năng tài khoản" className="absolute right-0 top-full z-[70] mt-3 w-64 rounded-2xl border border-slate-200 bg-white p-2 text-slate-800 shadow-xl">
-                <div className="border-b border-slate-100 px-3 py-2">
-                  <p className="truncate text-sm font-black">{user.FullName || "Tài khoản của tôi"}</p>
-                  <p className="truncate text-xs text-slate-500">{user.Email}</p>
-                </div>
-                <Link role="menuitem" href="/customer/account" onClick={() => setAccountMenuOpen(false)} className="mt-1 block rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">Thông tin tài khoản</Link>
-                <Link role="menuitem" href="/customer/orders" onClick={() => setAccountMenuOpen(false)} className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">Đơn hàng &amp; trạng thái</Link>
-                <Link role="menuitem" href="/customer/addresses" onClick={() => setAccountMenuOpen(false)} className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">Sổ địa chỉ</Link>
-                <Link role="menuitem" href="/customer/notifications" onClick={() => setAccountMenuOpen(false)} className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"><span>Thông báo</span>{unreadNotifications > 0 && <span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-black text-white">{unreadNotifications > 99 ? "99+" : unreadNotifications}</span>}</Link>
-                <div className="my-1 border-t border-slate-100" />
-                {isAdmin && <Link role="menuitem" href="/admin" onClick={() => setAccountMenuOpen(false)} className="mb-1 flex items-center gap-3 rounded-xl bg-gradient-to-r from-indigo-800 via-blue-800 to-slate-900 px-3 py-3 text-white shadow-md transition hover:from-indigo-700 hover:via-blue-700 hover:to-slate-800">
-                  <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/15 text-lg">⚙</span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-black">Bảng quản trị</span>
-                    <span className="mt-0.5 block text-[11px] text-blue-100">Sản phẩm · đơn hàng · người dùng</span>
-                  </span>
-                  <span className="rounded-full border border-white/25 bg-white/10 px-2 py-1 text-[9px] font-black tracking-wider text-blue-100">ADMIN</span>
-                </Link>}
-                <button role="menuitem" type="button" onClick={handleLogout} className="w-full rounded-xl px-3 py-2.5 text-left text-sm font-bold text-red-600 transition hover:bg-red-50">Đăng xuất</button>
-              </div>}
-            </div>
-          ) : (
-            <Link href="/login" className="login-button">
-              Đăng nhập
-            </Link>
-          )}
+                  <Link role="menuitem" href="/customer/account" onClick={() => setAccountMenuOpen(false)} className="mt-1 block rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">Thông tin tài khoản</Link>
+                  <Link role="menuitem" href="/customer/orders" onClick={() => setAccountMenuOpen(false)} className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">Đơn hàng &amp; trạng thái</Link>
+                  <Link role="menuitem" href="/customer/addresses" onClick={() => setAccountMenuOpen(false)} className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">Sổ địa chỉ</Link>
+                  <Link role="menuitem" href="/customer/favorites" onClick={() => setAccountMenuOpen(false)} className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">Yêu thích</Link>
+                  <Link role="menuitem" href="/customer/notifications" onClick={() => setAccountMenuOpen(false)} className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"><span>Thông báo</span>{unreadNotifications > 0 && <span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-black text-white">{unreadNotifications > 99 ? "99+" : unreadNotifications}</span>}</Link>
+                  <div className="my-1 border-t border-slate-100" />
+                  {isAdmin && <Link role="menuitem" href="/admin" onClick={() => setAccountMenuOpen(false)} className="mb-1 flex items-center gap-3 rounded-xl bg-gradient-to-r from-indigo-800 via-blue-800 to-slate-900 px-3 py-3 text-white shadow-md transition hover:from-indigo-700 hover:via-blue-700 hover:to-slate-800">
+                    <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/15 text-lg">⚙</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-black">Bảng quản trị</span>
+                      <span className="mt-0.5 block text-[11px] text-blue-100">Sản phẩm · đơn hàng · người dùng</span>
+                    </span>
+                    <span className="rounded-full border border-white/25 bg-white/10 px-2 py-1 text-[9px] font-black tracking-wider text-blue-100">ADMIN</span>
+                  </Link>}
+                  <button role="menuitem" type="button" onClick={handleLogout} className="w-full rounded-xl px-3 py-2.5 text-left text-sm font-bold text-red-600 transition hover:bg-red-50">Đăng xuất</button>
+                </div>}
+              </div>
+            ) : (
+              <Link href="/login" className="login-button">
+                Đăng nhập
+              </Link>
+            )}
+          </div>
         </div>
       </header>
 

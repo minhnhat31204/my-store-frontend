@@ -34,7 +34,7 @@ a { text-decoration: none; -webkit-tap-highlight-color: transparent; }
 }
 .brand { flex: 0 0 auto; color: #fff; font-size: 25px; font-weight: 900; letter-spacing: -1px; }
 .brand span { color: #dce5ff; }
-.header-search { position: relative; flex: 1 1 300px; min-width: 220px; }
+.header-search { position: relative; flex: 0 1 380px; min-width: 220px; }
 .header-search input {
   display: block;
   width: 100%;
@@ -50,13 +50,50 @@ a { text-decoration: none; -webkit-tap-highlight-color: transparent; }
 .search-icon { position: absolute; left: 23px; top: 50%; z-index: 1; width: 20px; height: 20px; transform: translateY(-50%); fill: none; stroke: #334155; stroke-width: 2; stroke-linecap: round; }
 .header-search input::placeholder { color: #9aa4b2; }
 .header-search input:focus { border-color: #b9caff; }
-.desktop-links { display: flex; align-items: center; gap: 28px; font-size: 14px; font-weight: 800; white-space: nowrap; }
+.desktop-links { display: flex; align-items: center; gap: 24px; font-size: 14px; font-weight: 800; white-space: nowrap; }
 .desktop-links a { color: #fff; transition: none; }
 .desktop-links a:hover { color: #dce5ff; }
+.header-actions { margin-left: auto; display: flex; align-items: center; gap: 32px; }
 .login-button { flex: 0 0 auto; transition: none; background: #fff; color: var(--blue) !important; border-radius: 999px; padding: 12px 23px; font-weight: 900; white-space: nowrap; }
-.cart-link { display: inline-flex; align-items: center; justify-content: center; width: 31px; height: 38px; }
-.cart-icon { width: 29px; height: 29px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.cart-badge, .mobile-cart-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 19px; height: 19px; padding: 0 5px; border-radius: 999px; background: #ff3b30; color: #fff; font-size: 11px; font-weight: 900; }
+.cart-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  color: #fff;
+  transition: all .2s ease;
+}
+.cart-link:hover {
+  background: rgba(255, 255, 255, 0.24);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #fff;
+  transform: translateY(-1px);
+}
+.cart-icon-wrap { position: relative; display: inline-flex; align-items: center; justify-content: center; }
+.cart-icon { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.cart-badge {
+  position: absolute;
+  top: -8px;
+  right: -10px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #ff3b30;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+}
+.mobile-cart-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 19px; height: 19px; padding: 0 5px; border-radius: 999px; background: #ff3b30; color: #fff; font-size: 11px; font-weight: 900; }
 
 .store-container { width: min(1250px, calc(100% - 32px)); margin: 0 auto; }
 .promo-banner { height: 258px; margin-top: 16px; border-radius: 15px; overflow: hidden; position: relative; background: #12aa69; }
@@ -155,7 +192,4 @@ a { text-decoration: none; -webkit-tap-highlight-color: transparent; }
 .footer-inner h3 { color: #1e293b; font-size: 14px; margin: 0 0 10px; }
 .footer-inner p { margin: 6px 0; font-size: 13px; }
 .footer-bottom { border-top: 1px solid #e5e7eb; padding: 16px 24px; text-align: center; font-size: 12px; }
-.cart-icon-wrap { position: relative; display: inline-flex; align-items: center; justify-content: center; }
-.cart-link { position: relative; }
-.cart-badge { position: absolute; top: -7px; right: -9px; z-index: 2; min-width: 21px; height: 21px; font-size: 11px; }
 @media (max-width: 700px) { .footer-inner { grid-template-columns: 1fr; gap: 18px; padding: 28px 20px; } }
