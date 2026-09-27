@@ -69,9 +69,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col md:flex-row">
-      {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col w-64 bg-slate-950/80 border-r border-slate-800/80 p-5 shrink-0 select-none">
+    <div className="h-screen overflow-hidden bg-slate-900 text-slate-100 flex flex-col md:flex-row">
+      {/* Desktop Sidebar (Cố định toàn màn hình) */}
+      <aside className="hidden md:flex flex-col w-64 h-full bg-slate-950/90 border-r border-slate-800/80 p-5 shrink-0 select-none overflow-y-auto">
         {/* Brand Header */}
         <div className="flex items-center gap-3 px-2 py-3 mb-6">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center font-black text-white text-lg shadow-md shadow-blue-500/20">
@@ -150,7 +150,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       </aside>
 
       {/* Mobile Top Header */}
-      <div className="md:hidden flex items-center justify-between px-4 py-3.5 bg-slate-950 border-b border-slate-800">
+      <div className="md:hidden flex items-center justify-between px-4 py-3.5 bg-slate-950 border-b border-slate-800 shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-black text-white text-sm">
             M
@@ -174,7 +174,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
       {/* Mobile Dropdown Nav */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-slate-950 border-b border-slate-800 p-4 space-y-2">
+        <div className="md:hidden bg-slate-950 border-b border-slate-800 p-4 space-y-2 shrink-0">
           {NAV_ITEMS.map((item) => {
             const isActive = item.exact
               ? pathname === item.href
@@ -214,10 +214,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </div>
       )}
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 bg-slate-900">
+      {/* Main Content Area (Cuộn độc lập, giữ cố định Sidebar) */}
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto bg-slate-900">
         {/* Top bar for desktop */}
-        <header className="hidden md:flex items-center justify-between px-8 py-4 bg-slate-950/40 border-b border-slate-800/60">
+        <header className="sticky top-0 z-20 hidden md:flex items-center justify-between px-8 py-4 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/80 shrink-0">
           <div className="flex items-center gap-2 text-xs font-medium text-slate-400">
             <span>Bảng quản trị</span>
             <span>/</span>
@@ -241,9 +241,20 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </header>
 
         {/* Page Inner Container */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8">
           {children}
         </main>
+
+        {/* Admin Dark Footer */}
+        <footer className="mt-auto py-4 px-8 border-t border-slate-800/60 bg-slate-950/50 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400 shrink-0">
+          <div className="flex items-center gap-2 font-medium">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+            <span>Hệ thống MANB Admin Portal v2.0 • Trạng thái hoạt động bình thường</span>
+          </div>
+          <div>
+            © {new Date().getFullYear()} MANB.VN. Bản quyền quản trị hệ thống.
+          </div>
+        </footer>
       </div>
     </div>
   );

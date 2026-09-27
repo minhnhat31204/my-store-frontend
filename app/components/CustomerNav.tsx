@@ -396,6 +396,10 @@ export default function CustomerNav({
     }
   };
 
+  if (pathname?.startsWith("/admin")) {
+    return null;
+  }
+
   return (
     <>
       <header className={`store-header${navVisible ? "" : " nav-hidden"}`}>

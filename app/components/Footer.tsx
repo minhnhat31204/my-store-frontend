@@ -1,6 +1,16 @@
+'use client';
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export default function Footer() {
+  const pathname = usePathname();
+
+  // Ẩn footer cửa hàng bán lẻ trên các trang quản trị Admin
+  if (pathname?.startsWith("/admin")) {
+    return null;
+  }
+
   return (
     <footer className="store-footer">
       <div className="footer-inner">
