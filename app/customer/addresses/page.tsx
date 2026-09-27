@@ -173,8 +173,16 @@ export default function AddressesPage() {
   if (!user) return <main className="mx-auto max-w-3xl px-4 py-10"><h1 className="text-3xl font-black">Sổ địa chỉ</h1><p className="mt-4">Đăng nhập để quản lý địa chỉ giao hàng.</p><Link className="mt-4 inline-block text-blue-700" href="/login">Đăng nhập →</Link></main>;
 
   return <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900"><div className="mx-auto max-w-5xl">
-    <Link href="/customer/account" className="text-sm font-semibold text-blue-700">← Tài khoản</Link>
-    <h1 className="mt-2 text-3xl font-black">Sổ địa chỉ</h1>
+    <Link
+      href="/customer/account"
+      className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-xs transition hover:border-slate-300 hover:bg-slate-50 hover:text-blue-600"
+    >
+      <svg className="h-4 w-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+        <path d="M19 12H5M12 19l-7-7 7-7" />
+      </svg>
+      <span>Quay lại</span>
+    </Link>
+    <h1 className="mt-4 text-2xl sm:text-3xl font-black">Sổ địa chỉ</h1>
     <p className="mt-2 text-sm text-slate-600">Chọn địa giới hành chính hiện hành và ghim điểm giao hàng cụ thể trên bản đồ.</p>
     {addressesLoading && <p className="mt-3 text-sm text-slate-500">Đang đồng bộ địa chỉ với tài khoản…</p>}
     {saved && <p role="status" className="mt-4 rounded-xl bg-emerald-50 p-3 text-emerald-800">Đã lưu thay đổi.</p>}

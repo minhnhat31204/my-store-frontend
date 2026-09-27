@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { api, getStoredUser, resolveApiAssetUrl, type User } from "@/lib/api";
 import { getCart } from "@/lib/cart";
 import { usePathname, useRouter } from "next/navigation";
+
+const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 function SearchIcon() {
   return (
@@ -103,6 +105,7 @@ export default function CustomerNav({
   const [cartBump, setCartBump] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [user, setUser] = useState<User | null>(null);
+  const [authLoaded, setAuthLoaded] = useState(false);
   const isAdmin = String(user?.Role || (user as (User & { role?: string }) | null)?.role || '').toLowerCase() === 'admin';
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState(searchValue);
@@ -115,20 +118,56 @@ export default function CustomerNav({
   const router = useRouter();
   const pathname = usePathname();
 
+  useIsomorphicLayoutEffect(() => {
+    const stored = getStoredUser();
+    setUser(stored);
+    setAuthLoaded(true);
+  }, []);
+
+  // Lưu và xác định tab nguồn duyệt (Trang chủ hoặc Sản phẩm)
+  const [activeTabKey, setActiveTabKey] = useState<string>("home");
+
+  useIsomorphicLayoutEffect(() => {
+    if (pathname === "/") {
+      setActiveTabKey("home");
+      try { sessionStorage.setItem("last_nav_tab", "home"); } catch {}
+    } else if (pathname === "/customer/products") {
+      setActiveTabKey("products");
+      try { sessionStorage.setItem("last_nav_tab", "products"); } catch {}
+    } else if (pathname?.startsWith("/customer/notifications")) {
+      setActiveTabKey("notifications");
+      try { sessionStorage.setItem("last_nav_tab", "notifications"); } catch {}
+    } else if (pathname?.startsWith("/customer/products/")) {
+      // Đang ở trang chi tiết sản phẩm -> giữ nguyên vị trí tab nơi người dùng vừa duyệt (Trang chủ hoặc Danh sách sản phẩm)
+      try {
+        const lastTab = sessionStorage.getItem("last_nav_tab");
+        if (lastTab === "products" || lastTab === "home") {
+          setActiveTabKey(lastTab);
+        } else {
+          setActiveTabKey("home");
+        }
+      } catch {
+        setActiveTabKey("home");
+      }
+    }
+  }, [pathname]);
+
   // Hiệu ứng bóng di chuyển mượt mà giữa các nút Trang chủ, Sản phẩm, Thông báo
   const navContainerRef = useRef<HTMLElement>(null);
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, top: 0, width: 0, height: 0, opacity: 0 });
+  const [enableTransition, setEnableTransition] = useState(false);
+  const isInitialMount = useRef(true);
 
-  useEffect(() => {
-    const updateIndicator = () => {
+  useIsomorphicLayoutEffect(() => {
+    const updateIndicator = (isInitial = false) => {
       if (!navContainerRef.current) return;
       
       const activeNav =
-        pathname === "/"
+        activeTabKey === "home"
           ? "[data-nav='home']"
-          : pathname?.startsWith("/customer/products")
+          : activeTabKey === "products"
           ? "[data-nav='products']"
-          : pathname?.startsWith("/customer/notifications")
+          : activeTabKey === "notifications"
           ? "[data-nav='notifications']"
           : null;
 
@@ -146,20 +185,33 @@ export default function CustomerNav({
           height: targetEl.offsetHeight,
           opacity: 1,
         });
+
+        if (isInitial) {
+          // Bật hiệu ứng trượt sau khi đã gán vị trí đầu tiên thành công mà không bị giật/trượt từ góc trái
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              setEnableTransition(true);
+            });
+          });
+        }
       } else {
         setIndicatorStyle((prev) => ({ ...prev, opacity: 0 }));
       }
     };
 
-    updateIndicator();
-    // Chạy lại khi font hoặc render layout ổn định
-    const t = window.setTimeout(updateIndicator, 50);
-    window.addEventListener("resize", updateIndicator);
-    return () => {
-      window.clearTimeout(t);
-      window.removeEventListener("resize", updateIndicator);
-    };
-  }, [pathname]);
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      updateIndicator(true);
+      const t = window.setTimeout(() => updateIndicator(true), 50);
+      return () => window.clearTimeout(t);
+    } else {
+      updateIndicator(false);
+    }
+
+    const handleResize = () => updateIndicator(false);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [activeTabKey]);
 
   useEffect(() => {
     lastScrollY.current = window.scrollY;
@@ -375,6 +427,9 @@ export default function CustomerNav({
                 width: indicatorStyle.width ? `${indicatorStyle.width}px` : undefined,
                 height: indicatorStyle.height ? `${indicatorStyle.height}px` : undefined,
                 opacity: indicatorStyle.opacity,
+                transition: enableTransition
+                  ? "transform 0.28s cubic-bezier(0.25, 1, 0.35, 1), width 0.28s cubic-bezier(0.25, 1, 0.35, 1), height 0.28s cubic-bezier(0.25, 1, 0.35, 1)"
+                  : "none",
               }}
               aria-hidden="true"
             />
@@ -382,21 +437,21 @@ export default function CustomerNav({
             <Link
               href="/"
               data-nav="home"
-              className={`nav-bubble-link ${pathname === "/" ? "active" : ""}`}
+              className={`nav-bubble-link ${activeTabKey === "home" ? "active" : ""}`}
             >
               <span>Trang chủ</span>
             </Link>
             <Link
               href="/customer/products"
               data-nav="products"
-              className={`nav-bubble-link ${pathname?.startsWith("/customer/products") ? "active" : ""}`}
+              className={`nav-bubble-link ${activeTabKey === "products" ? "active" : ""}`}
             >
               <span>Sản phẩm</span>
             </Link>
             <Link
               href="/customer/notifications"
               data-nav="notifications"
-              className={`nav-bubble-link ${pathname?.startsWith("/customer/notifications") ? "active" : ""}`}
+              className={`nav-bubble-link ${activeTabKey === "notifications" ? "active" : ""}`}
             >
               <span>Thông báo</span>
               {unreadNotifications > 0 && (
@@ -423,7 +478,9 @@ export default function CustomerNav({
               </span>
             </Link>
 
-            {user ? (
+            {!authLoaded ? (
+              <div className="h-11 w-11 rounded-full opacity-0 pointer-events-none" />
+            ) : user ? (
               <div className="relative flex items-center" ref={accountMenuRef}>
                 <button
                   ref={accountButtonRef}
@@ -630,7 +687,7 @@ export default function CustomerNav({
           <small>Thông báo{unreadNotifications > 0 ? ` (${unreadNotifications > 99 ? "99+" : unreadNotifications})` : ""}</small>
         </Link>
 
-        {!user && (
+        {authLoaded && !user && (
           <Link href="/login" className="mobile-nav-item">
             <span>◉</span>
             <small>Đăng nhập</small>

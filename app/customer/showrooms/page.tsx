@@ -11,6 +11,17 @@ export default function ShowroomsPage() {
   return <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900"><div className="mx-auto max-w-5xl">
     <p className="text-sm font-bold uppercase tracking-wide text-blue-700">MANB Shop</p><h1 className="mt-1 text-3xl font-black">Hệ thống showroom</h1><p className="mt-2 text-slate-600">Tìm showroom và mở chỉ đường trên Google Maps.</p>
     <div className="mt-6 grid gap-4 md:grid-cols-2">{showrooms.map((item) => <article key={item.region} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">{item.region}</span><h2 className="mt-4 text-xl font-black">{item.name}</h2><p className="mt-3 text-sm text-slate-600">{item.address}</p><a className="mt-2 inline-block text-sm font-semibold text-blue-700" href={`tel:${item.phone.replace(/\s/g, "")}`}>Hotline: {item.phone}</a><a className="mt-5 block rounded-xl bg-blue-700 px-4 py-3 text-center font-bold text-white" target="_blank" rel="noreferrer" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.address)}`}>Mở bản đồ ↗</a></article>)}</div>
-    <p className="mt-5 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Thông tin showroom hiện dùng cùng danh sách mẫu trong ứng dụng; vui lòng xác nhận địa chỉ và hotline trước khi công khai.</p><Link href="/" className="mt-5 inline-block font-semibold text-blue-700">← Về trang chủ</Link>
+    <p className="mt-5 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Thông tin showroom hiện dùng cùng danh sách mẫu trong ứng dụng; vui lòng xác nhận địa chỉ và hotline trước khi công khai.</p>
+    <div className="mt-6">
+      <Link
+        href="/"
+        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-xs transition hover:border-slate-300 hover:bg-slate-50 hover:text-blue-600"
+      >
+        <svg className="h-4 w-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <path d="M19 12H5M12 19l-7-7 7-7" />
+        </svg>
+        <span>Quay lại</span>
+      </Link>
+    </div>
   </div></main>;
 }

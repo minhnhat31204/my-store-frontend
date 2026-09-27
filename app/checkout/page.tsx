@@ -244,8 +244,14 @@ export default function CheckoutPage() {
             </button>
 
             <div className="text-center mt-4">
-              <Link href="/customer/cart" className="text-sm font-semibold text-blue-600 hover:underline">
-                ← Quay lại giỏ hàng
+              <Link
+                href="/customer/cart"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-xs transition hover:border-slate-300 hover:bg-slate-50 hover:text-blue-600"
+              >
+                <svg className="h-4 w-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                <span>Quay lại</span>
               </Link>
             </div>
           </form>

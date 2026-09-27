@@ -37,7 +37,16 @@ export default function VouchersPage() {
   }
 
   return <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900"><div className="mx-auto max-w-4xl">
-    <Link href="/customer/cart" className="text-sm font-semibold text-blue-700">← Quay lại giỏ hàng</Link><h1 className="mt-2 text-3xl font-black">Mã giảm giá</h1><p className="mt-2 text-sm text-slate-600">Chọn một mã còn hiệu lực; mức giảm được giới hạn theo giá trị tối đa của mã.</p>
+    <Link
+      href="/customer/cart"
+      className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-xs transition hover:border-slate-300 hover:bg-slate-50 hover:text-blue-600"
+    >
+      <svg className="h-4 w-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+        <path d="M19 12H5M12 19l-7-7 7-7" />
+      </svg>
+      <span>Quay lại</span>
+    </Link>
+    <h1 className="mt-4 text-2xl sm:text-3xl font-black">Mã giảm giá</h1><p className="mt-2 text-sm text-slate-600">Chọn một mã còn hiệu lực; mức giảm được giới hạn theo giá trị tối đa của mã.</p>
     {error && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-red-700">{error}</p>}{message && <p role="status" className="mt-4 rounded-xl bg-emerald-50 p-3 text-emerald-800">{message}</p>}
     {selected !== null && <button onClick={() => choose(null)} className="mt-4 rounded-xl border bg-white px-4 py-2 font-semibold">Bỏ chọn voucher</button>}
     {loading ? <p className="mt-8 rounded-xl bg-white p-8 text-center">Đang tải voucher…</p> : vouchers.length === 0 ? <p className="mt-8 rounded-xl bg-white p-8 text-center text-slate-600">Hiện chưa có voucher.</p> : <div className="mt-6 grid gap-4 sm:grid-cols-2">{vouchers.map((voucher) => {
