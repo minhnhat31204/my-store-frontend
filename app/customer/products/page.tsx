@@ -14,10 +14,8 @@ import {
 import type { StoreCategory } from "@/lib/api";
 import Link from "next/link";
 import FavoriteButton from "@/app/components/FavoriteButton";
-
-import {
-  addToCart,
-} from "@/lib/cart";
+import { addToCart } from "@/lib/cart";
+import { animateFlyToCart } from "@/lib/cart-animation";
 
 function extractBrand(name: string) {
   const words = name.trim().split(/\s+/);
@@ -25,23 +23,14 @@ function extractBrand(name: string) {
   return acronym || words[0]?.toUpperCase() || "";
 }
 
-
 export default function ProductsPage() {
-  const [products, setProducts] =
-    useState<Product[]>([]);
-
-  const [keyword, setKeyword] =
-    useState("");
+  const [products, setProducts] = useState<Product[]>([]);
+  const [keyword, setKeyword] = useState("");
   const [categories, setCategories] = useState<StoreCategory[]>([]);
   const [categoryId, setCategoryId] = useState("all");
   const [brand, setBrand] = useState("all");
   const [sortBy, setSortBy] = useState("recommended");
-
-  const [message, setMessage] =
-    useState("");
-
-  const [addingId, setAddingId] =
-    useState<number | null>(null);
+  const [addingId, setAddingId] = useState<number | null>(null);
 
   useEffect(() => {
     api
@@ -73,7 +62,8 @@ export default function ProductsPage() {
     return list;
   }, [products, keyword, categoryId, brand, sortBy]);
 
-  async function add(product: Product) {
+  async function add(product: Product, event: React.MouseEvent) {
+    animateFlyToCart(event, getPrimaryProductImage(product.ImageUrl));
     try {
       setAddingId(product.ProductID);
 
@@ -84,24 +74,9 @@ export default function ProductsPage() {
         ImageUrl: getPrimaryProductImage(product.ImageUrl),
         StockQuantity: Number(product.StockQuantity ?? 0),
       });
-
-      setMessage(
-        `Đã thêm ${product.ProductName} vào giỏ hàng`
-      );
-
-      setTimeout(() => {
-        setMessage("");
-      }, 1800);
     } catch (error) {
       console.error(error);
-
-      setMessage(
-        error instanceof Error ? error.message : "Không thể thêm sản phẩm vào giỏ hàng."
-      );
-
-      setTimeout(() => {
-        setMessage("");
-      }, 1800);
+      alert(error instanceof Error ? error.message : "Không thể thêm sản phẩm vào giỏ hàng.");
     } finally {
       setAddingId(null);
     }
@@ -123,12 +98,6 @@ export default function ProductsPage() {
           <label className="text-xs font-bold uppercase tracking-wide text-slate-500">Sắp xếp<select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold normal-case text-slate-800"><option value="recommended">Gợi ý</option><option value="price-low">Giá thấp đến cao</option><option value="price-high">Giá cao đến thấp</option><option value="name">Tên A–Z</option></select></label>
           <div className="flex items-end text-sm font-semibold text-slate-600">{filtered.length} sản phẩm</div>
         </section>
-
-        {message && (
-          <div className="success-message mb-4">
-            {message}
-          </div>
-        )}
 
         {filtered.length === 0 ? <div className="rounded-2xl border bg-white p-10 text-center text-slate-500">Không tìm thấy sản phẩm phù hợp bộ lọc.</div> : <div className="product-grid">
           {filtered.map((product) => {
@@ -166,7 +135,7 @@ export default function ProductsPage() {
                       {Number(product.StockQuantity ?? 0) > 0 ? `Còn ${product.StockQuantity} sản phẩm` : "Tạm hết hàng"}
                     </p>
                     <button
-                      onClick={() => add(product)}
+                      onClick={(e) => add(product, e)}
                       disabled={addingId === product.ProductID || Number(product.StockQuantity ?? 0) <= 0}
                       className="add-button disabled:cursor-not-allowed disabled:opacity-60"
                     >

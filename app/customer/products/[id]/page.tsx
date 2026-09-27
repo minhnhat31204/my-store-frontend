@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { addToCart } from "@/lib/cart";
+import { animateFlyToCart } from "@/lib/cart-animation";
 import { api, getPrimaryProductImage, Product, ProductReview, ProductVariant, resolveApiAssetUrl } from "@/lib/api";
 import FavoriteButton from "@/app/components/FavoriteButton";
 
@@ -122,8 +123,9 @@ export default function ProductDetailPage() {
   const displayPrice = selectedVariant?.Price ? Number(selectedVariant.Price) : Number(product?.DiscountPrice || product?.Price || 0);
   const displayStock = selectedVariant ? selectedVariant.StockQuantity : product?.StockQuantity;
 
-  async function handleAddToCart() {
+  async function handleAddToCart(event: React.MouseEvent) {
     if (!product) return;
+    animateFlyToCart(event, allImages[selectedImageIndex] || allImages[0] || "");
     setAdding(true);
     try {
       await addToCart({
@@ -133,12 +135,11 @@ export default function ProductDetailPage() {
         ImageUrl: allImages[0] || "",
         StockQuantity: Number(displayStock ?? 0),
       });
-      setMessage("Đã thêm sản phẩm vào giỏ hàng.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Không thể thêm sản phẩm vào giỏ hàng.");
+      window.setTimeout(() => setMessage(""), 2500);
     } finally {
       setAdding(false);
-      window.setTimeout(() => setMessage(""), 2200);
     }
   }
 
@@ -279,7 +280,7 @@ export default function ProductDetailPage() {
                 {message && <p role="status" className="mt-4 rounded-xl bg-blue-50 p-3 text-sm text-blue-800">{message}</p>}
                 
                 <button 
-                  onClick={handleAddToCart} 
+                  onClick={(e) => handleAddToCart(e)} 
                   disabled={adding || Number(displayStock ?? 0) <= 0} 
                   className="add-button mt-7 w-full disabled:cursor-not-allowed disabled:opacity-60"
                 >

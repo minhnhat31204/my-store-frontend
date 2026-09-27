@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { api, getStoredUser, resolveApiAssetUrl, type User } from "@/lib/api";
-import { useRouter } from "next/navigation";
+import { getCart } from "@/lib/cart";
+import { usePathname, useRouter } from "next/navigation";
 
 function SearchIcon() {
   return (
@@ -99,6 +100,7 @@ export default function CustomerNav({
   onSearchChange,
 }: CustomerNavProps) {
   const [cartCount, setCartCount] = useState(0);
+  const [cartBump, setCartBump] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [user, setUser] = useState<User | null>(null);
   const isAdmin = String(user?.Role || (user as (User & { role?: string }) | null)?.role || '').toLowerCase() === 'admin';
@@ -111,6 +113,53 @@ export default function CustomerNav({
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const accountButtonRef = useRef<HTMLButtonElement>(null);
   const router = useRouter();
+  const pathname = usePathname();
+
+  // Hiệu ứng bóng di chuyển mượt mà giữa các nút Trang chủ, Sản phẩm, Thông báo
+  const navContainerRef = useRef<HTMLElement>(null);
+  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, top: 0, width: 0, height: 0, opacity: 0 });
+
+  useEffect(() => {
+    const updateIndicator = () => {
+      if (!navContainerRef.current) return;
+      
+      const activeNav =
+        pathname === "/"
+          ? "[data-nav='home']"
+          : pathname?.startsWith("/customer/products")
+          ? "[data-nav='products']"
+          : pathname?.startsWith("/customer/notifications")
+          ? "[data-nav='notifications']"
+          : null;
+
+      if (!activeNav) {
+        setIndicatorStyle((prev) => ({ ...prev, opacity: 0 }));
+        return;
+      }
+
+      const targetEl = navContainerRef.current.querySelector(activeNav) as HTMLElement | null;
+      if (targetEl) {
+        setIndicatorStyle({
+          left: targetEl.offsetLeft,
+          top: targetEl.offsetTop,
+          width: targetEl.offsetWidth,
+          height: targetEl.offsetHeight,
+          opacity: 1,
+        });
+      } else {
+        setIndicatorStyle((prev) => ({ ...prev, opacity: 0 }));
+      }
+    };
+
+    updateIndicator();
+    // Chạy lại khi font hoặc render layout ổn định
+    const t = window.setTimeout(updateIndicator, 50);
+    window.addEventListener("resize", updateIndicator);
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener("resize", updateIndicator);
+    };
+  }, [pathname]);
 
   useEffect(() => {
     lastScrollY.current = window.scrollY;
@@ -147,6 +196,18 @@ export default function CustomerNav({
   }, []);
 
   useEffect(() => {
+    const handleShowNav = () => {
+      setNavVisible(true);
+      scrollDelta.current = 0;
+      scrollDirection.current = null;
+      lastScrollY.current = window.scrollY;
+    };
+
+    window.addEventListener("show-nav", handleShowNav);
+    return () => window.removeEventListener("show-nav", handleShowNav);
+  }, []);
+
+  useEffect(() => {
     const refreshUser = () => {
       setUser(getStoredUser());
     };
@@ -173,22 +234,33 @@ export default function CustomerNav({
             : 0;
           setCartCount(total);
         } else {
-          setCartCount(0);
+          const localCart = getCart();
+          const total = localCart.reduce((sum, item) => sum + Number(item.quantity || 1), 0);
+          setCartCount(total);
         }
       } catch (err) {
         console.error("Lỗi lấy giỏ hàng cho Navbar:", err);
-        setCartCount(0);
+        const localCart = getCart();
+        setCartCount(localCart.reduce((sum, item) => sum + Number(item.quantity || 1), 0));
       }
     };
 
     fetchCartCount();
 
-    window.addEventListener("cart-updated", fetchCartCount);
+    const triggerBump = () => {
+      fetchCartCount();
+      setCartBump(true);
+      window.setTimeout(() => setCartBump(false), 600);
+    };
+
+    window.addEventListener("cart-updated", triggerBump);
+    window.addEventListener("cart-bump", triggerBump);
     window.addEventListener("user-updated", fetchCartCount);
     window.addEventListener("storage", fetchCartCount);
 
     return () => {
-      window.removeEventListener("cart-updated", fetchCartCount);
+      window.removeEventListener("cart-updated", triggerBump);
+      window.removeEventListener("cart-bump", triggerBump);
       window.removeEventListener("user-updated", fetchCartCount);
       window.removeEventListener("storage", fetchCartCount);
     };
@@ -291,21 +363,63 @@ export default function CustomerNav({
             />
           </div>
 
-          <nav className="desktop-links">
-            <Link href="/">Trang chủ</Link>
-            <Link href="/customer/products">Sản phẩm</Link>
-            <Link href="/customer/notifications" className="relative">Thông báo{unreadNotifications > 0 && <span className="ml-1 inline-flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-black leading-none text-white">{unreadNotifications > 99 ? "99+" : unreadNotifications}</span>}</Link>
+          <nav
+            className="desktop-links"
+            ref={navContainerRef}
+          >
+            {/* Khối bong bóng trượt mượt mà duy nhất giữa các nút */}
+            <span
+              className="nav-sliding-bubble"
+              style={{
+                transform: `translate3d(${indicatorStyle.left}px, ${indicatorStyle.top}px, 0)`,
+                width: indicatorStyle.width ? `${indicatorStyle.width}px` : undefined,
+                height: indicatorStyle.height ? `${indicatorStyle.height}px` : undefined,
+                opacity: indicatorStyle.opacity,
+              }}
+              aria-hidden="true"
+            />
+
+            <Link
+              href="/"
+              data-nav="home"
+              className={`nav-bubble-link ${pathname === "/" ? "active" : ""}`}
+            >
+              <span>Trang chủ</span>
+            </Link>
+            <Link
+              href="/customer/products"
+              data-nav="products"
+              className={`nav-bubble-link ${pathname?.startsWith("/customer/products") ? "active" : ""}`}
+            >
+              <span>Sản phẩm</span>
+            </Link>
+            <Link
+              href="/customer/notifications"
+              data-nav="notifications"
+              className={`nav-bubble-link ${pathname?.startsWith("/customer/notifications") ? "active" : ""}`}
+            >
+              <span>Thông báo</span>
+              {unreadNotifications > 0 && (
+                <span className="nav-bubble-badge">
+                  {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                </span>
+              )}
+            </Link>
           </nav>
 
           <div className="header-actions">
             <Link
               href="/customer/cart"
-              className="cart-link"
+              className={`cart-link ${cartBump ? "cart-link-bump" : ""}`}
               aria-label={`Giỏ hàng, ${cartCount} sản phẩm`}
             >
               <span className="cart-icon-wrap">
                 <CartIcon />
-                {cartCount > 0 && <b className="cart-badge">{cartCount}</b>}
+                {cartCount > 0 && (
+                  <b className={`cart-badge ${cartBump ? "cart-badge-bump" : ""}`}>
+                    {cartCount}
+                  </b>
+                )}
               </span>
             </Link>
 
@@ -319,19 +433,21 @@ export default function CustomerNav({
                   aria-label={`Menu tài khoản${user.FullName ? ` của ${user.FullName}` : ""}`}
                   title={user.FullName || user.Email}
                   onClick={() => setAccountMenuOpen((open) => !open)}
-                  className="group relative flex h-11 w-11 items-center justify-center rounded-full border-2 border-white/90 bg-white shadow-md transition hover:border-white hover:scale-105 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white overflow-hidden"
+                  className="account-avatar-btn group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                 >
-                  {user.Avatar ? (
-                    <img
-                      src={resolveApiAssetUrl(user.Avatar)}
-                      alt=""
-                      className="h-full w-full object-cover object-center transition duration-200 group-hover:scale-105"
-                    />
-                  ) : (
-                    <div aria-hidden="true" className="flex h-full w-full items-center justify-center bg-gradient-to-tr from-blue-600 via-indigo-600 to-blue-700 text-sm font-black uppercase text-white">
-                      {(user.FullName || user.Email || "U").charAt(0)}
-                    </div>
-                  )}
+                  <div className="account-avatar-inner">
+                    {user.Avatar ? (
+                      <img
+                        src={resolveApiAssetUrl(user.Avatar)}
+                        alt=""
+                        className="h-full w-full object-cover object-center transition duration-200 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div aria-hidden="true" className="flex h-full w-full items-center justify-center bg-gradient-to-tr from-blue-600 via-indigo-600 to-blue-700 text-sm font-black uppercase text-white">
+                        {(user.FullName || user.Email || "U").charAt(0)}
+                      </div>
+                    )}
+                  </div>
                 </button>
                 {accountMenuOpen && (
                   <div
@@ -495,7 +611,11 @@ export default function CustomerNav({
         <Link href="/customer/cart" className="mobile-nav-item mobile-cart-item">
           <span className="mobile-cart-icon">
             <CartIcon />
-            {cartCount > 0 && <b className="mobile-cart-badge">{cartCount}</b>}
+            {cartCount > 0 && (
+              <b className={`mobile-cart-badge ${cartBump ? "cart-badge-bump" : ""}`}>
+                {cartCount}
+              </b>
+            )}
           </span>
           <small>Giỏ hàng</small>
         </Link>

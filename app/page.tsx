@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api, getPrimaryProductImage, Product, Promotion } from "@/lib/api";
 import { addToCart } from "@/lib/cart";
+import { animateFlyToCart } from "@/lib/cart-animation";
 import FavoriteButton from "@/app/components/FavoriteButton";
 
 const FALLBACK_BANNER = "/banner-placeholder.jpg";
@@ -22,13 +23,22 @@ function getBannerImage(promotion: Promotion) {
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
-  const [bannerIndex, setBannerIndex] = useState(0);
+  const [trackIndex, setTrackIndex] = useState(1);
+  const [withTransition, setWithTransition] = useState(true);
   const [loading, setLoading] = useState(true);
   const [bannerLoading, setBannerLoading] = useState(true);
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
   const [keyword, setKeyword] = useState("");
   const [visibleCount, setVisibleCount] = useState(8);
+
+  // States & Refs cho tính năng kéo chuột trượt banner
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const startXRef = useRef(0);
+  const isDraggingRef = useRef(false);
+  const isAnimatingRef = useRef(false);
+  const dragOffsetRef = useRef(0);
 
   useEffect(() => {
     api.getProducts()
@@ -37,7 +47,11 @@ export default function Home() {
       .finally(() => setLoading(false));
 
     api.getPromotions()
-      .then((data) => setPromotions(Array.isArray(data) ? data.filter((item) => getBannerImage(item)) : []))
+      .then((data) => {
+        const validPromos = Array.isArray(data) ? data.filter((item) => getBannerImage(item)) : [];
+        setPromotions(validPromos);
+        setTrackIndex(validPromos.length > 1 ? 1 : 0);
+      })
       .catch(() => setPromotions([]))
       .finally(() => setBannerLoading(false));
   }, []);
@@ -50,15 +64,95 @@ export default function Home() {
     return () => window.removeEventListener("store-search", onSearch);
   }, []);
 
+  const N = promotions.length;
+
+  // Danh sách slides có clone 2 đầu để tạo vòng lặp vô tận không bị trượt ngược
+  const slides = useMemo(() => {
+    if (N <= 1) return promotions;
+    return [promotions[N - 1], ...promotions, promotions[0]];
+  }, [promotions, N]);
+
+  // Active index cho dots (0 đến N - 1)
+  const activeDotIndex = N > 0 ? (trackIndex - 1 + N) % N : 0;
+
+  // Chuyển slide mượt mà, nhận mọi cú click nhanh (double-click) không bị nuốt lệnh
+  const changeBanner = (step: number) => {
+    if (N <= 1) return;
+
+    if (trackIndex >= N + 1 && step > 0) {
+      setWithTransition(false);
+      setTrackIndex(1);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setWithTransition(true);
+          setTrackIndex(2);
+        });
+      });
+      return;
+    }
+
+    if (trackIndex <= 0 && step < 0) {
+      setWithTransition(false);
+      setTrackIndex(N);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setWithTransition(true);
+          setTrackIndex(N - 1);
+        });
+      });
+      return;
+    }
+
+    setWithTransition(true);
+    setTrackIndex((prev) => Math.max(0, Math.min(N + 1, prev + step)));
+  };
+
+  const goToDot = (dotIdx: number) => {
+    if (N <= 1) return;
+    setWithTransition(true);
+    setTrackIndex(dotIdx + 1);
+  };
+
+  // Reset không hiệu ứng khi chạm slide clone
+  const handleTransitionEnd = () => {
+    if (N <= 1) return;
+    if (trackIndex >= N + 1) {
+      setWithTransition(false);
+      setTrackIndex(1);
+    } else if (trackIndex <= 0) {
+      setWithTransition(false);
+      setTrackIndex(N);
+    }
+  };
+
+  // Timer an toàn tự động chuẩn hóa vị trí nếu transitionEnd bị lỡ nhịp
   useEffect(() => {
-    if (promotions.length < 2) return;
+    if (N <= 1) return;
+    if (trackIndex >= N + 1) {
+      const timer = window.setTimeout(() => {
+        setWithTransition(false);
+        setTrackIndex(1);
+      }, 360);
+      return () => window.clearTimeout(timer);
+    }
+    if (trackIndex <= 0) {
+      const timer = window.setTimeout(() => {
+        setWithTransition(false);
+        setTrackIndex(N);
+      }, 360);
+      return () => window.clearTimeout(timer);
+    }
+  }, [trackIndex, N]);
+
+  useEffect(() => {
+    if (N < 2 || isHovered || isDragging) return;
 
     const timer = window.setInterval(() => {
-      setBannerIndex((index) => (index + 1) % promotions.length);
-    }, 3000);
+      changeBanner(1);
+    }, 4000);
 
     return () => window.clearInterval(timer);
-  }, [promotions.length]);
+  }, [N, isHovered, isDragging, trackIndex]);
 
   const filteredProducts = useMemo(() => {
     const value = keyword.trim().toLowerCase();
@@ -67,9 +161,9 @@ export default function Home() {
 
   const visibleProducts = filteredProducts.slice(0, visibleCount);
   const remainingCount = Math.max(filteredProducts.length - visibleCount, 0);
-  const currentBanner = promotions[bannerIndex];
 
-  async function handleAdd(product: Product) {
+  async function handleAdd(product: Product, event: React.MouseEvent) {
+    animateFlyToCart(event, getPrimaryProductImage(product.ImageUrl));
     try {
       await addToCart({
         ProductID: product.ProductID,
@@ -78,42 +172,95 @@ export default function Home() {
         ImageUrl: getPrimaryProductImage(product.ImageUrl),
         StockQuantity: Number(product.StockQuantity ?? 0),
       });
-
-      setMessage(
-        "Đã thêm sản phẩm vào giỏ hàng"
-      );
-
-      window.setTimeout(() => {
-        setMessage("");
-      }, 1800);
     } catch (error) {
       console.error(error);
-
-      setMessage(
-        error instanceof Error ? error.message : "Không thể thêm sản phẩm vào giỏ hàng."
-      );
-
-      window.setTimeout(() => {
-        setMessage("");
-      }, 1800);
+      alert(error instanceof Error ? error.message : "Không thể thêm sản phẩm vào giỏ hàng.");
     }
   }
 
-  function changeBanner(step: number) {
-    if (!promotions.length) return;
-    setBannerIndex((index) => (index + step + promotions.length) % promotions.length);
-  }
+  // Xử lý kéo bằng chuột và cảm ứng trên poster
+  const handlePointerDown = (e: React.PointerEvent<HTMLElement>) => {
+    if (N <= 1) return;
+    if ((e.target as HTMLElement).closest("button")) return;
+
+    // Chuẩn hóa vị trí nếu đang ở slide clone trước khi kéo
+    if (trackIndex >= N + 1) {
+      setWithTransition(false);
+      setTrackIndex(1);
+    } else if (trackIndex <= 0) {
+      setWithTransition(false);
+      setTrackIndex(N);
+    }
+    
+    isAnimatingRef.current = false;
+    isDraggingRef.current = true;
+    startXRef.current = e.clientX;
+    dragOffsetRef.current = 0;
+    setIsDragging(true);
+    setWithTransition(false);
+    setDragOffset(0);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLElement>) => {
+    if (!isDraggingRef.current) return;
+    const diff = e.clientX - startXRef.current;
+    dragOffsetRef.current = diff;
+    setDragOffset(diff);
+  };
+
+  const handlePointerEnd = () => {
+    if (!isDraggingRef.current) return;
+    isDraggingRef.current = false;
+    setIsDragging(false);
+
+    const threshold = 50;
+    setWithTransition(true);
+    isAnimatingRef.current = true;
+    if (dragOffsetRef.current > threshold) {
+      setTrackIndex((prev) => Math.max(0, prev - 1));
+    } else if (dragOffsetRef.current < -threshold) {
+      setTrackIndex((prev) => Math.min(N + 1, prev + 1));
+    }
+    setDragOffset(0);
+    dragOffsetRef.current = 0;
+  };
 
   return (
     <main className="store-page">
       <div className="store-container">
-        <section className="promo-banner" aria-label="Banner khuyến mãi">
-          {currentBanner ? (
-            <img
-              className="banner-image"
-              src={getBannerImage(currentBanner)}
-              alt={currentBanner.Title || "Khuyến mãi MANB SHOP"}
-            />
+        <section
+          className={`promo-banner ${isDragging ? "is-dragging" : ""}`}
+          aria-label="Banner khuyến mãi"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => {
+            setIsHovered(false);
+            if (isDraggingRef.current) handlePointerEnd();
+          }}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerEnd}
+          onPointerCancel={handlePointerEnd}
+        >
+          {slides.length > 0 ? (
+            <div
+              className="promo-slider-track"
+              onTransitionEnd={handleTransitionEnd}
+              style={{
+                transform: `translateX(calc(-${trackIndex * 100}% + ${dragOffset}px))`,
+                transition: withTransition && !isDragging ? "transform 0.35s cubic-bezier(0.2, 0.85, 0.3, 1)" : "none",
+              }}
+            >
+              {slides.map((promotion, idx) => (
+                <div key={`${promotion.PromotionID ?? idx}-${idx}`} className="promo-slide">
+                  <img
+                    className="banner-image"
+                    src={getBannerImage(promotion)}
+                    alt={promotion.Title || `Khuyến mãi`}
+                    draggable={false}
+                  />
+                </div>
+              ))}
+            </div>
           ) : (
             <div className="banner-fallback">
               <p>SẮM LAPTOP GAMING</p>
@@ -123,16 +270,44 @@ export default function Home() {
             </div>
           )}
 
-          {promotions.length > 1 && (
+          {N > 1 && (
             <>
-              <button className="banner-arrow banner-arrow-left" onClick={() => changeBanner(-1)} aria-label="Banner trước">‹</button>
-              <button className="banner-arrow banner-arrow-right" onClick={() => changeBanner(1)} aria-label="Banner tiếp theo">›</button>
-              <div className="banner-dots">
+              <button
+                type="button"
+                className="banner-arrow banner-arrow-left"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  changeBanner(-1);
+                }}
+                aria-label="Banner trước"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M15 18l-6-6 6-6" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className="banner-arrow banner-arrow-right"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  changeBanner(1);
+                }}
+                aria-label="Banner tiếp theo"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              </button>
+              <div className="banner-dots" onClick={(e) => e.stopPropagation()}>
                 {promotions.map((promotion, index) => (
                   <button
+                    type="button"
                     key={promotion.PromotionID ?? index}
-                    className={index === bannerIndex ? "active" : ""}
-                    onClick={() => setBannerIndex(index)}
+                    className={index === activeDotIndex ? "active" : ""}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      goToDot(index);
+                    }}
                     aria-label={`Chọn banner ${index + 1}`}
                   />
                 ))}
@@ -152,7 +327,6 @@ export default function Home() {
             <Link href="/customer/products">Xem tất cả →</Link>
           </div>
 
-          {message && <div className="success-message">{message}</div>}
           {loading && <p>Đang tải sản phẩm...</p>}
           {error && <p className="error-message">{error}</p>}
 
@@ -160,7 +334,7 @@ export default function Home() {
             <>
               <div className="product-grid">
                 {visibleProducts.map((product) => (
-                  <ProductCard key={product.ProductID} product={product} onAdd={() => handleAdd(product)} />
+                  <ProductCard key={product.ProductID} product={product} onAdd={(e) => handleAdd(product, e)} />
                 ))}
               </div>
 
@@ -177,7 +351,7 @@ export default function Home() {
   );
 }
 
-function ProductCard({ product, onAdd }: { product: Product; onAdd: () => void }) {
+function ProductCard({ product, onAdd }: { product: Product; onAdd: (e: React.MouseEvent) => void }) {
   const price = Number(product.DiscountPrice || product.Price);
   const oldPrice = Number(product.Price);
   const discountPercent = oldPrice > price
