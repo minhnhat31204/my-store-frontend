@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Hiệu ứng thu nhỏ và bay vào icon giỏ hàng khi người dùng nhấn "Thêm vào giỏ hàng"
+ * Hiệu ứng bay thẳng trực tiếp và thu nhỏ mượt mà vào icon giỏ hàng
  */
 export function animateFlyToCart(
   source: HTMLElement | React.MouseEvent | React.TouchEvent | null,
@@ -9,7 +9,7 @@ export function animateFlyToCart(
 ) {
   if (typeof window === "undefined" || !source) return;
 
-  // Luôn kích hoạt hiện lại thanh nav nếu đang bị ẩn và giữ nguyên thanh nav
+  // Luôn kích hoạt hiện lại thanh nav nếu đang bị ẩn
   window.dispatchEvent(new Event("show-nav"));
 
   let startRect: DOMRect | null = null;
@@ -45,22 +45,21 @@ export function animateFlyToCart(
 
   if (!startRect || startRect.width === 0 || startRect.height === 0) return;
 
-  // Kiểm tra nếu ảnh sản phẩm bị cuộn che khuất bởi thanh navbar hoặc ngoài màn hình
+  // Kiểm tra nếu ảnh sản phẩm bị cuộn che khuất hoàn toàn
   const header = document.querySelector(".store-header");
   const headerBottom = header ? Math.max(header.getBoundingClientRect().bottom, 0) : 76;
 
   const isImageCovered =
-    startRect.bottom <= headerBottom + 25 ||
-    startRect.top < headerBottom - 20 ||
+    startRect.bottom <= headerBottom + 15 ||
+    startRect.top < headerBottom - 30 ||
     startRect.top >= window.innerHeight;
 
   if (isImageCovered) {
-    // Ảnh sản phẩm bị che khuất: không hiện hiệu ứng bay, chỉ nảy số giỏ hàng trực tiếp
     window.dispatchEvent(new CustomEvent("cart-bump"));
     return;
   }
 
-  // Tìm vị trí icon giỏ hàng trên Header hoặc Bottom Nav
+  // Tìm vị trí icon giỏ hàng trên Header hoặc Mobile Bottom Nav
   const cartTarget =
     document.querySelector(".header-actions .cart-link") ||
     document.querySelector(".cart-link") ||
@@ -70,31 +69,42 @@ export function animateFlyToCart(
 
   const targetRect = cartTarget.getBoundingClientRect();
 
+  // Kích thước chuẩn ban đầu của avatar bay
+  const size = 68;
+
+  // Tọa độ tâm xuất phát và tâm đích
+  const startCenterX = startRect.left + startRect.width / 2;
+  const startCenterY = startRect.top + startRect.height / 2;
+
+  const destCenterX = targetRect.left + targetRect.width / 2;
+  let destCenterY = targetRect.top + targetRect.height / 2;
+  if (destCenterY < 0) {
+    destCenterY = 38; // Tọa độ trung tâm chuẩn của nút giỏ hàng trên header
+  }
+
+  const startX = startCenterX - size / 2;
+  const startY = startCenterY - size / 2;
+  const destX = destCenterX - size / 2;
+  const destY = destCenterY - size / 2;
+
   // Tạo phần tử bay
   const flying = document.createElement("div");
-  const initWidth = Math.min(Math.max(startRect.width, 60), 120);
-  const initHeight = Math.min(Math.max(startRect.height, 60), 120);
-  const initLeft = startRect.left + (startRect.width - initWidth) / 2;
-  const initTop = startRect.top + (startRect.height - initHeight) / 2;
-
   flying.style.position = "fixed";
   flying.style.zIndex = "999999";
   flying.style.pointerEvents = "none";
-  flying.style.left = `${initLeft}px`;
-  flying.style.top = `${initTop}px`;
-  flying.style.width = `${initWidth}px`;
-  flying.style.height = `${initHeight}px`;
-  flying.style.borderRadius = "16px";
-  flying.style.overflow = "hidden";
+  flying.style.left = "0px";
+  flying.style.top = "0px";
+  flying.style.width = `${size}px`;
+  flying.style.height = `${size}px`;
   flying.style.backgroundColor = "#ffffff";
-  flying.style.border = "2px solid #2454d8";
-  flying.style.boxShadow = "0 14px 35px rgba(36, 84, 216, 0.4)";
-  flying.style.transition = "all 3.8s cubic-bezier(0.2, 0.85, 0.25, 1)";
-  flying.style.transform = "scale(1) rotate(0deg)";
-  flying.style.opacity = "0.98";
+  flying.style.border = "2px solid #3b82f6";
+  flying.style.borderRadius = "16px";
+  flying.style.boxShadow = "0 10px 25px rgba(37, 99, 235, 0.4)";
   flying.style.display = "flex";
   flying.style.alignItems = "center";
   flying.style.justifyContent = "center";
+  flying.style.willChange = "transform, opacity";
+  flying.style.transformOrigin = "center center";
 
   if (flyImgSrc) {
     const img = document.createElement("img");
@@ -103,38 +113,65 @@ export function animateFlyToCart(
     img.style.width = "100%";
     img.style.height = "100%";
     img.style.objectFit = "contain";
-    img.style.padding = "6px";
+    img.style.padding = "5px";
+    img.style.borderRadius = "inherit";
     flying.appendChild(img);
   }
 
   document.body.appendChild(flying);
 
-  // Kích hoạt animation
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      // Khi header hiện ra ở vị trí top: 0, nút giỏ hàng có top ~16px
-      let destX = targetRect.left + targetRect.width / 2 - 14;
-      let destY = targetRect.top + targetRect.height / 2 - 14;
+  const duration = 480; // ms (rất nhanh và mượt mà)
 
-      if (destY < 0) {
-        destY = 38; // Tọa độ trung tâm chuẩn của giỏ hàng trên header
+  // Bay đường thẳng trực tiếp (Linear trajectory with smooth easing)
+  if (typeof flying.animate === "function") {
+    const animation = flying.animate(
+      [
+        {
+          transform: `translate3d(${startX}px, ${startY}px, 0) scale(1)`,
+          opacity: 1,
+          offset: 0,
+        },
+        {
+          transform: `translate3d(${startX + (destX - startX) * 0.72}px, ${startY + (destY - startY) * 0.72}px, 0) scale(0.82)`,
+          opacity: 0.92,
+          offset: 0.72,
+        },
+        {
+          transform: `translate3d(${destX}px, ${destY}px, 0) scale(0.6)`,
+          opacity: 0,
+          offset: 1,
+        },
+      ],
+      {
+        duration: duration,
+        easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+        fill: "forwards",
       }
+    );
 
-      flying.style.left = `${destX}px`;
-      flying.style.top = `${destY}px`;
-      flying.style.width = "28px";
-      flying.style.height = "28px";
-      flying.style.borderRadius = "10px";
-      flying.style.transform = "scale(0.35)";
-      flying.style.opacity = "0.2";
+    animation.onfinish = () => {
+      if (flying.parentNode) {
+        flying.parentNode.removeChild(flying);
+      }
+      window.dispatchEvent(new CustomEvent("cart-bump"));
+    };
+  } else {
+    // Fallback
+    flying.style.transition = `all ${duration}ms cubic-bezier(0.16, 1, 0.3, 1)`;
+    flying.style.transform = `translate3d(${startX}px, ${startY}px, 0) scale(1)`;
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        flying.style.transform = `translate3d(${destX}px, ${destY}px, 0) scale(0.6)`;
+        flying.style.opacity = "0";
+      });
     });
-  });
 
-  // Dọn dẹp DOM và kích hoạt hiệu ứng nảy badge giỏ hàng ngay khi tiếp đất
-  window.setTimeout(() => {
-    if (flying.parentNode) {
-      flying.parentNode.removeChild(flying);
-    }
-    window.dispatchEvent(new CustomEvent("cart-bump"));
-  }, 3800);
+    window.setTimeout(() => {
+      if (flying.parentNode) {
+        flying.parentNode.removeChild(flying);
+      }
+      window.dispatchEvent(new CustomEvent("cart-bump"));
+    }, duration);
+  }
 }

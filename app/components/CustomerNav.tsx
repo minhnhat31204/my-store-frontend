@@ -302,16 +302,18 @@ export default function CustomerNav({
     const triggerBump = () => {
       fetchCartCount();
       setCartBump(true);
-      window.setTimeout(() => setCartBump(false), 600);
+      window.setTimeout(() => setCartBump(false), 500);
     };
 
-    window.addEventListener("cart-updated", triggerBump);
+    // Chỉ cập nhật số lượng khi dữ liệu giỏ hàng thay đổi (không nảy)
+    window.addEventListener("cart-updated", fetchCartCount);
+    // Chỉ nảy icon giỏ hàng khi vật thể bay tiếp đất vào giỏ hàng
     window.addEventListener("cart-bump", triggerBump);
     window.addEventListener("user-updated", fetchCartCount);
     window.addEventListener("storage", fetchCartCount);
 
     return () => {
-      window.removeEventListener("cart-updated", triggerBump);
+      window.removeEventListener("cart-updated", fetchCartCount);
       window.removeEventListener("cart-bump", triggerBump);
       window.removeEventListener("user-updated", fetchCartCount);
       window.removeEventListener("storage", fetchCartCount);
