@@ -260,15 +260,15 @@ export default function ProductDetailPage() {
 
         {!loading && product && (
           <>
-            {/* FORM CHÍNH THÔNG TIN SẢN PHẨM (COMPACT) */}
-            <section className="mt-4 grid gap-6 rounded-2xl bg-white p-4 sm:p-6 shadow-xs border border-slate-100 md:grid-cols-2 md:gap-8">
-              {/* KHUNG ẢNH CÓ SLIDER & THUMBNAILS */}
-              <div className="flex flex-col gap-3">
-                <div className="product-image relative flex h-[260px] sm:h-[320px] items-center justify-center rounded-xl bg-slate-50/80 p-4">
+            {/* FORM CHÍNH THÔNG TIN SẢN PHẨM */}
+            <section className="mt-4 grid gap-6 rounded-3xl bg-white p-4 sm:p-7 shadow-xs border border-slate-200/80 md:grid-cols-2 md:gap-8 items-stretch">
+              {/* KHUNG ẢNH CÓ SLIDER & THUMBNAILS (KÉO TO FULL 100% CHIỀU CAO THẺ) */}
+              <div className="flex flex-col h-full w-full gap-3">
+                <div className="relative flex flex-1 w-full h-full min-h-[380px] sm:min-h-[480px] items-center justify-center rounded-2xl bg-slate-50/90 p-2 sm:p-4 border border-slate-100/90 overflow-hidden group">
                   <img
                     src={allImages[selectedImageIndex] || "/placeholder.png"}
                     alt={product.ProductName}
-                    className="max-h-[240px] sm:max-h-[290px] w-full object-contain transition-all duration-300"
+                    className="w-full h-full max-h-[460px] sm:max-h-[540px] object-contain transition-transform duration-300 group-hover:scale-[1.03]"
                   />
                   <FavoriteButton product={product} />
 
@@ -278,7 +278,7 @@ export default function ProductDetailPage() {
                       <button
                         type="button"
                         onClick={() => setSelectedImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1))}
-                        className="absolute left-2.5 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow-sm hover:bg-white transition"
+                        className="absolute left-3 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-slate-700 shadow-md hover:bg-white transition z-10"
                         aria-label="Ảnh trước"
                       >
                         ‹
@@ -286,7 +286,7 @@ export default function ProductDetailPage() {
                       <button
                         type="button"
                         onClick={() => setSelectedImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1))}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow-sm hover:bg-white transition"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-slate-700 shadow-md hover:bg-white transition z-10"
                         aria-label="Ảnh tiếp theo"
                       >
                         ›
@@ -297,7 +297,7 @@ export default function ProductDetailPage() {
 
                 {/* Danh sách ảnh thu nhỏ (Thumbnails) */}
                 {allImages.length > 1 && (
-                  <div className="flex gap-2 overflow-x-auto pb-1">
+                  <div className="flex gap-2.5 overflow-x-auto pt-1 pb-1 shrink-0">
                     {allImages.map((img, idx) => (
                       <button
                         key={idx}
@@ -305,7 +305,7 @@ export default function ProductDetailPage() {
                         onClick={() => setSelectedImageIndex(idx)}
                         aria-label={`Xem ảnh ${idx + 1}`}
                         aria-pressed={selectedImageIndex === idx}
-                        className={`h-13 w-13 flex-shrink-0 overflow-hidden rounded-lg border-2 transition ${selectedImageIndex === idx ? "border-blue-600 shadow-xs" : "border-slate-200 opacity-70 hover:opacity-100"}`}
+                        className={`h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl border-2 transition ${selectedImageIndex === idx ? "border-blue-600 shadow-xs" : "border-slate-200 opacity-70 hover:opacity-100"}`}
                       >
                         <img src={img} alt="" className="h-full w-full object-cover" />
                       </button>

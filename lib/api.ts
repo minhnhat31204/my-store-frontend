@@ -1,5 +1,5 @@
 const API_URL = (
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"
+  process.env.NEXT_PUBLIC_API_URL || "/api"
 ).replace(/\/$/, "");
 
 export type Product = {
@@ -546,13 +546,8 @@ export type OrderStatusHistory = {
 
 export function resolveApiAssetUrl(value?: string | null): string {
   if (!value) return '';
-  try {
-    const apiUrl = new URL(API_URL);
-    apiUrl.pathname = apiUrl.pathname.replace(/\/api\/?$/, '');
-    return new URL(value, `${apiUrl.origin}${apiUrl.pathname}/`).toString();
-  } catch {
-    return value;
-  }
+  if (value.startsWith('http://') || value.startsWith('https://')) return value;
+  return value.startsWith('/') ? value : `/${value}`;
 }
 
 export function getPrimaryProductImage(value?: string | null): string {
