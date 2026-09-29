@@ -12,7 +12,7 @@ export default function NotificationsPage() {
 
   const refresh = useCallback(async () => {
     const user = getStoredUser();
-    if (!user) { setNotices([]); setError("Đăng nhập để xem thông báo đơn hàng."); setLoading(false); return; }
+    if (!user) { setNotices([]); setError("Đăng nhập để xem thông báo đơn hàng nha."); setLoading(false); return; }
     if (!hasLoaded) setLoading(true);
     setError("");
     try {
