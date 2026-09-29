@@ -40,6 +40,15 @@ const NAV_ITEMS = [
     ),
   },
   {
+    href: '/admin/support',
+    label: 'Hỗ trợ khách hàng',
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h8M8 14h5m-1 7l-4-4H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2h-5l-4 4z" />
+      </svg>
+    ),
+  },
+  {
     href: '/admin/users',
     label: 'Người dùng & Quyền',
     icon: (
@@ -143,7 +152,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-bold text-white truncate">{currentUser.FullName || 'Quản trị viên'}</p>
-              <p className="text-[11px] text-slate-400 truncate">{currentUser.Email}</p>
+              <p className="text-[11px] text-slate-400 truncate">{currentUser.Email || currentUser.Phone}</p>
             </div>
           </div>
         )}

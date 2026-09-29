@@ -189,8 +189,8 @@ export default function AdminUsers() {
                         </div>
                       </td>
                       <td className="px-5 py-4">
-                        <p className="text-xs text-slate-200">{user.Email}</p>
-                        {user.Phone && <p className="text-[11px] text-slate-400 mt-0.5">{user.Phone}</p>}
+                        <p className="text-xs text-slate-200">{user.Email || user.Phone || 'Chưa cập nhật'}</p>
+                        {user.Email && user.Phone && <p className="text-[11px] text-slate-400 mt-0.5">{user.Phone}</p>}
                       </td>
                       <td className="px-5 py-4">
                         <select

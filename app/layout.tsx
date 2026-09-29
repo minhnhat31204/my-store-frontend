@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Geist, Geist_Mono } from 'next/font/google';
 import CustomerNav from './components/CustomerNav';
 import Footer from './components/Footer';
+import SupportWidget from './components/SupportWidget';
 import { FavoritesProvider } from './components/FavoritesProvider';
 import './globals.css';
 
@@ -20,6 +21,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <div className="site-content">{children}</div>
         </FavoritesProvider>
         <Footer />
+        <SupportWidget />
       </body>
     </html>
   );

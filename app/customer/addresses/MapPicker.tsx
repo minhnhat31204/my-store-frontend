@@ -6,6 +6,7 @@ type Props = { latitude: number | null; longitude: number | null; onPick: (latit
 type LeafletMap = {
   setView: (center: [number, number], zoom?: number) => LeafletMap;
   on: (event: string, handler: (event: { latlng: { lat: number; lng: number } }) => void) => LeafletMap;
+  invalidateSize: (options?: { pan?: boolean }) => LeafletMap;
   remove: () => void;
 };
 type LeafletMarker = {
@@ -15,8 +16,13 @@ type LeafletMarker = {
 };
 type LeafletApi = {
   map: (element: HTMLElement, options: { scrollWheelZoom: boolean }) => LeafletMap;
-  tileLayer: (url: string, options: { attribution: string; maxZoom: number }) => { addTo: (map: LeafletMap) => void };
+  tileLayer: (url: string, options: { attribution: string; maxZoom: number }) => LeafletTileLayer;
   marker: (position: [number, number], options: { draggable: boolean }) => LeafletMarker;
+};
+type LeafletTileLayer = {
+  addTo: (map: LeafletMap) => LeafletTileLayer;
+  on: (event: string, handler: () => void) => LeafletTileLayer;
+  remove: () => void;
 };
 
 declare global {
@@ -61,10 +67,30 @@ export default function MapPicker({ latitude, longitude, onPick }: Props) {
       const instance = L.map(element.current, { scrollWheelZoom: false }).setView(center, latitude !== null ? 16 : 5);
       map.current = instance;
       setMapReady(true);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors',
+      const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors';
+      let fallbackLayerUsed = false;
+      let primaryTileErrors = 0;
+      let fallbackTileErrors = 0;
+      const fallbackLayer = () => L.tileLayer("https://tile.openstreetmap.de/{z}/{x}/{y}.png", {
+        attribution,
+        maxZoom: 19,
+      }).addTo(instance).on("tileerror", () => {
+        fallbackTileErrors += 1;
+        if (fallbackTileErrors >= 3) setMapError("Lớp ảnh bản đồ không tải được. Bạn vẫn có thể ghim tọa độ trực tiếp.");
+      });
+      let activeTileLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution,
         maxZoom: 19,
       }).addTo(instance);
+      activeTileLayer.on("tileerror", () => {
+        primaryTileErrors += 1;
+        if (primaryTileErrors >= 2 && !fallbackLayerUsed) {
+          fallbackLayerUsed = true;
+          activeTileLayer.remove();
+          activeTileLayer = fallbackLayer();
+        }
+      });
+      window.setTimeout(() => instance.invalidateSize({ pan: false }), 180);
       const placeMarker = (lat: number, lng: number) => {
         const point: [number, number] = [lat, lng];
         if (marker.current) marker.current.setLatLng(point);

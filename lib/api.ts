@@ -1,5 +1,5 @@
 const API_URL = (
-  process.env.NEXT_PUBLIC_API_URL || "/api"
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"
 ).replace(/\/$/, "");
 
 export type Product = {
@@ -24,7 +24,7 @@ export type User = {
   FullName?: string;
   Username?: string | null;
   Bio?: string | null;
-  Email: string;
+  Email?: string | null;
   Phone?: string | null;
   RecoveryEmail?: string | null;
   RecoveryEmailVerified?: boolean;
@@ -163,6 +163,29 @@ export type OrderNotification = {
   CreatedAt: string;
 };
 
+export type SupportConversation = {
+  ConversationID: number;
+  UserID?: number | null;
+  VisitorKey?: string | null;
+  CustomerName: string;
+  CustomerEmail?: string | null;
+  Status: string;
+  CreatedAt: string;
+  LastMessageAt: string;
+  LastMessage?: string;
+  LastSenderRole?: string | null;
+};
+
+export type SupportMessage = {
+  MessageID: number;
+  ConversationID: number;
+  SenderUserID?: number | null;
+  SenderRole: 'Admin' | 'Customer' | 'AI';
+  SenderName: string;
+  Message: string;
+  CreatedAt: string;
+};
+
 async function request<T>(
   path: string,
   options: RequestInit = {}
@@ -205,6 +228,26 @@ async function request<T>(
 }
 
 export const api = {
+  openSupportConversation: (payload: { userId?: number; visitorKey?: string; name?: string; email?: string }) =>
+    request<{ conversation: SupportConversation }>('/support/conversations/open', { method: 'POST', body: JSON.stringify(payload) }),
+
+  getSupportConversations: () =>
+    request<SupportConversation[]>('/support/conversations?role=admin'),
+
+  getSupportMessages: (conversationId: number, identity: { role?: 'Admin'; userId?: number; visitorKey?: string } = {}) => {
+    const query = new URLSearchParams();
+    if (identity.role) query.set('role', identity.role);
+    if (identity.userId) query.set('userId', String(identity.userId));
+    if (identity.visitorKey) query.set('visitorKey', identity.visitorKey);
+    return request<{ conversation: SupportConversation; messages: SupportMessage[] }>(`/support/conversations/${conversationId}/messages?${query}`);
+  },
+
+  sendSupportMessage: (conversationId: number, payload: { message: string; role?: 'Admin'; userId?: number; visitorKey?: string; senderName?: string }) =>
+    request<{ message: SupportMessage }>(`/support/conversations/${conversationId}/messages`, { method: 'POST', body: JSON.stringify(payload) }),
+
+  requestSupportAiReply: (conversationId: number, identity: { userId?: number; visitorKey?: string }) =>
+    request<{ message: SupportMessage }>(`/support/conversations/${conversationId}/ai-reply`, { method: 'POST', body: JSON.stringify(identity) }),
+
   // =========================
   // PRODUCTS
   // =========================
@@ -546,8 +589,14 @@ export type OrderStatusHistory = {
 
 export function resolveApiAssetUrl(value?: string | null): string {
   if (!value) return '';
-  if (value.startsWith('http://') || value.startsWith('https://')) return value;
-  return value.startsWith('/') ? value : `/${value}`;
+  if (/^(https?:|data:|blob:)/i.test(value)) return value;
+  const assetPath = value.startsWith('/') ? value : `/${value}`;
+  try {
+    const apiOrigin = new URL(API_URL, typeof window === 'undefined' ? 'http://localhost' : window.location.origin).origin;
+    return new URL(assetPath, `${apiOrigin}/`).toString();
+  } catch {
+    return assetPath;
+  }
 }
 
 export function getPrimaryProductImage(value?: string | null): string {

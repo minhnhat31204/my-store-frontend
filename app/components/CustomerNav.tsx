@@ -494,7 +494,7 @@ export default function CustomerNav({
                   aria-haspopup="menu"
                   aria-expanded={accountMenuOpen}
                   aria-label={`Menu tài khoản${user.FullName ? ` của ${user.FullName}` : ""}`}
-                  title={user.FullName || user.Email}
+                  title={user.FullName || user.Email || user.Phone || ''}
                   onClick={() => setAccountMenuOpen((open) => !open)}
                   className="account-avatar-btn group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                 >
@@ -541,7 +541,7 @@ export default function CustomerNav({
                           </p>
                           {(() => {
                             const isInternalEmail = user.Email?.includes("@phone.manb.local") || user.Email?.includes("@phone.local");
-                            const contact = !isInternalEmail ? user.Email : (user.RecoveryEmail || (user.Phone ? `SĐT: ${user.Phone}` : ''));
+                            const contact = user.Email && !isInternalEmail ? user.Email : (user.RecoveryEmail || (user.Phone ? `SĐT: ${user.Phone}` : ''));
                             return contact ? (
                               <p className="truncate text-xs font-medium text-slate-500 mt-0.5">{contact}</p>
                             ) : null;

@@ -640,7 +640,7 @@ export default function AccountPage() {
               )}
               {(() => {
                 const isInternalEmail = user.Email?.includes('@phone.manb.local') || user.Email?.includes('@phone.local');
-                const contact = !isInternalEmail ? user.Email : (user.RecoveryEmail || (user.Phone ? `SĐT: ${user.Phone}` : ''));
+                const contact = user.Email && !isInternalEmail ? user.Email : (user.RecoveryEmail || (user.Phone ? `SĐT: ${user.Phone}` : ''));
                 return contact ? (
                   <p className="mt-0.5 text-xs text-slate-500 truncate">{contact}</p>
                 ) : null;

@@ -306,6 +306,15 @@ export default function AdminDashboard() {
               </Link>
 
               <Link
+                href="/admin/support"
+                className="p-4 rounded-2xl bg-slate-900 border border-slate-800 hover:border-cyan-500/50 hover:bg-slate-800/50 transition group"
+              >
+                <div className="text-2xl mb-2">💬</div>
+                <div className="font-bold text-sm text-white group-hover:text-cyan-400 transition">Hỗ trợ khách hàng</div>
+                <p className="text-[11px] text-slate-400 mt-0.5">Xem hội thoại và phản hồi tin nhắn của khách</p>
+              </Link>
+
+              <Link
                 href="/admin/users"
                 className="p-4 rounded-2xl bg-slate-900 border border-slate-800 hover:border-purple-500/50 hover:bg-slate-800/50 transition group"
               >
