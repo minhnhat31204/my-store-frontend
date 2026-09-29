@@ -35,7 +35,7 @@ export default function SupportWidget() {
 		return {
 			visitorKey: getVisitorKey(channel),
 			name: user?.FullName || user?.Username || 'Khách hàng',
-			email: user?.Email,
+			email: user?.Email || undefined,
 		};
   }, []);
 
