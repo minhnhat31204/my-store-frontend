@@ -92,6 +92,52 @@ function LogoutMenuIcon() {
   );
 }
 
+function MobileHomeIcon({ active }: { active: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth={active ? "1" : "2"} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+  );
+}
+
+function MobileCategoryIcon({ active }: { active: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth={active ? "1" : "2"} strokeLinecap="round" strokeLinejoin="round">
+      <rect width="7" height="7" x="3" y="3" rx="1.5"/>
+      <rect width="7" height="7" x="14" y="3" rx="1.5"/>
+      <rect width="7" height="7" x="14" y="14" rx="1.5"/>
+      <rect width="7" height="7" x="3" y="14" rx="1.5"/>
+    </svg>
+  );
+}
+
+function MobileHeartIcon({ active }: { active: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth={active ? "1" : "2"} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+    </svg>
+  );
+}
+
+function MobileBellIcon({ active }: { active: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth={active ? "1" : "2"} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+    </svg>
+  );
+}
+
+function MobileUserIcon({ active }: { active: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth={active ? "1" : "2"} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+      <circle cx="12" cy="7" r="4"/>
+    </svg>
+  );
+}
+
 type CustomerNavProps = {
   searchValue?: string;
   onSearchChange?: (value: string) => void;
@@ -661,43 +707,61 @@ export default function CustomerNav({
       </header>
 
       <nav className={`mobile-bottom-nav${navVisible ? "" : " nav-hidden"}`}>
-        <Link href="/" className="mobile-nav-item active">
-          <span>⌂</span>
+        <Link href="/" className={`mobile-nav-item ${pathname === "/" ? "active" : ""}`}>
+          <MobileHomeIcon active={pathname === "/"} />
           <small>Trang chủ</small>
         </Link>
 
-        <Link href="/customer/products" className="mobile-nav-item">
-          <span>▦</span>
-          <small>Danh mục</small>
+        <Link href="/customer/products" className={`mobile-nav-item ${pathname?.startsWith("/customer/products") ? "active" : ""}`}>
+          <MobileCategoryIcon active={Boolean(pathname?.startsWith("/customer/products"))} />
+          <small>Sản phẩm</small>
         </Link>
 
-        <Link href="/customer/cart" className="mobile-nav-item mobile-cart-item">
+        <Link href="/customer/cart" className={`mobile-nav-item mobile-cart-item ${pathname?.startsWith("/customer/cart") ? "active" : ""}`}>
           <span className="mobile-cart-icon">
             <CartIcon />
             {cartCount > 0 && (
               <b className={`mobile-cart-badge ${cartBump ? "cart-badge-bump" : ""}`}>
-                {cartCount}
+                {cartCount > 99 ? "99+" : cartCount}
               </b>
             )}
           </span>
           <small>Giỏ hàng</small>
         </Link>
 
-        <Link href="/customer/favorites" className="mobile-nav-item">
-          <span>♡</span>
+        <Link href="/customer/favorites" className={`mobile-nav-item ${pathname?.startsWith("/customer/favorites") ? "active" : ""}`}>
+          <MobileHeartIcon active={Boolean(pathname?.startsWith("/customer/favorites"))} />
           <small>Yêu thích</small>
         </Link>
 
-        <Link href="/customer/notifications" className="mobile-nav-item">
-          <span>♧</span>
-          <small>Thông báo{unreadNotifications > 0 ? ` (${unreadNotifications > 99 ? "99+" : unreadNotifications})` : ""}</small>
+        <Link href="/customer/notifications" className={`mobile-nav-item ${pathname?.startsWith("/customer/notifications") ? "active" : ""}`}>
+          <span className="mobile-nav-icon-wrap">
+            <MobileBellIcon active={Boolean(pathname?.startsWith("/customer/notifications"))} />
+            {unreadNotifications > 0 && (
+              <b className="mobile-cart-badge">
+                {unreadNotifications > 99 ? "99+" : unreadNotifications}
+              </b>
+            )}
+          </span>
+          <small>Thông báo</small>
         </Link>
 
-        {authLoaded && !user && (
-          <Link href="/login" className="mobile-nav-item">
-            <span>◉</span>
-            <small>Đăng nhập</small>
-          </Link>
+        {authLoaded && (
+          user ? (
+            <Link href="/customer/account" className={`mobile-nav-item ${pathname?.startsWith("/customer/account") ? "active" : ""}`}>
+              {user.Avatar ? (
+                <img src={resolveApiAssetUrl(user.Avatar)} alt="" className="w-5 h-5 rounded-full object-cover border border-blue-400" />
+              ) : (
+                <MobileUserIcon active={Boolean(pathname?.startsWith("/customer/account"))} />
+              )}
+              <small>Tài khoản</small>
+            </Link>
+          ) : (
+            <Link href="/login" className={`mobile-nav-item ${pathname === "/login" ? "active" : ""}`}>
+              <MobileUserIcon active={pathname === "/login"} />
+              <small>Đăng nhập</small>
+            </Link>
+          )
         )}
       </nav>
     </>
