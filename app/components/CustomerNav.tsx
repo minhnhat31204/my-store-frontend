@@ -717,23 +717,6 @@ export default function CustomerNav({
           <small>Sản phẩm</small>
         </Link>
 
-        <Link href="/customer/cart" className={`mobile-nav-item mobile-cart-item ${pathname?.startsWith("/customer/cart") ? "active" : ""}`}>
-          <span className="mobile-cart-icon">
-            <CartIcon />
-            {cartCount > 0 && (
-              <b className={`mobile-cart-badge ${cartBump ? "cart-badge-bump" : ""}`}>
-                {cartCount > 99 ? "99+" : cartCount}
-              </b>
-            )}
-          </span>
-          <small>Giỏ hàng</small>
-        </Link>
-
-        <Link href="/customer/favorites" className={`mobile-nav-item ${pathname?.startsWith("/customer/favorites") ? "active" : ""}`}>
-          <MobileHeartIcon active={Boolean(pathname?.startsWith("/customer/favorites"))} />
-          <small>Yêu thích</small>
-        </Link>
-
         <Link href="/customer/notifications" className={`mobile-nav-item ${pathname?.startsWith("/customer/notifications") ? "active" : ""}`}>
           <span className="mobile-nav-icon-wrap">
             <MobileBellIcon active={Boolean(pathname?.startsWith("/customer/notifications"))} />
