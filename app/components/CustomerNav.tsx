@@ -706,7 +706,7 @@ export default function CustomerNav({
         </div>
       </header>
 
-      <nav className={`mobile-bottom-nav${navVisible ? "" : " nav-hidden"}`}>
+      <nav className="mobile-bottom-nav">
         <Link href="/" className={`mobile-nav-item ${pathname === "/" ? "active" : ""}`}>
           <MobileHomeIcon active={pathname === "/"} />
           <small>Trang chủ</small>
