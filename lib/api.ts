@@ -259,6 +259,52 @@ export const api = {
 
   getVouchers: () => request<Voucher[]>("/vouchers"),
 
+  getVoucherById: (id: number) => request<Voucher>(`/vouchers/${id}`),
+
+  getVoucherByCode: (code: string) => request<Voucher>(`/vouchers/code/${encodeURIComponent(code)}`),
+
+  validateVoucher: (code: string, subtotal?: number) =>
+    request<{ valid: boolean; message: string; voucher?: Voucher; discountAmount?: number }>("/vouchers/validate", {
+      method: "POST",
+      body: JSON.stringify({ code, subtotal }),
+    }),
+
+  createVoucher: (payload: {
+    Code: string;
+    Name: string;
+    ImageUrl?: string | null;
+    DiscountPercentage: number | string;
+    MaxDiscountAmount?: number | string | null;
+    ExpiryDate?: string | null;
+    IsActive?: boolean;
+  }) =>
+    request<Voucher>("/vouchers", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  updateVoucher: (
+    id: number,
+    payload: Partial<{
+      Code: string;
+      Name: string;
+      ImageUrl?: string | null;
+      DiscountPercentage: number | string;
+      MaxDiscountAmount?: number | string | null;
+      ExpiryDate?: string | null;
+      IsActive?: boolean;
+    }>
+  ) =>
+    request<{ message: string; voucher?: Voucher }>(`/vouchers/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  deleteVoucher: (id: number) =>
+    request<{ message: string }>(`/vouchers/${id}`, {
+      method: "DELETE",
+    }),
+
   getProductVariants: () =>
     request<ProductVariant[]>("/product-variants"),
 
