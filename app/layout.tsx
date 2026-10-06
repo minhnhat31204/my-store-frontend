@@ -5,6 +5,7 @@ import CustomerNav from './components/CustomerNav';
 import Footer from './components/Footer';
 import SupportWidget from './components/SupportWidget';
 import { FavoritesProvider } from './components/FavoritesProvider';
+import PageTransitionProvider from './components/PageTransitionProvider';
 import './globals.css';
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
@@ -18,7 +19,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="min-h-full flex flex-col">
         <CustomerNav />
         <FavoritesProvider>
-          <div className="site-content">{children}</div>
+          <PageTransitionProvider>
+            {children}
+          </PageTransitionProvider>
         </FavoritesProvider>
         <Footer />
         <SupportWidget />
