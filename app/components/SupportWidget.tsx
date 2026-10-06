@@ -31,12 +31,24 @@ export default function SupportWidget() {
 
 	const identity = useCallback((channel: 'ai' | 'staff') => {
     const user = getStoredUser();
-		// Separate visitor identities force the API to keep AI and human-support threads apart.
 		return {
+      userId: user?.UserID ? Number(user.UserID) : undefined,
 			visitorKey: getVisitorKey(channel),
 			name: user?.FullName || user?.Username || 'Khách hàng',
 			email: user?.Email || undefined,
 		};
+  }, []);
+
+  useEffect(() => {
+    const handleUserChange = () => {
+      setConversationIds({ ai: null, staff: null });
+    };
+    window.addEventListener('user-updated', handleUserChange);
+    window.addEventListener('storage', handleUserChange);
+    return () => {
+      window.removeEventListener('user-updated', handleUserChange);
+      window.removeEventListener('storage', handleUserChange);
+    };
   }, []);
 
 	const refreshMessages = useCallback(async (id: number, channel: 'ai' | 'staff') => {
