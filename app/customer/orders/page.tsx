@@ -21,10 +21,10 @@ function orderBucket(order: StoreOrder): Exclude<OrderBucket, "all"> {
   if (["cancelled", "canceled"].includes(value)) return "cancelled";
   const paymentStatus = order.Payments?.[0]?.Status?.toUpperCase();
   if (order.PaymentMethod === "PayOS" && paymentStatus !== "PAID") return "payment";
+  if (order.PaymentMethod === "COD" && value === "pending") return "payment";
 
   if (["shipping", "shipped", "delivering", "on delivery"].includes(value)) return "shipping";
   if (["completed", "delivered"].includes(value)) return "delivered";
-  if (["cancelled", "canceled"].includes(value)) return "cancelled";
   if (["confirmed", "processing", "preparing", "ready"].includes(value)) return "processing";
   return "pending";
 }
@@ -40,6 +40,7 @@ function statusLabel(status?: string | null) {
 }
 
 function paymentLabel(order: StoreOrder) {
+  if (order.PaymentMethod === "COD") return "Chờ thanh toán (COD)";
   const status = order.Payments?.[0]?.Status?.toUpperCase();
   if (status === "FAILED") return "Thanh toán lỗi · cần thử lại";
   return "Chờ thanh toán";

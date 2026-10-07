@@ -28,6 +28,16 @@ export default function OrderDetailPage() {
   const [paymentError, setPaymentError] = useState("");
   const [cancelBusy, setCancelBusy] = useState(false);
   const [cancelError, setCancelError] = useState("");
+  const [isCodSuccess, setIsCodSuccess] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("method") === "cod" && (params.get("status") === "success" || params.get("status") === "created")) {
+        setIsCodSuccess(true);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const user = getStoredUser();
@@ -116,13 +126,33 @@ export default function OrderDetailPage() {
 
         {!loading && order && (
           <>
+            {isCodSuccess && (
+              <div className="mt-4 rounded-2xl bg-emerald-50 border border-emerald-200 p-4 text-emerald-900 flex items-start gap-3 shadow-xs">
+                <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
+                  ✓
+                </div>
+                <div>
+                  <p className="font-bold text-base">Đặt hàng thành công!</p>
+                  <p className="text-xs text-emerald-800 mt-0.5 leading-relaxed">
+                    Đơn hàng của bạn đã được ghi nhận với phương thức <strong>Thanh toán khi nhận hàng (COD)</strong>. Đơn hàng hiện đang ở trạng thái <strong>Chờ thanh toán</strong> khi nhận hàng.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="mt-5 flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-bold uppercase tracking-wide text-blue-700">Thông tin đơn hàng</p>
                 <h1 className="mt-1 text-3xl font-black">Đơn hàng #{order.OrderID}</h1>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-blue-100 px-4 py-2 text-sm font-bold text-blue-800">{order.PaymentMethod === "PayOS" && order.Payments?.[0]?.Status !== "PAID" && !["cancelled", "canceled"].includes((order.Status || "").toLowerCase()) ? "Chờ thanh toán" : statusLabel(order.Status)}</span>
+                <span className="rounded-full bg-blue-100 px-4 py-2 text-sm font-bold text-blue-800">
+                  {order.PaymentMethod === "COD" && !["cancelled", "canceled", "delivered", "completed"].includes((order.Status || "").toLowerCase())
+                    ? "Chờ thanh toán (COD)"
+                    : order.PaymentMethod === "PayOS" && order.Payments?.[0]?.Status !== "PAID" && !["cancelled", "canceled"].includes((order.Status || "").toLowerCase())
+                    ? "Chờ thanh toán"
+                    : statusLabel(order.Status)}
+                </span>
                 {order.Status?.toLowerCase() === "pending" && <button type="button" onClick={cancelOrder} disabled={cancelBusy} className="rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-bold text-red-700 hover:bg-red-50 disabled:opacity-60">{cancelBusy ? "Đang hủy..." : "Hủy đơn hàng"}</button>}
               </div>
             </div>
@@ -143,7 +173,20 @@ export default function OrderDetailPage() {
                 <h2 className="font-black">Thanh toán</h2>
                 <dl className="mt-4 space-y-3 text-sm">
                   <div className="flex justify-between gap-4"><dt className="text-slate-500">Ngày đặt</dt><dd className="text-right font-semibold">{order.OrderDate && !Number.isNaN(Date.parse(order.OrderDate)) ? new Date(order.OrderDate).toLocaleString("vi-VN") : "Chưa cập nhật"}</dd></div>
-                  <div className="flex justify-between gap-4"><dt className="text-slate-500">Phương thức</dt><dd className="text-right font-semibold">{order.PaymentMethod || "Chưa cập nhật"}</dd></div>
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-slate-500">Phương thức</dt>
+                    <dd className="text-right font-semibold">
+                      {order.PaymentMethod === "COD" ? "Thanh toán khi nhận hàng (COD)" : order.PaymentMethod === "PayOS" ? "PayOS · Chuyển khoản QR" : order.PaymentMethod || "Chưa cập nhật"}
+                    </dd>
+                  </div>
+                  {order.PaymentMethod === "COD" && (
+                    <div className="flex justify-between gap-4">
+                      <dt className="text-slate-500">Thanh toán</dt>
+                      <dd className={`text-right font-bold ${["delivered", "completed"].includes((order.Status || "").toLowerCase()) ? "text-emerald-700" : "text-amber-700"}`}>
+                        {["delivered", "completed"].includes((order.Status || "").toLowerCase()) ? "Đã thanh toán khi nhận hàng" : "Chờ thanh toán khi nhận hàng"}
+                      </dd>
+                    </div>
+                  )}
                   {order.PaymentMethod === "PayOS" && <div className="flex justify-between gap-4"><dt className="text-slate-500">Thanh toán</dt><dd className={`text-right font-bold ${order.Payments?.[0]?.Status === "PAID" ? "text-emerald-700" : ["FAILED", "EXPIRED", "CANCELLED"].includes(order.Payments?.[0]?.Status?.toUpperCase() || "") ? "text-red-700" : "text-amber-700"}`}>{order.Payments?.[0]?.Status === "PAID" ? "Đã thanh toán" : ["FAILED", "EXPIRED", "CANCELLED"].includes(order.Payments?.[0]?.Status?.toUpperCase() || "") ? "Thanh toán chưa hoàn tất" : "Đang chờ thanh toán"}</dd></div>}
                   <div className="flex justify-between gap-4"><dt className="text-slate-500">Tạm tính</dt><dd className="text-right font-semibold">{currency(itemSubtotal)}</dd></div>
                   <div className="flex justify-between gap-4"><dt className="text-slate-500">Phí giao hàng</dt><dd className="text-right font-semibold">{currency(shipping)}</dd></div>
@@ -152,6 +195,24 @@ export default function OrderDetailPage() {
                 </dl>
               </div>
             </section>
+
+            {order.PaymentMethod === "COD" && !["cancelled", "canceled"].includes((order.Status || "").toLowerCase()) && (
+              <section className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-5">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-xl bg-emerald-600 text-white shrink-0">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-bold text-emerald-950">Đơn hàng thanh toán khi nhận hàng (COD)</p>
+                    <p className="mt-1 text-sm text-emerald-900 leading-relaxed">
+                      Đơn hàng đang ở trạng thái <strong>Chờ thanh toán</strong>. Cửa hàng sẽ xác nhận và tiến hành giao hàng. Quý khách vui lòng chuẩn bị số tiền <strong>{currency(order.TotalAmount)}</strong> để thanh toán tiền mặt cho nhân viên giao hàng khi nhận sản phẩm.
+                    </p>
+                  </div>
+                </div>
+              </section>
+            )}
 
             {order.PaymentMethod === "PayOS" && order.Payments?.[0]?.Status !== "PAID" && !["cancelled", "canceled"].includes((order.Status || "").toLowerCase()) && (
               <section className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5">

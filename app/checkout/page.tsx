@@ -41,6 +41,7 @@ export default function CheckoutPage() {
   const [couponInput, setCouponInput] = useState('');
   const [applyingCoupon, setApplyingCoupon] = useState(false);
   const [voucherFeedback, setVoucherFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'PayOS' | 'COD'>('PayOS');
 
   useEffect(() => {
     const user = getStoredUser();
@@ -174,7 +175,7 @@ export default function CheckoutPage() {
         ShippingAddress: shippingAddress,
         Note: note,
         TotalAmount: totalAmount,
-        PaymentMethod: 'PayOS',
+        PaymentMethod: paymentMethod,
         Status: 'Pending',
         DiscountAmount: discountAmount,
         VoucherCode: discountAmount > 0 ? voucher?.Code : undefined,
@@ -188,8 +189,14 @@ export default function CheckoutPage() {
       createdOrderId = result.order.OrderID;
       saveSelectedVoucher(user.UserID, null);
       window.dispatchEvent(new Event('cart-updated'));
-      const payment = await api.createPayOSPayment(result.order.OrderID, user.UserID);
-      window.location.assign(payment.checkoutUrl);
+
+      if (paymentMethod === 'PayOS') {
+        const payment = await api.createPayOSPayment(result.order.OrderID, user.UserID);
+        window.location.assign(payment.checkoutUrl);
+      } else {
+        // Phương thức COD: không chuyển sang cổng PayOS, chuyển sang trang chi tiết đơn hàng
+        router.push(`/customer/orders/${result.order.OrderID}?status=success&method=cod`);
+      }
     } catch (err) {
       if (createdOrderId) {
         router.push(`/customer/orders/${createdOrderId}?payment=retry`);
@@ -259,12 +266,65 @@ export default function CheckoutPage() {
             </div>
 
             <fieldset className="space-y-3">
-              <legend className="mb-2 text-sm font-semibold">Phương thức thanh toán</legend>
-              <div className="flex items-center gap-3 rounded-xl border border-blue-600 bg-blue-50 p-3 text-sm">
-                <span aria-hidden="true" className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-700 text-xs font-bold text-white">✓</span>
-                <span className="font-semibold">PayOS · Chuyển khoản QR / ngân hàng</span>
+              <legend className="mb-2 text-sm font-semibold text-slate-800">Phương thức thanh toán</legend>
+
+              {/* Tùy chọn 1: PayOS */}
+              <div
+                onClick={() => setPaymentMethod('PayOS')}
+                className={`flex items-start gap-3 rounded-2xl border p-4 cursor-pointer transition ${
+                  paymentMethod === 'PayOS'
+                    ? 'border-blue-600 bg-blue-50/70 shadow-xs ring-1 ring-blue-500'
+                    : 'border-slate-200 bg-white hover:border-slate-300'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  id="payos"
+                  value="PayOS"
+                  checked={paymentMethod === 'PayOS'}
+                  onChange={() => setPaymentMethod('PayOS')}
+                  className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500"
+                />
+                <label htmlFor="payos" className="flex-1 cursor-pointer">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-slate-900">PayOS · Chuyển khoản QR / ngân hàng</span>
+                    <span className="rounded-md bg-blue-100 px-2 py-0.5 text-[10px] font-black text-blue-800">Tự động</span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500 leading-relaxed">
+                    Quét mã QR qua app ngân hàng để thanh toán và xác nhận đơn tự động.
+                  </p>
+                </label>
               </div>
-              <p className="text-xs leading-5 text-slate-500">Sau khi xác nhận đơn, bạn sẽ được chuyển đến trang thanh toán PayOS bảo mật.</p>
+
+              {/* Tùy chọn 2: COD */}
+              <div
+                onClick={() => setPaymentMethod('COD')}
+                className={`flex items-start gap-3 rounded-2xl border p-4 cursor-pointer transition ${
+                  paymentMethod === 'COD'
+                    ? 'border-emerald-600 bg-emerald-50/70 shadow-xs ring-1 ring-emerald-500'
+                    : 'border-slate-200 bg-white hover:border-slate-300'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  id="cod"
+                  value="COD"
+                  checked={paymentMethod === 'COD'}
+                  onChange={() => setPaymentMethod('COD')}
+                  className="mt-1 h-4 w-4 text-emerald-600 focus:ring-emerald-500"
+                />
+                <label htmlFor="cod" className="flex-1 cursor-pointer">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-slate-900">Thanh toán khi nhận hàng (COD)</span>
+                    <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-800">Tiền mặt</span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500 leading-relaxed">
+                    Đơn hàng sẽ chuyển sang trạng thái <strong>Chờ thanh toán</strong>. Bạn sẽ thanh toán tiền mặt cho shipper khi nhận hàng.
+                  </p>
+                </label>
+              </div>
             </fieldset>
 
             <div>
@@ -281,9 +341,19 @@ export default function CheckoutPage() {
             <button
               type="submit"
               disabled={loading || cartLoading || addressLoading || cartItems.length === 0}
-              className="w-full rounded-xl bg-blue-600 py-3 font-bold text-white transition hover:bg-blue-700 disabled:bg-blue-300"
+              className={`w-full rounded-xl py-3.5 font-bold text-white transition disabled:opacity-50 ${
+                paymentMethod === 'PayOS'
+                  ? 'bg-blue-600 hover:bg-blue-700'
+                  : 'bg-emerald-600 hover:bg-emerald-700'
+              }`}
             >
-              {loading ? 'Đang chuyển đến PayOS...' : 'Đặt hàng và thanh toán'}
+              {loading
+                ? paymentMethod === 'PayOS'
+                  ? 'Đang chuyển đến PayOS...'
+                  : 'Đang xử lý đặt hàng...'
+                : paymentMethod === 'PayOS'
+                ? 'Đặt hàng và thanh toán qua PayOS'
+                : 'Đặt hàng (Thanh toán khi nhận hàng)'}
             </button>
 
             <div className="text-center mt-4">
