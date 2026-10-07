@@ -178,6 +178,7 @@ export default function LoginPage() {
               <label htmlFor="reset-contact" className="mb-1 block text-sm font-semibold">{channel === 'phone' ? 'Số điện thoại tài khoản' : 'Email khôi phục'}</label>
               <input id="reset-contact" type={channel === 'phone' ? 'tel' : 'email'} inputMode={channel === 'phone' ? 'tel' : 'email'} required value={contact} onChange={(e) => setContact(e.target.value)} placeholder={channel === 'phone' ? '0901234567' : 'email@example.com'} className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500" />
             </div>
+            <button type="submit" disabled={loading || !contact.trim()} className="w-full rounded-xl bg-blue-600 py-3 font-bold text-white hover:bg-blue-700 disabled:opacity-50">{loading ? 'Đang gửi…' : 'Gửi'}</button>
             <button
               type="button"
               onClick={() => { setStep('login'); resetNotice(); }}
