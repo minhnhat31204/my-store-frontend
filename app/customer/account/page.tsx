@@ -50,6 +50,38 @@ function LockIcon({ className = "w-5 h-5" }: { className?: string }) {
   );
 }
 
+function TrashIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 6h18" />
+      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+      <line x1="10" y1="11" x2="10" y2="17" />
+      <line x1="14" y1="11" x2="14" y2="17" />
+    </svg>
+  );
+}
+
+function EyeIcon({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function EyeOffIcon({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+      <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+      <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+      <line x1="2" y1="2" x2="22" y2="22" />
+    </svg>
+  );
+}
+
 function ZoomInIcon() {
   return (
     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -313,7 +345,7 @@ function AvatarCropperModal({ imageSrc, onCropComplete, onCancel }: AvatarCroppe
 }
 
 // --- MAIN ACCOUNT PAGE ---
-type ActiveTab = 'profile' | 'phone' | 'email' | 'password';
+type ActiveTab = 'profile' | 'phone' | 'email' | 'password' | 'delete';
 
 export default function AccountPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -345,6 +377,7 @@ export default function AccountPage() {
   const [recoveryEmail, setRecoveryEmail] = useState('');
   const [emailOtp, setEmailOtp] = useState('');
   const [emailPassword, setEmailPassword] = useState('');
+  const [showEmailPassword, setShowEmailPassword] = useState(false);
   const [emailOtpSent, setEmailOtpSent] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailMessage, setEmailMessage] = useState('');
@@ -352,11 +385,19 @@ export default function AccountPage() {
 
   // Password Change States
   const [currentPassword, setCurrentPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [newPassword, setNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState('');
   const [passwordError, setPasswordError] = useState('');
+
+  // Delete Account States
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   // Load User Data
   useEffect(() => {
@@ -524,9 +565,39 @@ export default function AccountPage() {
     }
   };
 
+  const handleDeleteAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    const confirmInput = deleteConfirmText.trim();
+    const phoneMatches = user.Phone && confirmInput === user.Phone.trim();
+    if (confirmInput.toUpperCase() !== 'XÓA TÀI KHOẢN' && !phoneMatches) {
+      setDeleteError('Vui lòng nhập đúng chữ "XÓA TÀI KHOẢN" hoặc số điện thoại của bạn để xác nhận.');
+      return;
+    }
+    if (!window.confirm('CẢNH BÁO NGUY HIỂM: Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản này khỏi hệ thống?')) {
+      return;
+    }
+    setDeleteLoading(true);
+    setDeleteError('');
+    try {
+      await api.deleteUser(user.UserID);
+      localStorage.removeItem('user');
+      localStorage.removeItem('sessionToken');
+      localStorage.removeItem('remembered_phone');
+      sessionStorage.removeItem('user');
+      setUser(null);
+      window.dispatchEvent(new Event('user-updated'));
+      window.location.href = '/login?deleted=1';
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Không thể xóa tài khoản.');
+      setDeleteLoading(false);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('user');
     localStorage.removeItem('sessionToken');
+    sessionStorage.removeItem('user');
     setUser(null);
     window.dispatchEvent(new Event('user-updated'));
     window.location.href = '/login';
@@ -716,6 +787,19 @@ export default function AccountPage() {
                 >
                   <LockIcon className="w-5 h-5" />
                   <span>Đổi mật khẩu</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('delete')}
+                  className={`flex items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-bold transition ${
+                    activeTab === 'delete'
+                      ? 'bg-red-600 text-white shadow-md'
+                      : 'text-red-600 hover:bg-red-50'
+                  }`}
+                >
+                  <TrashIcon className="w-5 h-5" />
+                  <span>Xóa tài khoản</span>
                 </button>
               </nav>
 
@@ -1002,15 +1086,25 @@ export default function AccountPage() {
                             <label htmlFor="rec-pw" className="block text-xs font-bold text-slate-700">
                               Mật khẩu hiện tại để xác thực
                             </label>
-                            <input
-                              id="rec-pw"
-                              type="password"
-                              required
-                              value={emailPassword}
-                              onChange={(e) => setEmailPassword(e.target.value)}
-                              placeholder="Nhập mật khẩu tài khoản"
-                              className="mt-1.5 w-full sm:w-96 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
-                            />
+                            <div className="relative mt-1.5 w-full sm:w-96">
+                              <input
+                                id="rec-pw"
+                                type={showEmailPassword ? 'text' : 'password'}
+                                required
+                                value={emailPassword}
+                                onChange={(e) => setEmailPassword(e.target.value)}
+                                placeholder="Nhập mật khẩu tài khoản"
+                                className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 pr-11 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowEmailPassword(!showEmailPassword)}
+                                aria-label={showEmailPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                                className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 focus:outline-none"
+                              >
+                                {showEmailPassword ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+                              </button>
+                            </div>
                           </div>
                         )}
 
@@ -1071,46 +1165,76 @@ export default function AccountPage() {
                       <label htmlFor="current-pw" className="block text-xs font-bold text-slate-700">
                         Mật khẩu hiện tại <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        id="current-pw"
-                        type="password"
-                        required
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="mt-1.5 w-full sm:w-96 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
-                      />
+                      <div className="relative mt-1.5 w-full sm:w-96">
+                        <input
+                          id="current-pw"
+                          type={showCurrentPassword ? 'text' : 'password'}
+                          required
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 pr-11 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                          aria-label={showCurrentPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                          className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 focus:outline-none"
+                        >
+                          {showCurrentPassword ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+                        </button>
+                      </div>
                     </div>
 
                     <div>
                       <label htmlFor="new-pw" className="block text-xs font-bold text-slate-700">
                         Mật khẩu mới (tối thiểu 6 ký tự) <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        id="new-pw"
-                        type="password"
-                        required
-                        minLength={6}
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="mt-1.5 w-full sm:w-96 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
-                      />
+                      <div className="relative mt-1.5 w-full sm:w-96">
+                        <input
+                          id="new-pw"
+                          type={showNewPassword ? 'text' : 'password'}
+                          required
+                          minLength={6}
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 pr-11 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          aria-label={showNewPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                          className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 focus:outline-none"
+                        >
+                          {showNewPassword ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+                        </button>
+                      </div>
                     </div>
 
                     <div>
                       <label htmlFor="confirm-pw" className="block text-xs font-bold text-slate-700">
                         Xác nhận lại mật khẩu mới <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        id="confirm-pw"
-                        type="password"
-                        required
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="mt-1.5 w-full sm:w-96 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
-                      />
+                      <div className="relative mt-1.5 w-full sm:w-96">
+                        <input
+                          id="confirm-pw"
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          required
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 pr-11 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          aria-label={showConfirmPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                          className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 focus:outline-none"
+                        >
+                          {showConfirmPassword ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+                        </button>
+                      </div>
                     </div>
 
                     {passwordError && (
@@ -1130,6 +1254,63 @@ export default function AccountPage() {
                       className="rounded-xl bg-blue-600 px-6 py-3 text-xs font-black text-white shadow-md transition hover:bg-blue-700 active:scale-95 disabled:opacity-50"
                     >
                       {passwordLoading ? 'Đang cập nhật…' : 'Cập nhật mật khẩu'}
+                    </button>
+                  </form>
+                </section>
+              )}
+
+              {/* TAB 5: XÓA TÀI KHOẢN */}
+              {activeTab === 'delete' && (
+                <section>
+                  <div className="border-b border-red-100 pb-4">
+                    <h3 className="text-xl font-black text-red-600 flex items-center gap-2">
+                      <TrashIcon className="w-6 h-6" />
+                      <span>Xóa tài khoản vĩnh viễn</span>
+                    </h3>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Vùng nguy hiểm: Yêu cầu xóa vĩnh viễn tài khoản của bạn khỏi hệ thống
+                    </p>
+                  </div>
+
+                  <div className="mt-6 rounded-2xl border border-red-200 bg-red-50/50 p-5 space-y-3">
+                    <h4 className="text-sm font-bold text-red-900 flex items-center gap-2">
+                      <span>⚠️ Lưu ý quan trọng trước khi xóa tài khoản:</span>
+                    </h4>
+                    <ul className="text-xs text-red-800 space-y-1.5 list-disc list-inside">
+                      <li>Tất cả thông tin tài khoản, giỏ hàng, thông báo và sổ địa chỉ sẽ bị xóa vĩnh viễn.</li>
+                      <li>Bạn sẽ không thể đăng nhập hoặc khôi phục lại tài khoản sau khi đã xóa.</li>
+                      <li>Nếu bạn chỉ muốn đăng xuất, vui lòng chọn <strong>Đăng xuất tài khoản</strong> ở menu bên trái.</li>
+                    </ul>
+                  </div>
+
+                  <form onSubmit={handleDeleteAccount} className="mt-6 space-y-5">
+                    <div>
+                      <label htmlFor="delete-confirm" className="block text-xs font-bold text-slate-700">
+                        Để xác nhận, vui lòng nhập chữ <strong className="text-red-600 font-black">XÓA TÀI KHOẢN</strong> hoặc số điện thoại của bạn:
+                      </label>
+                      <input
+                        id="delete-confirm"
+                        type="text"
+                        required
+                        value={deleteConfirmText}
+                        onChange={(e) => setDeleteConfirmText(e.target.value)}
+                        placeholder="Nhập XÓA TÀI KHOẢN để xác nhận"
+                        className="mt-1.5 w-full sm:w-96 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-800 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                      />
+                    </div>
+
+                    {deleteError && (
+                      <p role="alert" className="rounded-xl bg-red-50 p-3 text-xs font-bold text-red-700">
+                        {deleteError}
+                      </p>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={deleteLoading || !deleteConfirmText.trim()}
+                      className="rounded-xl bg-red-600 px-6 py-3 text-xs font-black text-white shadow-md transition hover:bg-red-700 active:scale-95 disabled:opacity-50"
+                    >
+                      {deleteLoading ? 'Đang xóa tài khoản…' : 'Xác nhận xóa tài khoản vĩnh viễn'}
                     </button>
                   </form>
                 </section>

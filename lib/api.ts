@@ -221,7 +221,11 @@ async function request<T>(
           ? String((data as { message: unknown }).message)
           : `API error: ${response.status}`;
 
-    throw new Error(message);
+    const err = new Error(message);
+    if (typeof data === "object" && data !== null) {
+      Object.assign(err, data);
+    }
+    throw err;
   }
 
   return data as T;
@@ -660,6 +664,8 @@ export function getStoredUser(): User | null {
   }
 
   try {
+    const session = sessionStorage.getItem("user");
+    if (session) return JSON.parse(session);
     return JSON.parse(
       localStorage.getItem("user") || "null"
     );

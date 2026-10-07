@@ -420,6 +420,7 @@ export default function CustomerNav({
   const handleLogout = () => {
     localStorage.removeItem("user");
     localStorage.removeItem("sessionToken");
+    sessionStorage.removeItem("user");
     setUser(null);
     setAccountMenuOpen(false);
     window.dispatchEvent(new Event("user-updated"));
