@@ -80,7 +80,7 @@ export default function RegisterPage() {
               <input id="register-password" type="password" autoComplete="new-password" minLength={8} required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Ít nhất 8 ký tự" className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500" />
             </div>
             <div>
-              <label htmlFor="register-confirm-password" className="mb-1 block text-sm font-semibold">Nhập lại mật khẩu coi</label>
+              <label htmlFor="register-confirm-password" className="mb-1 block text-sm font-semibold">Nhập lại mật khẩu</label>
               <input id="register-confirm-password" type="password" autoComplete="new-password" minLength={8} required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Nhập lại mật khẩu" className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500" />
             </div>
 
