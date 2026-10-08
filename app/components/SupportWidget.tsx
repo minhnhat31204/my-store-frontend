@@ -102,16 +102,15 @@ export default function SupportWidget() {
     return () => window.clearInterval(timer);
 	}, [chatOpen, conversationIds, aiMode, refreshMessages]);
 
-  async function send(event: FormEvent) {
-    event.preventDefault();
-    const message = draft.trim();
-		const channel = aiMode ? 'ai' : 'staff';
-		const conversationId = conversationIds[channel];
-		if (!message || !conversationId || loading) return;
+  const sendText = async (textToSend: string) => {
+    const message = textToSend.trim();
+    const channel = aiMode ? 'ai' : 'staff';
+    const conversationId = conversationIds[channel];
+    if (!message || !conversationId || loading) return;
     setLoading(true);
     setError('');
     try {
-		const owner = identity(channel);
+      const owner = identity(channel);
       const result = await api.sendSupportMessage(conversationId, { ...owner, message });
       setMessages((current) => current.some((item) => item.MessageID === result.message.MessageID) ? current : [...current, result.message]);
       setDraft('');
@@ -128,31 +127,90 @@ export default function SupportWidget() {
     } finally {
       setLoading(false);
     }
+  };
+
+  async function send(event: FormEvent) {
+    event.preventDefault();
+    await sendText(draft);
   }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      void sendText(draft);
+    }
+  };
 
   if (pathname?.startsWith('/admin')) return null;
 
   return (
     <div className="fixed bottom-[calc(68px+env(safe-area-inset-bottom))] right-3.5 z-40 md:bottom-6 md:right-6 md:z-[60] flex flex-col items-end gap-2.5">
       {chatOpen && (
-        <section aria-label="Nhắn tin chăm sóc khách hàng" className="flex h-[min(580px,70vh)] w-[min(380px,calc(100vw-1.75rem))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <section aria-label="Nhắn tin chăm sóc khách hàng" className="flex h-[min(580px,70vh)] w-[min(390px,calc(100vw-1.75rem))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
           <header className="flex items-center justify-between bg-gradient-to-r from-blue-700 to-indigo-700 px-4 py-3 text-white shadow-sm">
-            <div><h2 className="font-bold text-sm md:text-base">{aiMode ? 'Trợ lý AI MANB' : 'Chăm sóc khách hàng'}</h2><p className="text-[11px] text-blue-100">{aiMode ? 'Tư vấn theo sản phẩm và tồn kho hiện tại' : 'Nhân viên sẽ phản hồi trong hội thoại này'}</p></div>
-            <button onClick={() => setChatOpen(false)} aria-label="Đóng cửa sổ chat" className="rounded-lg p-1.5 text-xl leading-none hover:bg-white/15">×</button>
+            <div><h2 className="font-bold text-sm md:text-base">{aiMode ? 'Trợ lý AI MANB' : 'Chăm sóc khách hàng'}</h2><p className="text-[11px] text-blue-100">{aiMode ? 'Tư vấn thông minh theo sản phẩm và tồn kho' : 'Nhân viên sẽ phản hồi trong hội thoại này'}</p></div>
+            <button onClick={() => setChatOpen(false)} aria-label="Đóng cửa sổ chat" className="rounded-lg p-1.5 text-xl leading-none hover:bg-white/15 cursor-pointer">×</button>
           </header>
-			<div ref={messagesPane} className="flex-1 space-y-3 overflow-y-auto bg-slate-50 p-3.5">
-            {!messages.length && !loading && <p className="rounded-xl bg-white p-3 text-xs md:text-sm text-slate-600 shadow-sm border border-slate-100">{aiMode ? 'Xin chào! Mình có thể tư vấn theo sản phẩm, cấu hình, giá và tồn kho hiện tại của cửa hàng.' : 'Xin chào! Bạn cần chúng tôi hỗ trợ gì?'}</p>}
-            {messages.map((item) => <div key={item.MessageID} className={`max-w-[88%] rounded-2xl px-3 py-2 text-xs md:text-sm ${item.SenderRole === 'Customer' ? 'ml-auto bg-blue-600 text-white' : item.SenderRole === 'AI' ? 'border border-violet-100 bg-violet-50 text-slate-800' : 'bg-white text-slate-800 shadow-sm border border-slate-100'}`}>
-              {item.SenderRole !== 'Customer' && <p className={`mb-1 text-[11px] font-semibold ${item.SenderRole === 'AI' ? 'text-violet-700' : 'text-blue-700'}`}>{item.SenderName}</p>}
-              <p className="whitespace-pre-wrap break-words">{item.Message}</p>
-              <time className={`mt-1 block text-right text-[10px] ${item.SenderRole === 'Customer' ? 'text-blue-100' : 'text-slate-400'}`}>{new Date(item.CreatedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</time>
-            </div>)}
-					{loading && !conversationIds[aiMode ? 'ai' : 'staff'] && <p className="text-xs md:text-sm text-slate-500">Đang kết nối…</p>}
-            {error && <div role="alert" className="rounded-lg bg-red-50 p-2 text-xs text-red-700">{error}{aiMode && <button onClick={() => void openChat(false)} className="mt-2 block font-bold underline">Chuyển sang nhân viên hỗ trợ</button>}</div>}
+          <div ref={messagesPane} className="flex-1 space-y-3 overflow-y-auto bg-slate-50 p-3.5">
+            {!messages.length && !loading && (
+              <div className="space-y-2.5">
+                <p className="rounded-xl bg-white p-3 text-xs md:text-sm text-slate-700 shadow-sm border border-slate-100 leading-relaxed">
+                  {aiMode ? 'Xin chào! Em là Trợ lý AI của MANB SHOP. Em có thể tư vấn chi tiết cấu hình, so sánh máy, báo giá và kiểm tra tồn kho trực tiếp theo nhu cầu của anh/chị.' : 'Xin chào! Bạn cần chúng tôi hỗ trợ gì?'}
+                </p>
+                {aiMode && (
+                  <div className="space-y-1.5 pt-1">
+                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Gợi ý câu hỏi nhanh:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        '🎮 Laptop chơi game Valorant / LOL',
+                        '💻 Laptop sinh viên / văn phòng mỏng nhẹ',
+                        '🎨 Laptop học lập trình & đồ họa',
+                        '💰 Tư vấn máy tầm 15 - 20 triệu',
+                        '📦 Chính sách bảo hành & ship COD',
+                      ].map((prompt) => (
+                        <button
+                          key={prompt}
+                          type="button"
+                          onClick={() => void sendText(prompt)}
+                          className="rounded-full border border-blue-200 bg-blue-50/80 px-2.5 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-100 active:scale-95 transition text-left cursor-pointer"
+                        >
+                          {prompt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            {messages.map((item) => (
+              <div key={item.MessageID} className={`max-w-[88%] rounded-2xl px-3 py-2 text-xs md:text-sm ${item.SenderRole === 'Customer' ? 'ml-auto bg-blue-600 text-white' : item.SenderRole === 'AI' ? 'border border-violet-100 bg-violet-50 text-slate-800' : 'bg-white text-slate-800 shadow-sm border border-slate-100'}`}>
+                {item.SenderRole !== 'Customer' && <p className={`mb-1 text-[11px] font-semibold ${item.SenderRole === 'AI' ? 'text-violet-700' : 'text-blue-700'}`}>{item.SenderName}</p>}
+                <p className="whitespace-pre-wrap break-words leading-relaxed">{item.Message}</p>
+                <time className={`mt-1 block text-right text-[10px] ${item.SenderRole === 'Customer' ? 'text-blue-100' : 'text-slate-400'}`}>{new Date(item.CreatedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</time>
+              </div>
+            ))}
+            {loading && !messages.length && <p className="text-xs md:text-sm text-slate-500 text-center py-4">Đang kết nối…</p>}
+            {loading && messages.length > 0 && <p className="text-xs text-violet-600 animate-pulse font-semibold">✨ Trợ lý AI đang soạn câu trả lời...</p>}
+            {error && <div role="alert" className="rounded-lg bg-red-50 p-2 text-xs text-red-700">{error}{aiMode && <button onClick={() => void openChat(false)} className="mt-2 block font-bold underline cursor-pointer">Chuyển sang nhân viên hỗ trợ</button>}</div>}
           </div>
           <form onSubmit={send} className="flex gap-2 border-t border-slate-200 p-2.5 bg-white">
-            <textarea aria-label="Tin nhắn" value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={2000} rows={2} placeholder="Nhập tin nhắn…" className="min-w-0 flex-1 resize-none rounded-xl border border-slate-200 px-3 py-1.5 text-xs md:text-sm outline-none focus:border-blue-500" />
-				<button disabled={!draft.trim() || !conversationIds[aiMode ? 'ai' : 'staff'] || loading} className="self-end rounded-xl bg-blue-600 px-3.5 py-2 text-xs md:text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50 transition">Gửi</button>
+            <textarea
+              aria-label="Tin nhắn"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={handleKeyDown}
+              maxLength={2000}
+              rows={2}
+              placeholder="Nhập tin nhắn (Enter để gửi)…"
+              className="min-w-0 flex-1 resize-none rounded-xl border border-slate-200 px-3 py-1.5 text-xs md:text-sm outline-none focus:border-blue-500"
+            />
+            <button
+              type="submit"
+              disabled={!draft.trim() || !conversationIds[aiMode ? 'ai' : 'staff'] || loading}
+              className="self-end rounded-xl bg-blue-600 px-3.5 py-2 text-xs md:text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50 transition active:scale-95 cursor-pointer"
+            >
+              Gửi
+            </button>
           </form>
         </section>
       )}
