@@ -15,6 +15,7 @@ import {
   resolveApiAssetUrl,
 } from "@/lib/api";
 import FavoriteButton from "@/app/components/FavoriteButton";
+import ScrollReveal from "@/app/components/ScrollReveal";
 
 const formatPrice = (value: number | string) =>
   `${Number(value).toLocaleString("vi-VN")} ₫`;
@@ -678,12 +679,24 @@ export default function ProductDetailPage() {
                   <Link href="/customer/products" className="text-xs font-bold text-blue-600 hover:underline">Xem tất cả →</Link>
                 </div>
                 <div className="product-grid">
-                  {relatedProducts.map((item) => (
-                    <Link key={item.ProductID} href={`/customer/products/${item.ProductID}`} className="product-card block p-4 transition hover:-translate-y-1 hover:shadow-md">
-                      <div className="product-image"><img src={getPrimaryProductImage(item.ImageUrl) || "/placeholder.png"} alt={item.ProductName} /></div>
-                      <h3 className="mt-3 font-bold text-slate-900 text-xs sm:text-sm">{item.ProductName}</h3>
-                      <p className="mt-2 font-black text-blue-700 text-sm sm:text-base">{formatPrice(item.DiscountPrice || item.Price)}</p>
-                    </Link>
+                  {relatedProducts.map((item, idx) => (
+                    <ScrollReveal key={item.ProductID} index={idx}>
+                      <Link
+                        href={`/customer/products/${item.ProductID}`}
+                        className="product-card block p-4 transition hover:-translate-y-1 hover:shadow-md h-full"
+                      >
+                        <div className="product-image">
+                          <img
+                            src={getPrimaryProductImage(item.ImageUrl) || "/placeholder.png"}
+                            alt={item.ProductName}
+                          />
+                        </div>
+                        <h3 className="mt-3 font-bold text-slate-900 text-xs sm:text-sm">{item.ProductName}</h3>
+                        <p className="mt-2 font-black text-blue-700 text-sm sm:text-base">
+                          {formatPrice(item.DiscountPrice || item.Price)}
+                        </p>
+                      </Link>
+                    </ScrollReveal>
                   ))}
                 </div>
               </section>

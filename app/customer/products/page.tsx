@@ -16,6 +16,7 @@ import {
 import type { StoreCategory } from "@/lib/api";
 import Link from "next/link";
 import FavoriteButton from "@/app/components/FavoriteButton";
+import ScrollReveal from "@/app/components/ScrollReveal";
 import { addToCart } from "@/lib/cart";
 import { animateFlyToCart } from "@/lib/cart-animation";
 
@@ -103,58 +104,75 @@ export default function ProductsPage() {
           <div className="flex items-end text-sm font-semibold text-slate-600">{filtered.length} sản phẩm</div>
         </section>
 
-        {filtered.length === 0 ? <div className="rounded-2xl border bg-white p-10 text-center text-slate-500">Không tìm thấy sản phẩm phù hợp bộ lọc.</div> : <div className="product-grid">
-          {filtered.map((product) => {
-            const price = Number(product.DiscountPrice || product.Price);
-            const oldPrice = Number(product.Price);
-            const discountPercent = oldPrice > price
-              ? Math.round(((oldPrice - price) / oldPrice) * 100)
-              : 0;
+        {filtered.length === 0 ? (
+          <div className="rounded-2xl border bg-white p-10 text-center text-slate-500">
+            Không tìm thấy sản phẩm phù hợp bộ lọc.
+          </div>
+        ) : (
+          <div className="product-grid">
+            {filtered.map((product, idx) => {
+              const price = Number(product.DiscountPrice || product.Price);
+              const oldPrice = Number(product.Price);
+              const discountPercent =
+                oldPrice > price ? Math.round(((oldPrice - price) / oldPrice) * 100) : 0;
 
-            return (
-              <article
-                key={product.ProductID}
-                className="product-card flex flex-col h-full"
-              >
-                <div className="product-image">
-                  <Link href={`/customer/products/${product.ProductID}`} aria-label={`Xem chi tiết ${product.ProductName}`}>
-                    <img
-                      src={getPrimaryProductImage(product.ImageUrl) || "/placeholder.png"}
-                      alt={product.ProductName}
-                    />
-                  </Link>
-                  <FavoriteButton product={product} />
-                </div>
-                <div className="product-info flex flex-col flex-grow">
-                  {discountPercent > 0 && <div className="discount-tag">TIẾT KIỆM {discountPercent}%</div>}
-                  <p className="shop-label">MANB SHOP</p>
-                  <h3><Link href={`/customer/products/${product.ProductID}`} className="hover:text-blue-700">{product.ProductName}</Link></h3>
-
-                  <div className="mt-auto pt-2">
-                    <div className="price-row">
-                      <strong>{price.toLocaleString("vi-VN")} ₫</strong>
-                      {oldPrice > price && <del>{oldPrice.toLocaleString("vi-VN")} ₫</del>}
+              return (
+                <ScrollReveal key={product.ProductID} index={idx}>
+                  <article className="product-card flex flex-col h-full">
+                    <div className="product-image">
+                      <Link
+                        href={`/customer/products/${product.ProductID}`}
+                        aria-label={`Xem chi tiết ${product.ProductName}`}
+                      >
+                        <img
+                          src={getPrimaryProductImage(product.ImageUrl) || "/placeholder.png"}
+                          alt={product.ProductName}
+                        />
+                      </Link>
+                      <FavoriteButton product={product} />
                     </div>
-                    <p className={`mb-2 text-xs font-semibold ${Number(product.StockQuantity ?? 0) > 0 ? "text-slate-500" : "text-red-600"}`}>
-                      {Number(product.StockQuantity ?? 0) > 0 ? `Còn ${product.StockQuantity} sản phẩm` : "Tạm hết hàng"}
-                    </p>
-                    <button
-                      onClick={(e) => add(product, e)}
-                      disabled={addingId === product.ProductID || Number(product.StockQuantity ?? 0) <= 0}
-                      className="add-button disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {addingId === product.ProductID
-                        ? "Đang thêm..."
-                        : Number(product.StockQuantity ?? 0) <= 0
-                        ? "Hết hàng"
-                        : "Thêm vào giỏ hàng"}
-                    </button>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>}
+                    <div className="product-info flex flex-col flex-grow">
+                      {discountPercent > 0 && <div className="discount-tag">TIẾT KIỆM {discountPercent}%</div>}
+                      <p className="shop-label">MANB SHOP</p>
+                      <h3>
+                        <Link href={`/customer/products/${product.ProductID}`} className="hover:text-blue-700">
+                          {product.ProductName}
+                        </Link>
+                      </h3>
+
+                      <div className="mt-auto pt-2">
+                        <div className="price-row">
+                          <strong>{price.toLocaleString("vi-VN")} ₫</strong>
+                          {oldPrice > price && <del>{oldPrice.toLocaleString("vi-VN")} ₫</del>}
+                        </div>
+                        <p
+                          className={`mb-2 text-xs font-semibold ${
+                            Number(product.StockQuantity ?? 0) > 0 ? "text-slate-500" : "text-red-600"
+                          }`}
+                        >
+                          {Number(product.StockQuantity ?? 0) > 0
+                            ? `Còn ${product.StockQuantity} sản phẩm`
+                            : "Tạm hết hàng"}
+                        </p>
+                        <button
+                          onClick={(e) => add(product, e)}
+                          disabled={addingId === product.ProductID || Number(product.StockQuantity ?? 0) <= 0}
+                          className="add-button disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {addingId === product.ProductID
+                            ? "Đang thêm..."
+                            : Number(product.StockQuantity ?? 0) <= 0
+                            ? "Hết hàng"
+                            : "Thêm vào giỏ hàng"}
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                </ScrollReveal>
+              );
+            })}
+          </div>
+        )}
       </div>
     </main>
   );

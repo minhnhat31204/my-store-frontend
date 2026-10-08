@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useFavorites } from "@/app/components/FavoritesProvider";
 import FavoriteButton from "@/app/components/FavoriteButton";
+import ScrollReveal from "@/app/components/ScrollReveal";
 import { getPrimaryProductImage } from "@/lib/api";
 
 export default function FavoritesPage() {
@@ -22,26 +23,28 @@ export default function FavoritesPage() {
           </div>
         ) : (
           <div className="product-grid mt-7">
-            {products.map((product) => {
+            {products.map((product, idx) => {
               const price = Number(product.DiscountPrice || product.Price);
               const oldPrice = Number(product.Price);
               return (
-                <article key={product.ProductID} className="product-card flex flex-col">
-                  <div className="product-image">
-                    <Link href={`/customer/products/${product.ProductID}`} aria-label={`Xem chi tiết ${product.ProductName}`}>
-                      <img src={getPrimaryProductImage(product.ImageUrl) || "/placeholder.png"} alt={product.ProductName} />
-                    </Link>
-                    <FavoriteButton product={product} />
-                  </div>
-                  <div className="product-info">
-                    <p className="shop-label">MANB SHOP</p>
-                    <h3><Link href={`/customer/products/${product.ProductID}`}>{product.ProductName}</Link></h3>
-                    <div className="price-row mt-auto">
-                      <strong>{price.toLocaleString("vi-VN")} ₫</strong>
-                      {oldPrice > price && <del>{oldPrice.toLocaleString("vi-VN")} ₫</del>}
+                <ScrollReveal key={product.ProductID} index={idx}>
+                  <article className="product-card flex flex-col h-full">
+                    <div className="product-image">
+                      <Link href={`/customer/products/${product.ProductID}`} aria-label={`Xem chi tiết ${product.ProductName}`}>
+                        <img src={getPrimaryProductImage(product.ImageUrl) || "/placeholder.png"} alt={product.ProductName} />
+                      </Link>
+                      <FavoriteButton product={product} />
                     </div>
-                  </div>
-                </article>
+                    <div className="product-info flex flex-col flex-grow">
+                      <p className="shop-label">MANB SHOP</p>
+                      <h3><Link href={`/customer/products/${product.ProductID}`}>{product.ProductName}</Link></h3>
+                      <div className="price-row mt-auto">
+                        <strong>{price.toLocaleString("vi-VN")} ₫</strong>
+                        {oldPrice > price && <del>{oldPrice.toLocaleString("vi-VN")} ₫</del>}
+                      </div>
+                    </div>
+                  </article>
+                </ScrollReveal>
               );
             })}
           </div>

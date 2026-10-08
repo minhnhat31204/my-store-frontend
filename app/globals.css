@@ -350,8 +350,24 @@ a { text-decoration: none; -webkit-tap-highlight-color: transparent; }
 .section-heading { display: flex; justify-content: space-between; align-items: end; gap: 20px; margin-bottom: 18px; }
 .section-heading p { margin: 0 0 7px; color: var(--blue); font-weight: 900; }
 .section-heading h2 { margin: 0; font-size: 29px; font-weight: 850; letter-spacing: -0.5px; }
-.section-heading a { color: var(--blue); font-weight: 900; white-space: nowrap; }
 .product-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+
+/* Hiệu ứng thẻ sản phẩm xuất hiện lần lượt khi cuộn trang */
+.product-card-reveal {
+  opacity: 0;
+  transform: translateY(26px) scale(0.975);
+  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.product-card-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
 .product-card {
   min-width: 0;
   overflow: hidden;

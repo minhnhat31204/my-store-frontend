@@ -12,6 +12,7 @@ import {
 import { addToCart } from "@/lib/cart";
 import { animateFlyToCart } from "@/lib/cart-animation";
 import FavoriteButton from "@/app/components/FavoriteButton";
+import ScrollReveal from "@/app/components/ScrollReveal";
 
 const FALLBACK_BANNER = "/banner-placeholder.jpg";
 
@@ -370,8 +371,10 @@ export default function Home() {
           {!loading && !error && (
             <>
               <div className="product-grid">
-                {visibleProducts.map((product) => (
-                  <ProductCard key={product.ProductID} product={product} onAdd={(e) => handleAdd(product, e)} />
+                {visibleProducts.map((product, idx) => (
+                  <ScrollReveal key={product.ProductID} index={idx}>
+                    <ProductCard product={product} onAdd={(e) => handleAdd(product, e)} />
+                  </ScrollReveal>
                 ))}
               </div>
 
