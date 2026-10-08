@@ -10,21 +10,7 @@ export default function ClickFeedbackProvider() {
       // Chỉ kích hoạt hiệu ứng khi nhấn chuột trái hoặc chạm màn hình
       if (e.button !== 0 && e.pointerType === "mouse") return;
 
-      const x = e.clientX;
-      const y = e.clientY;
-
-      // 1. Tạo hiệu ứng gợn sóng phát sáng (Ripple Wave) tại tọa độ chạm/bấm
-      const ripple = document.createElement("div");
-      ripple.className = "global-click-ripple";
-      ripple.style.left = `${x}px`;
-      ripple.style.top = `${y}px`;
-      document.body.appendChild(ripple);
-
-      window.setTimeout(() => {
-        ripple.remove();
-      }, 550);
-
-      // 2. Tìm phần tử tương tác gần nhất được click để kích hoạt hiệu ứng nhún nảy xúc giác
+      // Tìm phần tử tương tác gần nhất được click để kích hoạt hiệu ứng nhún nảy xúc giác
       const target = e.target as HTMLElement | null;
       if (!target) return;
 

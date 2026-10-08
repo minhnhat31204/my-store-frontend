@@ -599,7 +599,7 @@ export default function CustomerNav({
                           setActiveNav("account");
                           setAccountMenuOpen(false);
                         }}
-                        className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"
+                        className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700 active:scale-95 cursor-pointer"
                       >
                         <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100"><UserMenuIcon /></span>
                         <span>Thông tin tài khoản</span>
@@ -613,7 +613,7 @@ export default function CustomerNav({
                           setActiveNav("account");
                           setAccountMenuOpen(false);
                         }}
-                        className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"
+                        className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700 active:scale-95 cursor-pointer"
                       >
                         <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100"><PackageMenuIcon /></span>
                         <span>Đơn hàng &amp; trạng thái</span>
@@ -627,7 +627,7 @@ export default function CustomerNav({
                           setActiveNav("account");
                           setAccountMenuOpen(false);
                         }}
-                        className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"
+                        className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700 active:scale-95 cursor-pointer"
                       >
                         <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100"><MapPinMenuIcon /></span>
                         <span>Sổ địa chỉ</span>
@@ -641,7 +641,7 @@ export default function CustomerNav({
                           setActiveNav("account");
                           setAccountMenuOpen(false);
                         }}
-                        className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"
+                        className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700 active:scale-95 cursor-pointer"
                       >
                         <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100"><HeartMenuIcon /></span>
                         <span>Sản phẩm yêu thích</span>
@@ -655,7 +655,7 @@ export default function CustomerNav({
                           setActiveNav("notifications");
                           setAccountMenuOpen(false);
                         }}
-                        className="flex items-center justify-between rounded-xl px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"
+                        className="flex items-center justify-between rounded-xl px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700 active:scale-95 cursor-pointer"
                       >
                         <div className="flex items-center gap-2.5">
                           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100"><BellMenuIcon /></span>
@@ -677,7 +677,7 @@ export default function CustomerNav({
                         role="menuitem"
                         href="/admin"
                         onClick={() => setAccountMenuOpen(false)}
-                        className="mb-1.5 flex items-center gap-3 rounded-xl bg-gradient-to-r from-indigo-900 via-blue-900 to-slate-900 px-3 py-2.5 text-white shadow-md transition hover:scale-[0.99]"
+                        className="mb-1.5 flex items-center gap-3 rounded-xl bg-gradient-to-r from-indigo-900 via-blue-900 to-slate-900 px-3 py-2.5 text-white shadow-md transition hover:scale-[0.99] active:scale-95 cursor-pointer"
                       >
                         <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/15"><ShieldMenuIcon /></span>
                         <div className="min-w-0 flex-1">
@@ -695,7 +695,7 @@ export default function CustomerNav({
                       role="menuitem"
                       type="button"
                       onClick={handleLogout}
-                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-bold text-red-600 transition hover:bg-red-50 hover:text-red-700"
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-bold text-red-600 transition hover:bg-red-50 hover:text-red-700 active:scale-95 cursor-pointer"
                     >
                       <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50"><LogoutMenuIcon /></span>
                       <span>Đăng xuất</span>
