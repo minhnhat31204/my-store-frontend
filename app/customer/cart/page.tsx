@@ -141,7 +141,7 @@ export default function CartPage() {
   return (
     <main className="min-h-screen bg-slate-50 pb-24 text-slate-900">
 
-      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+      <div className="cart-page-animated mx-auto max-w-5xl px-4 py-8 sm:px-6">
         <h1 className="text-4xl font-black">
           Giỏ hàng
         </h1>

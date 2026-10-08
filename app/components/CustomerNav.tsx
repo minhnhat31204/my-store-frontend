@@ -501,7 +501,7 @@ export default function CustomerNav({
                   aria-label={`Menu tài khoản${user.FullName ? ` của ${user.FullName}` : ""}`}
                   title={user.FullName || user.Email || user.Phone || ''}
                   onClick={() => setAccountMenuOpen((open) => !open)}
-                  className="account-avatar-btn group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  className={`account-avatar-btn group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${accountMenuOpen ? "is-open" : ""}`}
                 >
                   <div className="account-avatar-inner">
                     {user.Avatar ? (
@@ -521,7 +521,7 @@ export default function CustomerNav({
                   <div
                     role="menu"
                     aria-label="Chức năng tài khoản"
-                    className="absolute right-0 top-full z-[100] mt-3 w-80 rounded-2xl border border-slate-200 bg-white p-2.5 text-slate-800 shadow-2xl ring-1 ring-black/10 backdrop-blur-xl"
+                    className="account-dropdown-menu absolute right-0 top-full z-[100] mt-3 w-80 rounded-2xl border border-slate-200 bg-white p-2.5 text-slate-800 shadow-2xl ring-1 ring-black/10 backdrop-blur-xl"
                   >
                     {/* Header Profile Card */}
                     <div className="relative mb-2 overflow-hidden rounded-xl bg-gradient-to-br from-blue-50 via-indigo-50/50 to-slate-50 p-3.5 border border-blue-100/60">
