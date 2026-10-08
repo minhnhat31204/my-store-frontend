@@ -20,6 +20,7 @@ export type Product = {
 };
 
 let memoryProductsCache: Product[] | null = null;
+let memoryCategoriesCache: StoreCategory[] | null = null;
 
 export function getCachedProductsSync(): Product[] | null {
   if (memoryProductsCache && memoryProductsCache.length > 0) return memoryProductsCache;
@@ -40,6 +41,29 @@ export function setCachedProductsSync(products: Product[]) {
   if (typeof window !== "undefined") {
     try {
       sessionStorage.setItem("cache_products_list", JSON.stringify(products));
+    } catch {}
+  }
+}
+
+export function getCachedCategoriesSync(): StoreCategory[] | null {
+  if (memoryCategoriesCache && memoryCategoriesCache.length > 0) return memoryCategoriesCache;
+  if (typeof window !== "undefined") {
+    try {
+      const raw = sessionStorage.getItem("cache_categories_list");
+      if (raw) {
+        memoryCategoriesCache = JSON.parse(raw);
+        return memoryCategoriesCache;
+      }
+    } catch {}
+  }
+  return null;
+}
+
+export function setCachedCategoriesSync(categories: StoreCategory[]) {
+  memoryCategoriesCache = categories;
+  if (typeof window !== "undefined") {
+    try {
+      sessionStorage.setItem("cache_categories_list", JSON.stringify(categories));
     } catch {}
   }
 }
@@ -289,7 +313,13 @@ export const api = {
     return data;
   },
 
-  getCategories: () => request<StoreCategory[]>("/categories"),
+  getCategories: async () => {
+    const data = await request<StoreCategory[]>("/categories");
+    if (Array.isArray(data)) {
+      setCachedCategoriesSync(data);
+    }
+    return data;
+  },
 
   getVouchers: () => request<Voucher[]>("/vouchers"),
 

@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api, getPrimaryProductImage, Product, Promotion } from "@/lib/api";
+import {
+  api,
+  getCachedProductsSync,
+  getPrimaryProductImage,
+  Product,
+  Promotion,
+} from "@/lib/api";
 import { addToCart } from "@/lib/cart";
 import { animateFlyToCart } from "@/lib/cart-animation";
 import FavoriteButton from "@/app/components/FavoriteButton";
@@ -21,15 +27,39 @@ function getBannerImage(promotion: Promotion) {
 }
 
 export default function Home() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const initialProducts = useMemo(() => getCachedProductsSync() || [], []);
+  const [products, setProducts] = useState<Product[]>(initialProducts);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [trackIndex, setTrackIndex] = useState(1);
   const [withTransition, setWithTransition] = useState(true);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(initialProducts.length === 0);
   const [bannerLoading, setBannerLoading] = useState(true);
   const [error, setError] = useState("");
   const [keyword, setKeyword] = useState("");
-  const [visibleCount, setVisibleCount] = useState(8);
+  const [visibleCount, setVisibleCount] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = sessionStorage.getItem("home_visible_count");
+        if (saved) {
+          const val = parseInt(saved, 10);
+          if (val && val >= 8) return val;
+        }
+      } catch {}
+    }
+    return 8;
+  });
+
+  const handleSetVisibleCount = (updater: number | ((prev: number) => number)) => {
+    setVisibleCount((prev) => {
+      const nextVal = typeof updater === "function" ? updater(prev) : updater;
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.setItem("home_visible_count", String(nextVal));
+        } catch {}
+      }
+      return nextVal;
+    });
+  };
 
   // States & Refs cho tính năng kéo chuột trượt banner
   const [dragOffset, setDragOffset] = useState(0);
@@ -42,8 +72,15 @@ export default function Home() {
 
   useEffect(() => {
     api.getProducts()
-      .then(setProducts)
-      .catch((e) => setError(e instanceof Error ? e.message : "Không thể tải sản phẩm"))
+      .then((items) => {
+        setProducts(items);
+        setError("");
+      })
+      .catch((e) => {
+        if (products.length === 0) {
+          setError(e instanceof Error ? e.message : "Không thể tải sản phẩm");
+        }
+      })
       .finally(() => setLoading(false));
 
     api.getPromotions()
@@ -339,7 +376,7 @@ export default function Home() {
               </div>
 
               {remainingCount > 0 && (
-                <button className="load-more-button" onClick={() => setVisibleCount((count) => count + 8)}>
+                <button className="load-more-button" onClick={() => handleSetVisibleCount((count) => count + 8)}>
                   Xem tiếp {remainingCount} sản phẩm →
                 </button>
               )}

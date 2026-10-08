@@ -8,6 +8,8 @@ import {
 
 import {
   api,
+  getCachedCategoriesSync,
+  getCachedProductsSync,
   getPrimaryProductImage,
   Product,
 } from "@/lib/api";
@@ -24,9 +26,11 @@ function extractBrand(name: string) {
 }
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const initialProducts = useMemo(() => getCachedProductsSync() || [], []);
+  const initialCategories = useMemo(() => getCachedCategoriesSync() || [], []);
+  const [products, setProducts] = useState<Product[]>(initialProducts);
   const [keyword, setKeyword] = useState("");
-  const [categories, setCategories] = useState<StoreCategory[]>([]);
+  const [categories, setCategories] = useState<StoreCategory[]>(initialCategories);
   const [categoryId, setCategoryId] = useState("all");
   const [brand, setBrand] = useState("all");
   const [sortBy, setSortBy] = useState("recommended");
