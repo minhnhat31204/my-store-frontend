@@ -17,53 +17,64 @@ export default function ScrollReveal({
 }: ScrollRevealProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
-  const [hasAnimated, setHasAnimated] = useState(false);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
 
-    // Check if element is already inside or above the viewport on initial mount
-    const rect = el.getBoundingClientRect();
-    const isInViewport = rect.top < window.innerHeight && rect.bottom > 0;
-    const isAboveViewport = rect.bottom <= 0;
+    const checkVisibility = () => {
+      if (!el || typeof window === "undefined") return false;
+      const rect = el.getBoundingClientRect();
+      // If it's within viewport or above viewport
+      const inOrAbove = rect.top < window.innerHeight + 80;
+      if (inOrAbove) {
+        setIsVisible(true);
+        return true;
+      }
+      return false;
+    };
 
-    if (isInViewport || isAboveViewport) {
-      setIsVisible(true);
-      setHasAnimated(true);
-      return;
-    }
+    if (checkVisibility()) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             setIsVisible(true);
-            setHasAnimated(true);
             observer.unobserve(entry.target);
           }
         });
       },
       {
-        threshold: 0.05,
-        rootMargin: "0px 0px -30px 0px",
+        threshold: 0.02,
+        rootMargin: "0px 0px 80px 0px",
       }
     );
 
     observer.observe(el);
-    return () => observer.disconnect();
+
+    const handleRecheck = () => {
+      checkVisibility();
+    };
+
+    window.addEventListener("store-scroll-restored", handleRecheck, { passive: true });
+    window.addEventListener("scroll", handleRecheck, { passive: true });
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("store-scroll-restored", handleRecheck);
+      window.removeEventListener("scroll", handleRecheck);
+    };
   }, []);
 
-  // Compute staggered delay based on 4-column desktop / 2-column mobile layout
-  // 0ms, 80ms, 160ms, 240ms cascade
   const colIndex = index % 4;
-  const computedDelay = delay !== undefined ? delay : colIndex * 85;
+  const computedDelay = delay !== undefined ? delay : colIndex * 75;
 
   return (
     <div
       ref={ref}
       style={{
-        transitionDelay: isVisible && !hasAnimated ? `${computedDelay}ms` : isVisible ? `${computedDelay}ms` : "0ms",
+        transitionDelay: isVisible ? `${computedDelay}ms` : "0ms",
       }}
       className={`product-card-reveal ${isVisible ? "is-visible" : ""} ${className}`}
     >

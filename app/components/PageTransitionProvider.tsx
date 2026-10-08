@@ -14,7 +14,7 @@ function saveScrollPosition(path: string, y: number) {
   scrollPositions.set(path, y);
   if (typeof window !== "undefined") {
     try {
-      sessionStorage.setItem(getStorageKey(path), String(y));
+      sessionStorage.setItem(getStorageKey(path), String(Math.round(y)));
     } catch {}
   }
 }
@@ -41,7 +41,7 @@ function getSavedScrollPosition(path: string): number | null {
 
 export default function PageTransitionProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const prevPathRef = useRef(pathname);
+  const prevPathRef = useRef<string>("");
   const isPopNavigationRef = useRef(false);
 
   useEffect(() => {
@@ -53,6 +53,9 @@ export default function PageTransitionProvider({ children }: { children: ReactNo
 
     const handlePopState = () => {
       isPopNavigationRef.current = true;
+      try {
+        sessionStorage.setItem("last_nav_action", "back");
+      } catch {}
     };
 
     let scrollTimeout: NodeJS.Timeout | null = null;
@@ -61,15 +64,24 @@ export default function PageTransitionProvider({ children }: { children: ReactNo
       scrollTimeout = setTimeout(() => {
         scrollTimeout = null;
         if (typeof window !== "undefined") {
-          saveScrollPosition(window.location.pathname + window.location.search, window.scrollY);
+          const currentKey = window.location.pathname + window.location.search;
+          saveScrollPosition(currentKey, window.scrollY);
         }
-      }, 80);
+      }, 50);
     };
 
     const handleClick = (e: MouseEvent) => {
       const target = (e.target as HTMLElement)?.closest("a, button, [role='button'], .product-card");
       if (target && typeof window !== "undefined") {
-        saveScrollPosition(window.location.pathname + window.location.search, window.scrollY);
+        const currentKey = window.location.pathname + window.location.search;
+        saveScrollPosition(currentKey, window.scrollY);
+
+        const anchor = (e.target as HTMLElement)?.closest("a");
+        if (anchor && anchor.href && !anchor.href.startsWith("#") && !anchor.target) {
+          try {
+            sessionStorage.setItem("last_nav_action", "forward");
+          } catch {}
+        }
       }
     };
 
@@ -89,10 +101,19 @@ export default function PageTransitionProvider({ children }: { children: ReactNo
     if (typeof window === "undefined") return;
 
     const currentKey = window.location.pathname + window.location.search;
-    const isPop = isPopNavigationRef.current;
+    let isBack = isPopNavigationRef.current;
     isPopNavigationRef.current = false;
 
-    // Lưu lại vị trí scroll của trang trước khi đổi đường dẫn
+    let lastNavAction = "";
+    try {
+      lastNavAction = sessionStorage.getItem("last_nav_action") || "";
+    } catch {}
+
+    if (lastNavAction === "back") {
+      isBack = true;
+    }
+
+    // Lưu lại vị trí cuộn trang trước
     if (prevPathRef.current && prevPathRef.current !== currentKey) {
       saveScrollPosition(prevPathRef.current, window.scrollY);
     }
@@ -100,28 +121,46 @@ export default function PageTransitionProvider({ children }: { children: ReactNo
     const oldKey = prevPathRef.current;
     prevPathRef.current = currentKey;
 
-    if (isPop) {
-      // Khi quay lại (Back / Forward), khôi phục vị trí cuộn trước đó
+    if (isBack) {
+      try {
+        sessionStorage.removeItem("last_nav_action");
+      } catch {}
+
       const targetY = getSavedScrollPosition(currentKey);
       if (targetY !== null && targetY >= 0) {
         window.scrollTo({ top: targetY, left: 0, behavior: "instant" });
+
         requestAnimationFrame(() => {
           window.scrollTo({ top: targetY, left: 0, behavior: "instant" });
+          window.dispatchEvent(new Event("store-scroll-restored"));
         });
+
         const timer1 = setTimeout(() => {
           window.scrollTo({ top: targetY, left: 0, behavior: "instant" });
+          window.dispatchEvent(new Event("store-scroll-restored"));
         }, 40);
+
         const timer2 = setTimeout(() => {
           window.scrollTo({ top: targetY, left: 0, behavior: "instant" });
+          window.dispatchEvent(new Event("store-scroll-restored"));
         }, 120);
+
+        const timer3 = setTimeout(() => {
+          window.scrollTo({ top: targetY, left: 0, behavior: "instant" });
+        }, 250);
+
         return () => {
           clearTimeout(timer1);
           clearTimeout(timer2);
+          clearTimeout(timer3);
         };
       }
     } else {
-      // Khi mở trang mới lần đầu
-      if (oldKey !== currentKey) {
+      try {
+        sessionStorage.removeItem("last_nav_action");
+      } catch {}
+
+      if (oldKey && oldKey !== currentKey) {
         window.scrollTo({ top: 0, left: 0, behavior: "instant" });
       }
     }

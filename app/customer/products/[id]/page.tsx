@@ -274,6 +274,11 @@ export default function ProductDetailPage() {
         <button
           type="button"
           onClick={() => {
+            if (typeof window !== "undefined") {
+              try {
+                sessionStorage.setItem("last_nav_action", "back");
+              } catch {}
+            }
             if (typeof window !== "undefined" && window.history.length > 1) {
               router.back();
             } else {
