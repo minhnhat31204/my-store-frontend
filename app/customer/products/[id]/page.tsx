@@ -278,11 +278,16 @@ export default function ProductDetailPage() {
               try {
                 sessionStorage.setItem("is_pop_nav", "1");
               } catch {}
-            }
-            if (typeof window !== "undefined" && window.history.length > 1) {
-              router.back();
-            } else {
-              router.push("/");
+              const returnUrl = sessionStorage.getItem(`product_return_url_${productId}`);
+              if (returnUrl) {
+                router.push(returnUrl);
+                return;
+              }
+              if (window.history.length > 1) {
+                router.back();
+              } else {
+                router.push("/");
+              }
             }
           }}
           className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-xs transition hover:border-slate-300 hover:bg-slate-50 hover:text-blue-600 cursor-pointer"
@@ -680,13 +685,32 @@ export default function ProductDetailPage() {
                     <p className="text-xs font-bold uppercase tracking-wider text-blue-600">GỢI Ý CHO BẠN</p>
                     <h2 className="text-lg sm:text-xl font-black text-slate-900">Sản phẩm liên quan</h2>
                   </div>
-                  <Link href="/customer/products" className="text-xs font-bold text-blue-600 hover:underline">Xem tất cả →</Link>
+                  <Link
+                    href="/customer/products"
+                    onClick={() => {
+                      try {
+                        sessionStorage.setItem("active_nav_origin", "products");
+                      } catch {}
+                    }}
+                    className="text-xs font-bold text-blue-600 hover:underline"
+                  >
+                    Xem tất cả →
+                  </Link>
                 </div>
                 <div className="product-grid">
                   {relatedProducts.map((item, idx) => (
                     <ScrollReveal key={item.ProductID} index={idx}>
                       <Link
                         href={`/customer/products/${item.ProductID}`}
+                        onClick={() => {
+                          try {
+                            const origin = sessionStorage.getItem(`product_origin_${productId}`) || "home";
+                            const returnUrl = sessionStorage.getItem(`product_return_url_${productId}`) || "/";
+                            sessionStorage.setItem(`product_origin_${item.ProductID}`, origin);
+                            sessionStorage.setItem(`product_return_url_${item.ProductID}`, returnUrl);
+                            sessionStorage.setItem("active_nav_origin", origin);
+                          } catch {}
+                        }}
                         className="product-card block p-4 transition hover:-translate-y-1 hover:shadow-md h-full"
                       >
                         <div className="product-image">

@@ -409,6 +409,8 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: (e: React.Mo
     if (target) return;
 
     try {
+      sessionStorage.setItem(`product_origin_${product.ProductID}`, "home");
+      sessionStorage.setItem(`product_return_url_${product.ProductID}`, "/");
       sessionStorage.setItem("active_nav_origin", "home");
     } catch {}
     router.push(`/customer/products/${product.ProductID}`);
@@ -424,7 +426,11 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: (e: React.Mo
           href={`/customer/products/${product.ProductID}`}
           onClick={(e) => {
             e.stopPropagation();
-            try { sessionStorage.setItem("active_nav_origin", "home"); } catch {}
+            try {
+              sessionStorage.setItem(`product_origin_${product.ProductID}`, "home");
+              sessionStorage.setItem(`product_return_url_${product.ProductID}`, "/");
+              sessionStorage.setItem("active_nav_origin", "home");
+            } catch {}
           }}
           aria-label={`Xem chi tiết ${product.ProductName}`}
         >
@@ -439,7 +445,11 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: (e: React.Mo
             href={`/customer/products/${product.ProductID}`}
             onClick={(e) => {
               e.stopPropagation();
-              try { sessionStorage.setItem("active_nav_origin", "home"); } catch {}
+              try {
+                sessionStorage.setItem(`product_origin_${product.ProductID}`, "home");
+                sessionStorage.setItem(`product_return_url_${product.ProductID}`, "/");
+                sessionStorage.setItem("active_nav_origin", "home");
+              } catch {}
             }}
             className="hover:text-blue-700"
           >

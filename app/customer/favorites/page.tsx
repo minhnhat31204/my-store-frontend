@@ -34,7 +34,11 @@ export default function FavoritesPage() {
                     onClick={(e) => {
                       const target = (e.target as HTMLElement)?.closest("button, .favorite-btn");
                       if (target) return;
-                      try { sessionStorage.setItem("active_nav_origin", "account"); } catch {}
+                      try {
+                        sessionStorage.setItem(`product_origin_${product.ProductID}`, "account");
+                        sessionStorage.setItem(`product_return_url_${product.ProductID}`, "/customer/favorites");
+                        sessionStorage.setItem("active_nav_origin", "account");
+                      } catch {}
                       router.push(`/customer/products/${product.ProductID}`);
                     }}
                     className="product-card flex flex-col h-full cursor-pointer transition"
@@ -44,7 +48,11 @@ export default function FavoritesPage() {
                         href={`/customer/products/${product.ProductID}`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          try { sessionStorage.setItem("active_nav_origin", "account"); } catch {}
+                          try {
+                            sessionStorage.setItem(`product_origin_${product.ProductID}`, "account");
+                            sessionStorage.setItem(`product_return_url_${product.ProductID}`, "/customer/favorites");
+                            sessionStorage.setItem("active_nav_origin", "account");
+                          } catch {}
                         }}
                         aria-label={`Xem chi tiết ${product.ProductName}`}
                       >
@@ -58,7 +66,11 @@ export default function FavoritesPage() {
                           href={`/customer/products/${product.ProductID}`}
                           onClick={(e) => {
                             e.stopPropagation();
-                            try { sessionStorage.setItem("active_nav_origin", "account"); } catch {}
+                            try {
+                              sessionStorage.setItem(`product_origin_${product.ProductID}`, "account");
+                              sessionStorage.setItem(`product_return_url_${product.ProductID}`, "/customer/favorites");
+                              sessionStorage.setItem("active_nav_origin", "account");
+                            } catch {}
                           }}
                         >
                           {product.ProductName}

@@ -173,7 +173,7 @@ export default function CustomerNav({
   const pathname = usePathname();
 
   // Xác định tab đang kích hoạt chính xác theo trang gốc người dùng duyệt
-  const [activeNav, setActiveNav] = useState<string>(() => {
+  const getInitialActiveNav = () => {
     if (typeof window !== "undefined") {
       if (pathname === "/") return "home";
       if (pathname === "/customer/products") return "products";
@@ -188,12 +188,25 @@ export default function CustomerNav({
       }
       if (pathname === "/login") return "login";
       if (pathname?.startsWith("/customer/products/")) {
-        const origin = sessionStorage.getItem("active_nav_origin");
-        return origin || "home";
+        const match = pathname.match(/\/customer\/products\/(\d+)/);
+        if (match && match[1]) {
+          try {
+            const specificOrigin = sessionStorage.getItem(`product_origin_${match[1]}`);
+            if (specificOrigin) return specificOrigin;
+          } catch {}
+        }
+        try {
+          const origin = sessionStorage.getItem("active_nav_origin");
+          return origin || "home";
+        } catch {
+          return "home";
+        }
       }
     }
     return pathname === "/customer/products" ? "products" : "home";
-  });
+  };
+
+  const [activeNav, setActiveNav] = useState<string>(getInitialActiveNav);
 
   useEffect(() => {
     if (pathname === "/") {
@@ -217,12 +230,26 @@ export default function CustomerNav({
       setActiveNav("login");
       try { sessionStorage.setItem("active_nav_origin", "login"); } catch {}
     } else if (pathname?.startsWith("/customer/products/")) {
-      try {
-        const origin = sessionStorage.getItem("active_nav_origin");
-        setActiveNav(origin === "products" ? "products" : "home");
-      } catch {
-        setActiveNav("home");
+      const match = pathname.match(/\/customer\/products\/(\d+)/);
+      let origin = "home";
+      if (match && match[1]) {
+        try {
+          const specific = sessionStorage.getItem(`product_origin_${match[1]}`);
+          if (specific) origin = specific;
+          else {
+            origin = sessionStorage.getItem("active_nav_origin") || "home";
+          }
+        } catch {
+          origin = "home";
+        }
+      } else {
+        try {
+          origin = sessionStorage.getItem("active_nav_origin") || "home";
+        } catch {
+          origin = "home";
+        }
       }
+      setActiveNav(origin === "products" ? "products" : origin === "account" ? "account" : "home");
     }
   }, [pathname]);
 

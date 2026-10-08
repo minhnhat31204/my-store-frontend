@@ -124,7 +124,11 @@ export default function ProductsPage() {
                     onClick={(e) => {
                       const target = (e.target as HTMLElement)?.closest("button, .favorite-btn, .add-button");
                       if (target) return;
-                      try { sessionStorage.setItem("active_nav_origin", "products"); } catch {}
+                      try {
+                        sessionStorage.setItem(`product_origin_${product.ProductID}`, "products");
+                        sessionStorage.setItem(`product_return_url_${product.ProductID}`, "/customer/products");
+                        sessionStorage.setItem("active_nav_origin", "products");
+                      } catch {}
                       router.push(`/customer/products/${product.ProductID}`);
                     }}
                     className="product-card flex flex-col h-full cursor-pointer transition"
@@ -134,7 +138,11 @@ export default function ProductsPage() {
                         href={`/customer/products/${product.ProductID}`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          try { sessionStorage.setItem("active_nav_origin", "products"); } catch {}
+                          try {
+                            sessionStorage.setItem(`product_origin_${product.ProductID}`, "products");
+                            sessionStorage.setItem(`product_return_url_${product.ProductID}`, "/customer/products");
+                            sessionStorage.setItem("active_nav_origin", "products");
+                          } catch {}
                         }}
                         aria-label={`Xem chi tiết ${product.ProductName}`}
                       >
@@ -152,7 +160,11 @@ export default function ProductsPage() {
                           href={`/customer/products/${product.ProductID}`}
                           onClick={(e) => {
                             e.stopPropagation();
-                            try { sessionStorage.setItem("active_nav_origin", "products"); } catch {}
+                            try {
+                              sessionStorage.setItem(`product_origin_${product.ProductID}`, "products");
+                              sessionStorage.setItem(`product_return_url_${product.ProductID}`, "/customer/products");
+                              sessionStorage.setItem("active_nav_origin", "products");
+                            } catch {}
                           }}
                           className="hover:text-blue-700"
                         >
