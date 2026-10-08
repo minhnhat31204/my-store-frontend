@@ -122,6 +122,9 @@ export default function ProductsPage() {
                     <div className="product-image">
                       <Link
                         href={`/customer/products/${product.ProductID}`}
+                        onClick={() => {
+                          try { sessionStorage.setItem("active_nav_origin", "products"); } catch {}
+                        }}
                         aria-label={`Xem chi tiết ${product.ProductName}`}
                       >
                         <img
@@ -135,7 +138,13 @@ export default function ProductsPage() {
                       {discountPercent > 0 && <div className="discount-tag">TIẾT KIỆM {discountPercent}%</div>}
                       <p className="shop-label">MANB SHOP</p>
                       <h3>
-                        <Link href={`/customer/products/${product.ProductID}`} className="hover:text-blue-700">
+                        <Link
+                          href={`/customer/products/${product.ProductID}`}
+                          onClick={() => {
+                            try { sessionStorage.setItem("active_nav_origin", "products"); } catch {}
+                          }}
+                          className="hover:text-blue-700"
+                        >
                           {product.ProductName}
                         </Link>
                       </h3>

@@ -172,6 +172,60 @@ export default function CustomerNav({
   const router = useRouter();
   const pathname = usePathname();
 
+  // Xác định tab đang kích hoạt chính xác theo trang gốc người dùng duyệt
+  const [activeNav, setActiveNav] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      if (pathname === "/") return "home";
+      if (pathname === "/customer/products") return "products";
+      if (pathname?.startsWith("/customer/notifications")) return "notifications";
+      if (
+        pathname?.startsWith("/customer/account") ||
+        pathname?.startsWith("/customer/orders") ||
+        pathname?.startsWith("/customer/addresses") ||
+        pathname?.startsWith("/customer/favorites")
+      ) {
+        return "account";
+      }
+      if (pathname === "/login") return "login";
+      if (pathname?.startsWith("/customer/products/")) {
+        const origin = sessionStorage.getItem("active_nav_origin");
+        return origin || "home";
+      }
+    }
+    return pathname === "/customer/products" ? "products" : "home";
+  });
+
+  useEffect(() => {
+    if (pathname === "/") {
+      setActiveNav("home");
+      try { sessionStorage.setItem("active_nav_origin", "home"); } catch {}
+    } else if (pathname === "/customer/products") {
+      setActiveNav("products");
+      try { sessionStorage.setItem("active_nav_origin", "products"); } catch {}
+    } else if (pathname?.startsWith("/customer/notifications")) {
+      setActiveNav("notifications");
+      try { sessionStorage.setItem("active_nav_origin", "notifications"); } catch {}
+    } else if (
+      pathname?.startsWith("/customer/account") ||
+      pathname?.startsWith("/customer/orders") ||
+      pathname?.startsWith("/customer/addresses") ||
+      pathname?.startsWith("/customer/favorites")
+    ) {
+      setActiveNav("account");
+      try { sessionStorage.setItem("active_nav_origin", "account"); } catch {}
+    } else if (pathname === "/login") {
+      setActiveNav("login");
+      try { sessionStorage.setItem("active_nav_origin", "login"); } catch {}
+    } else if (pathname?.startsWith("/customer/products/")) {
+      try {
+        const origin = sessionStorage.getItem("active_nav_origin");
+        setActiveNav(origin === "products" ? "products" : "home");
+      } catch {
+        setActiveNav("home");
+      }
+    }
+  }, [pathname]);
+
   useEffect(() => {
     lastScrollY.current = window.scrollY;
 
@@ -384,19 +438,31 @@ export default function CustomerNav({
           <nav className="desktop-links">
             <Link
               href="/"
-              className={`nav-bubble-link ${pathname === "/" ? "active" : ""}`}
+              onClick={() => {
+                try { sessionStorage.setItem("active_nav_origin", "home"); } catch {}
+                setActiveNav("home");
+              }}
+              className={`nav-bubble-link ${activeNav === "home" ? "active" : ""}`}
             >
               <span>Trang chủ</span>
             </Link>
             <Link
               href="/customer/products"
-              className={`nav-bubble-link ${pathname?.startsWith("/customer/products") ? "active" : ""}`}
+              onClick={() => {
+                try { sessionStorage.setItem("active_nav_origin", "products"); } catch {}
+                setActiveNav("products");
+              }}
+              className={`nav-bubble-link ${activeNav === "products" ? "active" : ""}`}
             >
               <span>Sản phẩm</span>
             </Link>
             <Link
               href="/customer/notifications"
-              className={`nav-bubble-link ${pathname?.startsWith("/customer/notifications") ? "active" : ""}`}
+              onClick={() => {
+                try { sessionStorage.setItem("active_nav_origin", "notifications"); } catch {}
+                setActiveNav("notifications");
+              }}
+              className={`nav-bubble-link ${activeNav === "notifications" ? "active" : ""}`}
             >
               <span>Thông báo</span>
               {unreadNotifications > 0 && (
@@ -501,7 +567,11 @@ export default function CustomerNav({
                       <Link
                         role="menuitem"
                         href="/customer/account"
-                        onClick={() => setAccountMenuOpen(false)}
+                        onClick={() => {
+                          try { sessionStorage.setItem("active_nav_origin", "account"); } catch {}
+                          setActiveNav("account");
+                          setAccountMenuOpen(false);
+                        }}
                         className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"
                       >
                         <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100"><UserMenuIcon /></span>
@@ -511,7 +581,11 @@ export default function CustomerNav({
                       <Link
                         role="menuitem"
                         href="/customer/orders"
-                        onClick={() => setAccountMenuOpen(false)}
+                        onClick={() => {
+                          try { sessionStorage.setItem("active_nav_origin", "account"); } catch {}
+                          setActiveNav("account");
+                          setAccountMenuOpen(false);
+                        }}
                         className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"
                       >
                         <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100"><PackageMenuIcon /></span>
@@ -521,7 +595,11 @@ export default function CustomerNav({
                       <Link
                         role="menuitem"
                         href="/customer/addresses"
-                        onClick={() => setAccountMenuOpen(false)}
+                        onClick={() => {
+                          try { sessionStorage.setItem("active_nav_origin", "account"); } catch {}
+                          setActiveNav("account");
+                          setAccountMenuOpen(false);
+                        }}
                         className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"
                       >
                         <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100"><MapPinMenuIcon /></span>
@@ -531,7 +609,11 @@ export default function CustomerNav({
                       <Link
                         role="menuitem"
                         href="/customer/favorites"
-                        onClick={() => setAccountMenuOpen(false)}
+                        onClick={() => {
+                          try { sessionStorage.setItem("active_nav_origin", "account"); } catch {}
+                          setActiveNav("account");
+                          setAccountMenuOpen(false);
+                        }}
                         className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"
                       >
                         <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100"><HeartMenuIcon /></span>
@@ -541,7 +623,11 @@ export default function CustomerNav({
                       <Link
                         role="menuitem"
                         href="/customer/notifications"
-                        onClick={() => setAccountMenuOpen(false)}
+                        onClick={() => {
+                          try { sessionStorage.setItem("active_nav_origin", "notifications"); } catch {}
+                          setActiveNav("notifications");
+                          setAccountMenuOpen(false);
+                        }}
                         className="flex items-center justify-between rounded-xl px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700"
                       >
                         <div className="flex items-center gap-2.5">
@@ -600,19 +686,40 @@ export default function CustomerNav({
       </header>
 
       <nav className="mobile-bottom-nav">
-        <Link href="/" className={`mobile-nav-item ${pathname === "/" ? "active" : ""}`}>
-          <MobileHomeIcon active={pathname === "/"} />
+        <Link
+          href="/"
+          onClick={() => {
+            try { sessionStorage.setItem("active_nav_origin", "home"); } catch {}
+            setActiveNav("home");
+          }}
+          className={`mobile-nav-item ${activeNav === "home" ? "active" : ""}`}
+        >
+          <MobileHomeIcon active={activeNav === "home"} />
           <small>Trang chủ</small>
         </Link>
 
-        <Link href="/customer/products" className={`mobile-nav-item ${pathname?.startsWith("/customer/products") ? "active" : ""}`}>
-          <MobileCategoryIcon active={Boolean(pathname?.startsWith("/customer/products"))} />
+        <Link
+          href="/customer/products"
+          onClick={() => {
+            try { sessionStorage.setItem("active_nav_origin", "products"); } catch {}
+            setActiveNav("products");
+          }}
+          className={`mobile-nav-item ${activeNav === "products" ? "active" : ""}`}
+        >
+          <MobileCategoryIcon active={activeNav === "products"} />
           <small>Sản phẩm</small>
         </Link>
 
-        <Link href="/customer/notifications" className={`mobile-nav-item ${pathname?.startsWith("/customer/notifications") ? "active" : ""}`}>
+        <Link
+          href="/customer/notifications"
+          onClick={() => {
+            try { sessionStorage.setItem("active_nav_origin", "notifications"); } catch {}
+            setActiveNav("notifications");
+          }}
+          className={`mobile-nav-item ${activeNav === "notifications" ? "active" : ""}`}
+        >
           <span className="mobile-nav-icon-wrap">
-            <MobileBellIcon active={Boolean(pathname?.startsWith("/customer/notifications"))} />
+            <MobileBellIcon active={activeNav === "notifications"} />
             {unreadNotifications > 0 && (
               <b className="mobile-cart-badge">
                 {unreadNotifications > 99 ? "99+" : unreadNotifications}
@@ -624,17 +731,31 @@ export default function CustomerNav({
 
         {authLoaded && (
           user ? (
-            <Link href="/customer/account" className={`mobile-nav-item ${pathname?.startsWith("/customer/account") ? "active" : ""}`}>
+            <Link
+              href="/customer/account"
+              onClick={() => {
+                try { sessionStorage.setItem("active_nav_origin", "account"); } catch {}
+                setActiveNav("account");
+              }}
+              className={`mobile-nav-item ${activeNav === "account" ? "active" : ""}`}
+            >
               {user.Avatar ? (
                 <img src={resolveApiAssetUrl(user.Avatar)} alt="" className="w-5 h-5 rounded-full object-cover border border-blue-400" />
               ) : (
-                <MobileUserIcon active={Boolean(pathname?.startsWith("/customer/account"))} />
+                <MobileUserIcon active={activeNav === "account"} />
               )}
               <small>Tài khoản</small>
             </Link>
           ) : (
-            <Link href="/login" className={`mobile-nav-item ${pathname === "/login" ? "active" : ""}`}>
-              <MobileUserIcon active={pathname === "/login"} />
+            <Link
+              href="/login"
+              onClick={() => {
+                try { sessionStorage.setItem("active_nav_origin", "login"); } catch {}
+                setActiveNav("login");
+              }}
+              className={`mobile-nav-item ${activeNav === "login" ? "active" : ""}`}
+            >
+              <MobileUserIcon active={activeNav === "login"} />
               <small>Đăng nhập</small>
             </Link>
           )

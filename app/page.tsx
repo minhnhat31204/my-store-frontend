@@ -404,7 +404,13 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: (e: React.Mo
   return (
     <article className="product-card flex flex-col h-full">
       <div className="product-image">
-        <Link href={`/customer/products/${product.ProductID}`} aria-label={`Xem chi tiết ${product.ProductName}`}>
+        <Link
+          href={`/customer/products/${product.ProductID}`}
+          onClick={() => {
+            try { sessionStorage.setItem("active_nav_origin", "home"); } catch {}
+          }}
+          aria-label={`Xem chi tiết ${product.ProductName}`}
+        >
           <img src={displayImage} alt={product.ProductName} />
         </Link>
         <FavoriteButton product={product} />
@@ -412,7 +418,17 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: (e: React.Mo
       <div className="product-info flex flex-col flex-grow">
         {discountPercent > 0 && <div className="discount-tag">TIẾT KIỆM {discountPercent}%</div>}
         <p className="shop-label">MANB SHOP</p>
-        <h3><Link href={`/customer/products/${product.ProductID}`} className="hover:text-blue-700">{product.ProductName}</Link></h3>
+        <h3>
+          <Link
+            href={`/customer/products/${product.ProductID}`}
+            onClick={() => {
+              try { sessionStorage.setItem("active_nav_origin", "home"); } catch {}
+            }}
+            className="hover:text-blue-700"
+          >
+            {product.ProductName}
+          </Link>
+        </h3>
         
         <div className="mt-auto pt-2">
           <div className="price-row">
