@@ -276,7 +276,7 @@ export default function ProductDetailPage() {
           onClick={() => {
             if (typeof window !== "undefined") {
               try {
-                sessionStorage.setItem("last_nav_action", "back");
+                sessionStorage.setItem("is_pop_nav", "1");
               } catch {}
             }
             if (typeof window !== "undefined" && window.history.length > 1) {
