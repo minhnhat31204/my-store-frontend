@@ -261,14 +261,14 @@ export default function ProductDetailPage() {
         {!loading && product && (
           <>
             {/* FORM CHÍNH THÔNG TIN SẢN PHẨM */}
-            <section className="mt-4 grid gap-6 rounded-3xl bg-white p-4 sm:p-7 shadow-xs border border-slate-200/80 md:grid-cols-2 md:gap-8 items-stretch">
+            <section className="product-detail-expand mt-4 grid gap-6 rounded-3xl bg-white p-4 sm:p-7 shadow-xs border border-slate-200/80 md:grid-cols-2 md:gap-8 items-stretch">
               {/* KHUNG ẢNH CÓ SLIDER & THUMBNAILS (KÉO TO FULL 100% CHIỀU CAO THẺ) */}
               <div className="flex flex-col h-full w-full gap-3">
                 <div className="relative flex flex-1 w-full h-full min-h-[380px] sm:min-h-[480px] items-center justify-center rounded-2xl bg-slate-50/90 p-2 sm:p-4 border border-slate-100/90 overflow-hidden group">
                   <img
                     src={allImages[selectedImageIndex] || "/placeholder.png"}
                     alt={product.ProductName}
-                    className="w-full h-full max-h-[460px] sm:max-h-[540px] object-contain transition-transform duration-300 group-hover:scale-[1.03]"
+                    className="product-detail-image-bloom w-full h-full max-h-[460px] sm:max-h-[540px] object-contain transition-transform duration-300 group-hover:scale-[1.03]"
                   />
                   <FavoriteButton product={product} />
 

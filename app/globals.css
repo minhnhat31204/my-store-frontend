@@ -361,12 +361,15 @@ a { text-decoration: none; -webkit-tap-highlight-color: transparent; }
   border-radius: 16px;
   background: #ffffff;
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.04);
-  transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+  transition: transform .25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow .25s ease, border-color .25s ease;
 }
 .product-card:hover {
   transform: translateY(-4px);
   border-color: #cbd5e1;
   box-shadow: 0 14px 28px rgba(15, 23, 42, 0.09), 0 2px 6px rgba(15, 23, 42, 0.04);
+}
+.product-card:active {
+  transform: scale(0.975);
 }
 .product-image {
   position: relative;
@@ -378,6 +381,55 @@ a { text-decoration: none; -webkit-tap-highlight-color: transparent; }
   padding: 16px;
   border-bottom: 1px solid #edf2f7;
   background: #f8fafc;
+}
+.product-image img {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.product-card:hover .product-image img {
+  transform: scale(1.06);
+}
+
+/* Hiệu ứng mở bung mượt mà từ thẻ sản phẩm ra trang chi tiết */
+@keyframes productHeroExpand {
+  0% {
+    opacity: 0;
+    transform: scale(0.92) translateY(18px);
+  }
+  60% {
+    opacity: 0.95;
+    transform: scale(1.008) translateY(-2px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes productImageBloom {
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  65% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.product-detail-expand {
+  animation: productHeroExpand 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+  transform-origin: center top;
+}
+
+.product-detail-image-bloom {
+  animation: productImageBloom 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+  transform-origin: center center;
 }
 .product-image > a { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; }
 .product-image img { display: block; width: 100%; height: 100%; object-fit: contain; }
