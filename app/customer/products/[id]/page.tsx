@@ -373,7 +373,6 @@ export default function ProductDetailPage() {
               {/* THÔNG TIN & CÁC MỤC CHỌN PHIÊN BẢN */}
               <div className="flex flex-col justify-between">
                 <div>
-                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-blue-600">MANB SHOP</p>
                   <h1 className="mt-1 text-lg sm:text-xl font-black text-slate-900 leading-snug">{product.ProductName}</h1>
                   
                   <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-slate-600">

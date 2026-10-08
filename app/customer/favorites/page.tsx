@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useFavorites } from "@/app/components/FavoritesProvider";
 import FavoriteButton from "@/app/components/FavoriteButton";
 import ScrollReveal from "@/app/components/ScrollReveal";
 import { getPrimaryProductImage } from "@/lib/api";
 
 export default function FavoritesPage() {
+  const router = useRouter();
   const { products, loading } = useFavorites();
 
   return (
@@ -28,16 +30,40 @@ export default function FavoritesPage() {
               const oldPrice = Number(product.Price);
               return (
                 <ScrollReveal key={product.ProductID} index={idx}>
-                  <article className="product-card flex flex-col h-full">
+                  <article
+                    onClick={(e) => {
+                      const target = (e.target as HTMLElement)?.closest("button, .favorite-btn");
+                      if (target) return;
+                      try { sessionStorage.setItem("active_nav_origin", "account"); } catch {}
+                      router.push(`/customer/products/${product.ProductID}`);
+                    }}
+                    className="product-card flex flex-col h-full cursor-pointer transition"
+                  >
                     <div className="product-image">
-                      <Link href={`/customer/products/${product.ProductID}`} aria-label={`Xem chi tiết ${product.ProductName}`}>
+                      <Link
+                        href={`/customer/products/${product.ProductID}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          try { sessionStorage.setItem("active_nav_origin", "account"); } catch {}
+                        }}
+                        aria-label={`Xem chi tiết ${product.ProductName}`}
+                      >
                         <img src={getPrimaryProductImage(product.ImageUrl) || "/placeholder.png"} alt={product.ProductName} />
                       </Link>
                       <FavoriteButton product={product} />
                     </div>
                     <div className="product-info flex flex-col flex-grow">
-                      <p className="shop-label">MANB SHOP</p>
-                      <h3><Link href={`/customer/products/${product.ProductID}`}>{product.ProductName}</Link></h3>
+                      <h3>
+                        <Link
+                          href={`/customer/products/${product.ProductID}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            try { sessionStorage.setItem("active_nav_origin", "account"); } catch {}
+                          }}
+                        >
+                          {product.ProductName}
+                        </Link>
+                      </h3>
                       <div className="price-row mt-auto">
                         <strong>{price.toLocaleString("vi-VN")} ₫</strong>
                         {oldPrice > price && <del>{oldPrice.toLocaleString("vi-VN")} ₫</del>}

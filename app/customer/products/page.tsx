@@ -15,6 +15,7 @@ import {
 } from "@/lib/api";
 import type { StoreCategory } from "@/lib/api";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import FavoriteButton from "@/app/components/FavoriteButton";
 import ScrollReveal from "@/app/components/ScrollReveal";
 import { addToCart } from "@/lib/cart";
@@ -27,6 +28,7 @@ function extractBrand(name: string) {
 }
 
 export default function ProductsPage() {
+  const router = useRouter();
   const initialProducts = useMemo(() => getCachedProductsSync() || [], []);
   const initialCategories = useMemo(() => getCachedCategoriesSync() || [], []);
   const [products, setProducts] = useState<Product[]>(initialProducts);
@@ -118,11 +120,20 @@ export default function ProductsPage() {
 
               return (
                 <ScrollReveal key={product.ProductID} index={idx}>
-                  <article className="product-card flex flex-col h-full">
+                  <article
+                    onClick={(e) => {
+                      const target = (e.target as HTMLElement)?.closest("button, .favorite-btn, .add-button");
+                      if (target) return;
+                      try { sessionStorage.setItem("active_nav_origin", "products"); } catch {}
+                      router.push(`/customer/products/${product.ProductID}`);
+                    }}
+                    className="product-card flex flex-col h-full cursor-pointer transition"
+                  >
                     <div className="product-image">
                       <Link
                         href={`/customer/products/${product.ProductID}`}
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           try { sessionStorage.setItem("active_nav_origin", "products"); } catch {}
                         }}
                         aria-label={`Xem chi tiết ${product.ProductName}`}
@@ -136,11 +147,11 @@ export default function ProductsPage() {
                     </div>
                     <div className="product-info flex flex-col flex-grow">
                       {discountPercent > 0 && <div className="discount-tag">TIẾT KIỆM {discountPercent}%</div>}
-                      <p className="shop-label">MANB SHOP</p>
                       <h3>
                         <Link
                           href={`/customer/products/${product.ProductID}`}
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             try { sessionStorage.setItem("active_nav_origin", "products"); } catch {}
                           }}
                           className="hover:text-blue-700"
@@ -164,7 +175,10 @@ export default function ProductsPage() {
                             : "Tạm hết hàng"}
                         </p>
                         <button
-                          onClick={(e) => add(product, e)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            add(product, e);
+                          }}
                           disabled={addingId === product.ProductID || Number(product.StockQuantity ?? 0) <= 0}
                           className="add-button disabled:cursor-not-allowed disabled:opacity-60"
                         >

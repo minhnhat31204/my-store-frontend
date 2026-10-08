@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   api,
@@ -392,6 +393,7 @@ export default function Home() {
 }
 
 function ProductCard({ product, onAdd }: { product: Product; onAdd: (e: React.MouseEvent) => void }) {
+  const router = useRouter();
   const price = Number(product.DiscountPrice || product.Price);
   const oldPrice = Number(product.Price);
   const discountPercent = oldPrice > price
@@ -401,12 +403,27 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: (e: React.Mo
   // Xử lý tách lấy ảnh đầu tiên và kiểm tra xem có phải là đường dẫn URL hợp lệ hay không
   const displayImage = getPrimaryProductImage(product.ImageUrl) || "/placeholder.png";
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Nếu bấm vào nút thêm giỏ hàng hoặc nút yêu thích thì không kích hoạt chuyển trang
+    const target = (e.target as HTMLElement)?.closest("button, .favorite-btn, .add-button");
+    if (target) return;
+
+    try {
+      sessionStorage.setItem("active_nav_origin", "home");
+    } catch {}
+    router.push(`/customer/products/${product.ProductID}`);
+  };
+
   return (
-    <article className="product-card flex flex-col h-full">
+    <article
+      onClick={handleCardClick}
+      className="product-card flex flex-col h-full cursor-pointer transition"
+    >
       <div className="product-image">
         <Link
           href={`/customer/products/${product.ProductID}`}
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation();
             try { sessionStorage.setItem("active_nav_origin", "home"); } catch {}
           }}
           aria-label={`Xem chi tiết ${product.ProductName}`}
@@ -417,11 +434,11 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: (e: React.Mo
       </div>
       <div className="product-info flex flex-col flex-grow">
         {discountPercent > 0 && <div className="discount-tag">TIẾT KIỆM {discountPercent}%</div>}
-        <p className="shop-label">MANB SHOP</p>
         <h3>
           <Link
             href={`/customer/products/${product.ProductID}`}
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               try { sessionStorage.setItem("active_nav_origin", "home"); } catch {}
             }}
             className="hover:text-blue-700"
@@ -435,8 +452,19 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: (e: React.Mo
             <strong>{price.toLocaleString("vi-VN")} ₫</strong>
             {oldPrice > price && <del>{oldPrice.toLocaleString("vi-VN")} ₫</del>}
           </div>
-          <p className={`mb-2 text-xs font-semibold ${Number(product.StockQuantity ?? 0) > 0 ? "text-slate-500" : "text-red-600"}`}>{Number(product.StockQuantity ?? 0) > 0 ? `Còn ${product.StockQuantity} sản phẩm` : "Tạm hết hàng"}</p>
-          <button onClick={onAdd} disabled={Number(product.StockQuantity ?? 0) <= 0} className="add-button disabled:cursor-not-allowed disabled:opacity-60">{Number(product.StockQuantity ?? 0) > 0 ? "Thêm vào giỏ hàng" : "Hết hàng"}</button>
+          <p className={`mb-2 text-xs font-semibold ${Number(product.StockQuantity ?? 0) > 0 ? "text-slate-500" : "text-red-600"}`}>
+            {Number(product.StockQuantity ?? 0) > 0 ? `Còn ${product.StockQuantity} sản phẩm` : "Tạm hết hàng"}
+          </p>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onAdd(e);
+            }}
+            disabled={Number(product.StockQuantity ?? 0) <= 0}
+            className="add-button disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {Number(product.StockQuantity ?? 0) > 0 ? "Thêm vào giỏ hàng" : "Hết hàng"}
+          </button>
         </div>
       </div>
     </article>
