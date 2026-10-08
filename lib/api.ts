@@ -19,6 +19,31 @@ export type Product = {
   Series?: string | null;
 };
 
+let memoryProductsCache: Product[] | null = null;
+
+export function getCachedProductsSync(): Product[] | null {
+  if (memoryProductsCache && memoryProductsCache.length > 0) return memoryProductsCache;
+  if (typeof window !== "undefined") {
+    try {
+      const raw = sessionStorage.getItem("cache_products_list");
+      if (raw) {
+        memoryProductsCache = JSON.parse(raw);
+        return memoryProductsCache;
+      }
+    } catch {}
+  }
+  return null;
+}
+
+export function setCachedProductsSync(products: Product[]) {
+  memoryProductsCache = products;
+  if (typeof window !== "undefined") {
+    try {
+      sessionStorage.setItem("cache_products_list", JSON.stringify(products));
+    } catch {}
+  }
+}
+
 export type User = {
   UserID: number;
   FullName?: string;
@@ -256,8 +281,13 @@ export const api = {
   // PRODUCTS
   // =========================
 
-  getProducts: () =>
-    request<Product[]>("/products"),
+  getProducts: async () => {
+    const data = await request<Product[]>("/products");
+    if (Array.isArray(data)) {
+      setCachedProductsSync(data);
+    }
+    return data;
+  },
 
   getCategories: () => request<StoreCategory[]>("/categories"),
 

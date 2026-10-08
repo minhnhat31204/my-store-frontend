@@ -5,7 +5,15 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { addToCart } from "@/lib/cart";
 import { animateFlyToCart } from "@/lib/cart-animation";
-import { api, getPrimaryProductImage, Product, ProductReview, ProductVariant, resolveApiAssetUrl } from "@/lib/api";
+import {
+  api,
+  getCachedProductsSync,
+  getPrimaryProductImage,
+  Product,
+  ProductReview,
+  ProductVariant,
+  resolveApiAssetUrl,
+} from "@/lib/api";
 import FavoriteButton from "@/app/components/FavoriteButton";
 
 const formatPrice = (value: number | string) =>
@@ -15,11 +23,19 @@ export default function ProductDetailPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const productId = Number(params.id);
-  const [product, setProduct] = useState<Product | null>(null);
-  const [products, setProducts] = useState<Product[]>([]);
+
+  // Khởi tạo ngay từ bộ nhớ đệm client để khi bấm vào thẻ sản phẩm trang mở bung tức thì không độ trễ
+  const initialCachedList = useMemo(() => getCachedProductsSync() || [], []);
+  const initialCachedProduct = useMemo(
+    () => initialCachedList.find((item) => item.ProductID === productId) || null,
+    [initialCachedList, productId]
+  );
+
+  const [product, setProduct] = useState<Product | null>(initialCachedProduct);
+  const [products, setProducts] = useState<Product[]>(initialCachedList);
   const [variants, setVariants] = useState<ProductVariant[]>([]);
   const [reviews, setReviews] = useState<ProductReview[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialCachedProduct);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [adding, setAdding] = useState(false);
@@ -40,15 +56,31 @@ export default function ProductDetailPage() {
 
     let active = true;
     setSelectedImageIndex(0);
+
+    // Nếu chưa có product trong state, thử đọc lại cache
+    if (!product) {
+      const cached = getCachedProductsSync()?.find((item) => item.ProductID === productId);
+      if (cached) {
+        setProduct(cached);
+        setLoading(false);
+      }
+    }
+
     api.getProducts()
       .then((items) => {
         if (!active) return;
         setProducts(items);
         const selected = items.find((item) => item.ProductID === productId);
-        if (!selected) setError("Không tìm thấy sản phẩm này.");
-        setProduct(selected ?? null);
+        if (!selected) {
+          setError("Không tìm thấy sản phẩm này.");
+        } else {
+          setProduct(selected);
+          setError("");
+        }
       })
-      .catch(() => active && setError("Không thể tải thông tin sản phẩm."))
+      .catch(() => {
+        if (active && !product) setError("Không thể tải thông tin sản phẩm.");
+      })
       .finally(() => active && setLoading(false));
 
     api.getProductVariants()
@@ -255,10 +287,28 @@ export default function ProductDetailPage() {
           <span>Quay lại</span>
         </button>
 
-        {loading && <p className="py-16 text-center text-slate-600">Đang tải thông tin sản phẩm...</p>}
-        {!loading && error && <p role="alert" className="my-8 rounded-xl bg-rose-50 p-5 text-rose-700">{error}</p>}
+        {loading && !product && (
+          <div className="mt-4 grid animate-pulse gap-6 rounded-3xl bg-white p-4 sm:p-7 shadow-xs border border-slate-200/80 md:grid-cols-2 md:gap-8 items-stretch">
+            <div className="h-[380px] sm:h-[480px] rounded-2xl bg-slate-100" />
+            <div className="flex flex-col justify-between space-y-4 py-2">
+              <div className="space-y-3">
+                <div className="h-4 w-24 rounded bg-slate-100" />
+                <div className="h-7 w-3/4 rounded bg-slate-100" />
+                <div className="h-4 w-1/3 rounded bg-slate-100" />
+                <div className="h-9 w-1/2 rounded bg-slate-100" />
+              </div>
+              <div className="h-12 w-full rounded-xl bg-slate-100" />
+            </div>
+          </div>
+        )}
 
-        {!loading && product && (
+        {!product && !loading && error && (
+          <p role="alert" className="my-8 rounded-xl bg-rose-50 p-5 text-rose-700 font-semibold text-center">
+            {error}
+          </p>
+        )}
+
+        {product && (
           <>
             {/* FORM CHÍNH THÔNG TIN SẢN PHẨM */}
             <section className="product-detail-expand mt-4 grid gap-6 rounded-3xl bg-white p-4 sm:p-7 shadow-xs border border-slate-200/80 md:grid-cols-2 md:gap-8 items-stretch">
