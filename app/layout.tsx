@@ -6,7 +6,6 @@ import Footer from './components/Footer';
 import SupportWidget from './components/SupportWidget';
 import { FavoritesProvider } from './components/FavoritesProvider';
 import PageTransitionProvider from './components/PageTransitionProvider';
-import ClickFeedbackProvider from './components/ClickFeedbackProvider';
 import './globals.css';
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
@@ -18,7 +17,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="vi" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
-        <ClickFeedbackProvider />
         <CustomerNav />
         <FavoritesProvider>
           <PageTransitionProvider>
