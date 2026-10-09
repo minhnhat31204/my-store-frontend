@@ -111,46 +111,101 @@ export default function ProductsPage() {
   return (
     <main className="store-page">
       <div className="store-container">
-        <div className="section-heading">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-5">
           <div>
-            <p>DANH MỤC TOÀN BỘ</p>
-            <h1>Sản phẩm dành cho bạn</h1>
+            <p className="text-xs font-black uppercase text-blue-600 tracking-wider">Danh Mục Toàn Bộ</p>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">Sản phẩm dành cho bạn</h1>
+          </div>
+          <div className="text-sm font-semibold text-slate-500">
+            Hiển thị <strong className="text-slate-900 font-bold">{filtered.length}</strong> sản phẩm
           </div>
         </div>
 
-        <section aria-label="Lọc và sắp xếp sản phẩm" className="mb-6 grid gap-3.5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-4 items-end">
-          <CustomSelect
-            label="Danh mục"
-            value={categoryId}
-            onChange={setCategoryId}
-            options={categoryOptions}
-          />
+        {/* Thanh lọc 3 cột tiêu chuẩn */}
+        <section aria-label="Lọc và sắp xếp sản phẩm" className="mb-6 rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm">
+          <div className="grid gap-3.5 sm:grid-cols-3">
+            <CustomSelect
+              label="Danh mục"
+              value={categoryId}
+              onChange={setCategoryId}
+              options={categoryOptions}
+            />
 
-          <CustomSelect
-            label="Thương hiệu"
-            value={brand}
-            onChange={setBrand}
-            options={brandOptions}
-          />
+            <CustomSelect
+              label="Thương hiệu"
+              value={brand}
+              onChange={setBrand}
+              options={brandOptions}
+            />
 
-          <CustomSelect
-            label="Sắp xếp giá & tên"
-            value={sortBy}
-            onChange={setSortBy}
-            options={sortOptions}
-          />
-
-          <div>
-            <span className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-1">
-              Kết quả hiển thị
-            </span>
-            <div className="flex items-center justify-between h-[42px] rounded-xl border border-blue-200/80 bg-blue-50/60 px-3.5 text-xs font-bold text-blue-900 shadow-xs">
-              <span className="text-slate-600 font-medium">Tìm thấy:</span>
-              <span className="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-black text-xs shadow-xs">
-                {filtered.length} sản phẩm
-              </span>
-            </div>
+            <CustomSelect
+              label="Sắp xếp theo"
+              value={sortBy}
+              onChange={setSortBy}
+              options={sortOptions}
+            />
           </div>
+
+          {/* Dòng hiển thị bộ lọc đang chọn + Nút đặt lại */}
+          {(categoryId !== 'all' || brand !== 'all' || sortBy !== 'recommended' || keyword) && (
+            <div className="mt-3.5 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="text-slate-400 font-medium">Đang lọc:</span>
+                {categoryId !== 'all' && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 font-bold border border-blue-200/60">
+                    {categoryOptions.find((c) => c.value === categoryId)?.label}
+                    <button
+                      type="button"
+                      onClick={() => setCategoryId('all')}
+                      className="hover:text-blue-900 cursor-pointer ml-0.5"
+                      title="Bỏ lọc danh mục"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )}
+                {brand !== 'all' && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 font-bold border border-blue-200/60">
+                    {brand}
+                    <button
+                      type="button"
+                      onClick={() => setBrand('all')}
+                      className="hover:text-blue-900 cursor-pointer ml-0.5"
+                      title="Bỏ lọc thương hiệu"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )}
+                {keyword && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 font-bold border border-blue-200/60">
+                    Từ khóa: &quot;{keyword}&quot;
+                    <button
+                      type="button"
+                      onClick={() => setKeyword('')}
+                      className="hover:text-blue-900 cursor-pointer ml-0.5"
+                      title="Xóa từ khóa"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setCategoryId('all');
+                  setBrand('all');
+                  setSortBy('recommended');
+                  setKeyword('');
+                }}
+                className="text-xs font-bold text-rose-600 hover:text-rose-700 hover:underline transition cursor-pointer"
+              >
+                Xóa tất cả bộ lọc ↺
+              </button>
+            </div>
+          )}
         </section>
 
         {filtered.length === 0 ? (
