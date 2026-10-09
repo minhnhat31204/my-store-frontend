@@ -15,8 +15,8 @@ export const metadata: Metadata = { title: 'MANB SHOP', description: 'Computer S
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="vi" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">
+    <html lang="vi" className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className="min-h-screen flex flex-col bg-[#f6f8fb] text-slate-900">
         <CustomerNav />
         <FavoritesProvider>
           <PageTransitionProvider>

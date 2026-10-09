@@ -92,7 +92,7 @@ export default function ProductsPage() {
   return (
     <main className="store-page">
       <div className="store-container">
-        <div className="section-heading mt-6">
+        <div className="section-heading">
           <div>
             <p>DANH MỤC TOÀN BỘ</p>
             <h1>Sản phẩm dành cho bạn</h1>
