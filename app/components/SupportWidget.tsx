@@ -156,7 +156,7 @@ export default function SupportWidget() {
             className="flex-1 text-left cursor-pointer hover:text-blue-300 transition"
           >
             <p className="font-bold text-white text-[12px] leading-tight">Tư vấn Laptop & Báo giá AI</p>
-            <p className="text-[10px] text-blue-200">Nhấn để chat ngay 24/7 ✨</p>
+            <p className="text-[10px] text-blue-200">Nhấn để chat ngay 24/7</p>
           </button>
           <button
             onClick={() => setShowTeaser(false)}
