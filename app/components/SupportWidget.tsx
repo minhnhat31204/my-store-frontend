@@ -27,9 +27,11 @@ export default function SupportWidget() {
   const [draft, setDraft] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [showTeaser, setShowTeaser] = useState(true);
   const [activeOption, setActiveOption] = useState<'ai' | 'staff' | 'zalo' | null>(null);
   const messagesPane = useRef<HTMLDivElement>(null);
+  const isUserNearBottomRef = useRef(true);
 
   const identity = useCallback((channel: 'ai' | 'staff') => {
     const user = getStoredUser();
@@ -53,21 +55,51 @@ export default function SupportWidget() {
     };
   }, []);
 
-  const refreshMessages = useCallback(async (id: number, channel: 'ai' | 'staff') => {
+  const handleScroll = useCallback(() => {
+    const pane = messagesPane.current;
+    if (!pane) return;
+    const distanceToBottom = pane.scrollHeight - pane.scrollTop - pane.clientHeight;
+    isUserNearBottomRef.current = distanceToBottom < 60;
+  }, []);
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
+    const pane = messagesPane.current;
+    if (!pane) return;
+    pane.scrollTo({ top: pane.scrollHeight, behavior });
+  }, []);
+
+  const refreshMessages = useCallback(async (id: number, channel: 'ai' | 'staff', forceScroll = false) => {
     try {
       const owner = identity(channel);
       const result = await api.getSupportMessages(id, owner);
-      setMessages(result.messages || []);
+      const newMsgs = result.messages || [];
+      setMessages((prev) => {
+        if (
+          prev.length === newMsgs.length &&
+          prev[prev.length - 1]?.MessageID === newMsgs[newMsgs.length - 1]?.MessageID
+        ) {
+          return prev;
+        }
+        return newMsgs;
+      });
+
+      if (forceScroll || isUserNearBottomRef.current) {
+        setTimeout(() => {
+          scrollToBottom(forceScroll ? 'smooth' : 'auto');
+        }, 60);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Không thể tải tin nhắn');
     }
-  }, [identity]);
+  }, [identity, scrollToBottom]);
 
   useEffect(() => {
     if (!chatOpen) return;
-    const pane = messagesPane.current;
-    if (pane) pane.scrollTop = pane.scrollHeight;
-  }, [chatOpen, aiMode, messages, loading]);
+    isUserNearBottomRef.current = true;
+    setTimeout(() => {
+      scrollToBottom('auto');
+    }, 100);
+  }, [chatOpen, scrollToBottom]);
 
   const openChat = async (useAi = false) => {
     setChatOpen(true);
@@ -76,11 +108,12 @@ export default function SupportWidget() {
     setShowTeaser(false);
     setError('');
     setMessages([]);
+    isUserNearBottomRef.current = true;
     const channel = useAi ? 'ai' : 'staff';
     const existingId = conversationIds[channel];
     if (existingId) {
       setLoading(true);
-      try { await refreshMessages(existingId, channel); }
+      try { await refreshMessages(existingId, channel, true); }
       finally { setLoading(false); }
       return;
     }
@@ -89,7 +122,7 @@ export default function SupportWidget() {
       const result = await api.openSupportConversation(identity(channel));
       const id = result.conversation.ConversationID;
       setConversationIds((current) => ({ ...current, [channel]: id }));
-      await refreshMessages(result.conversation.ConversationID, channel);
+      await refreshMessages(result.conversation.ConversationID, channel, true);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Không thể kết nối bộ phận hỗ trợ');
     } finally {
@@ -109,7 +142,7 @@ export default function SupportWidget() {
     const conversationId = conversationIds[aiMode ? 'ai' : 'staff'];
     if (!chatOpen || !conversationId) return;
     const channel = aiMode ? 'ai' : 'staff';
-    const timer = window.setInterval(() => { void refreshMessages(conversationId, channel); }, 3000);
+    const timer = window.setInterval(() => { void refreshMessages(conversationId, channel, false); }, 3000);
     return () => window.clearInterval(timer);
   }, [chatOpen, conversationIds, aiMode, refreshMessages]);
 
@@ -117,18 +150,24 @@ export default function SupportWidget() {
     const message = textToSend.trim();
     const channel = aiMode ? 'ai' : 'staff';
     const conversationId = conversationIds[channel];
-    if (!message || !conversationId || loading) return;
+    if (!message || !conversationId || loading || isSending) return;
+    
+    setIsSending(true);
     setLoading(true);
     setError('');
+    setDraft('');
     try {
       const owner = identity(channel);
       const result = await api.sendSupportMessage(conversationId, { ...owner, message });
       setMessages((current) => current.some((item) => item.MessageID === result.message.MessageID) ? current : [...current, result.message]);
-      setDraft('');
+      isUserNearBottomRef.current = true;
+      setTimeout(() => scrollToBottom('smooth'), 50);
+
       if (aiMode) {
         try {
           const answer = await api.requestSupportAiReply(conversationId, owner);
           setMessages((current) => current.some((item) => item.MessageID === answer.message.MessageID) ? current : [...current, answer.message]);
+          setTimeout(() => scrollToBottom('smooth'), 60);
         } catch (aiError) {
           setError(aiError instanceof Error ? aiError.message : 'Trợ lý AI chưa thể trả lời. Bạn có thể chuyển sang nhân viên hỗ trợ.');
         }
@@ -137,6 +176,7 @@ export default function SupportWidget() {
       setError(e instanceof Error ? e.message : 'Gửi tin nhắn thất bại');
     } finally {
       setLoading(false);
+      setIsSending(false);
     }
   };
 
@@ -205,10 +245,14 @@ export default function SupportWidget() {
             </button>
           </header>
 
-          <div ref={messagesPane} className="flex-1 space-y-3 overflow-y-auto bg-slate-50 p-4 scrollbar-thin">
+          <div
+            ref={messagesPane}
+            onScroll={handleScroll}
+            className="flex-1 space-y-3 overflow-y-auto bg-slate-50 p-4 scrollbar-thin"
+          >
             {!messages.length && !loading && (
               <div className="space-y-2.5">
-                <div className="rounded-2xl bg-white p-3.5 text-xs md:text-sm text-slate-700 shadow-sm border border-slate-100 leading-relaxed">
+                <div className="chat-msg-bubble rounded-2xl bg-white p-3.5 text-xs md:text-sm text-slate-700 shadow-sm border border-slate-100 leading-relaxed">
                   {aiMode ? '👋 Dạ MANB SHOP xin chào quý khách! Em là Trợ lý AI chuyên tư vấn laptop. Em có thể gợi ý cấu hình, so sánh máy, báo giá và kiểm tra tồn kho theo nhu cầu của anh/chị.' : 'Dạ MANB SHOP xin chào! Quý khách cần hỗ trợ đơn hàng hoặc tư vấn sản phẩm gì ạ?'}
                 </div>
                 {aiMode && (
@@ -237,7 +281,16 @@ export default function SupportWidget() {
               </div>
             )}
             {messages.map((item) => (
-              <div key={item.MessageID} className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 text-xs md:text-sm shadow-xs ${item.SenderRole === 'Customer' ? 'ml-auto bg-blue-600 text-white' : item.SenderRole === 'AI' ? 'border border-violet-100 bg-violet-50 text-slate-800' : 'bg-white text-slate-800 shadow-sm border border-slate-100'}`}>
+              <div
+                key={item.MessageID}
+                className={`chat-msg-bubble max-w-[88%] rounded-2xl px-3.5 py-2.5 text-xs md:text-sm shadow-xs ${
+                  item.SenderRole === 'Customer'
+                    ? 'ml-auto bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/20'
+                    : item.SenderRole === 'AI'
+                    ? 'border border-violet-100 bg-violet-50 text-slate-800'
+                    : 'bg-white text-slate-800 shadow-sm border border-slate-100'
+                }`}
+              >
                 {item.SenderRole !== 'Customer' && (
                   <p className={`mb-1 text-[11px] font-bold ${item.SenderRole === 'AI' ? 'text-violet-700' : 'text-blue-700'}`}>
                     {item.SenderRole === 'AI' ? '🤖 Trợ lý MANB AI' : item.SenderName || 'Nhân viên CSKH'}
@@ -250,9 +303,14 @@ export default function SupportWidget() {
               </div>
             ))}
             {loading && !messages.length && <p className="text-xs md:text-sm text-slate-500 text-center py-4">Đang kết nối hệ thống…</p>}
-            {loading && messages.length > 0 && <p className="text-xs text-violet-600 animate-pulse font-semibold">✨ Trợ lý AI đang tra cứu & soạn câu trả lời...</p>}
+            {loading && messages.length > 0 && (
+              <div className="chat-msg-bubble flex items-center gap-2 text-xs text-violet-600 font-semibold bg-violet-50/70 p-2.5 rounded-xl border border-violet-100/60 w-fit">
+                <span className="inline-block animate-spin">✨</span>
+                <span>Trợ lý AI đang tra cứu & soạn câu trả lời...</span>
+              </div>
+            )}
             {error && (
-              <div role="alert" className="rounded-xl bg-red-50 p-2.5 text-xs text-red-700 border border-red-200">
+              <div role="alert" className="chat-msg-bubble rounded-xl bg-red-50 p-2.5 text-xs text-red-700 border border-red-200">
                 {error}
                 {aiMode && (
                   <button onClick={() => void handleSelectOption('staff')} className="mt-2 block font-bold underline cursor-pointer text-blue-700">
@@ -263,7 +321,7 @@ export default function SupportWidget() {
             )}
           </div>
 
-          <form onSubmit={send} className="flex gap-2 border-t border-slate-200 p-3 bg-white">
+          <form onSubmit={send} className="flex items-end gap-2 border-t border-slate-200 p-3 bg-white">
             <textarea
               aria-label="Tin nhắn"
               value={draft}
@@ -272,14 +330,18 @@ export default function SupportWidget() {
               maxLength={2000}
               rows={2}
               placeholder="Nhập tin nhắn (Nhấn Enter để gửi)…"
-              className="min-w-0 flex-1 resize-none rounded-xl border border-slate-200 px-3.5 py-2 text-xs md:text-sm outline-none focus:border-blue-500 transition"
+              className="min-w-0 flex-1 resize-none rounded-xl border border-slate-200 px-3.5 py-2 text-xs md:text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition"
             />
             <button
               type="submit"
-              disabled={!draft.trim() || !conversationIds[aiMode ? 'ai' : 'staff'] || loading}
-              className="self-end rounded-xl bg-blue-600 px-4 py-2.5 text-xs md:text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50 transition shadow-md shadow-blue-600/30 active:scale-95 cursor-pointer"
+              disabled={!draft.trim() || !conversationIds[aiMode ? 'ai' : 'staff'] || loading || isSending}
+              aria-label="Gửi tin nhắn"
+              className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2.5 text-xs md:text-sm font-bold text-white shadow-md shadow-blue-600/30 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-40 disabled:pointer-events-none transition-all active:scale-90 cursor-pointer h-[40px] group"
             >
-              Gửi
+              <span className={`inline-block text-sm transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 ${isSending ? 'send-fly-anim' : ''}`}>
+                ✈️
+              </span>
+              <span>Gửi</span>
             </button>
           </form>
         </section>
