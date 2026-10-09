@@ -275,10 +275,10 @@ export default function SupportWidget() {
 
       {/* Menu Options Popover */}
       {menuOpen && !chatOpen && (
-        <div className="w-64 md:w-72 overflow-hidden rounded-3xl border border-slate-200 bg-white/95 p-2.5 shadow-2xl backdrop-blur-md animate-fadeIn space-y-1">
+        <div className="support-menu-pop w-64 md:w-72 overflow-hidden rounded-3xl border border-slate-200 bg-white/95 p-2.5 shadow-2xl backdrop-blur-md space-y-1.5 ring-1 ring-black/5">
           <button
             onClick={() => void openChat(true)}
-            className="flex w-full items-center gap-3 rounded-2xl p-3 text-left bg-violet-50/50 hover:bg-violet-100/70 border border-violet-100 transition group cursor-pointer"
+            className="support-item-1 flex w-full items-center gap-3 rounded-2xl p-3 text-left bg-gradient-to-r from-violet-50 to-indigo-50/50 hover:from-violet-100 hover:to-indigo-100 border border-violet-100/80 transition group cursor-pointer shadow-xs active:scale-95"
           >
             <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-600 text-lg text-white shadow-md group-hover:scale-110 transition-transform">
               🤖
@@ -286,7 +286,7 @@ export default function SupportWidget() {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
                 <b className="text-xs md:text-sm text-slate-900 font-bold">AI Tư Vấn 24/7</b>
-                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-violet-600 text-white">PRO</span>
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-violet-600 text-white shadow-xs animate-pulse">PRO</span>
               </div>
               <small className="text-[11px] text-slate-500 line-clamp-1">Tra cứu tồn kho & cấu hình ngay</small>
             </div>
@@ -294,7 +294,7 @@ export default function SupportWidget() {
 
           <button
             onClick={() => void openChat(false)}
-            className="flex w-full items-center gap-3 rounded-2xl p-3 text-left hover:bg-blue-50 transition group cursor-pointer"
+            className="support-item-2 flex w-full items-center gap-3 rounded-2xl p-3 text-left hover:bg-blue-50 transition group cursor-pointer active:scale-95"
           >
             <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-600 text-lg text-white shadow-md group-hover:scale-110 transition-transform">
               💬
@@ -309,7 +309,7 @@ export default function SupportWidget() {
             href={ZALO_URL}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-3 rounded-2xl p-3 hover:bg-blue-50 transition group"
+            className="support-item-3 flex items-center gap-3 rounded-2xl p-3 hover:bg-blue-50 transition group active:scale-95"
           >
             <span className="grid h-10 w-10 place-items-center rounded-2xl bg-[#0068ff] text-base font-black text-white shadow-md group-hover:scale-110 transition-transform">
               Z
