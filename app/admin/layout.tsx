@@ -162,23 +162,46 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <div className="h-screen overflow-hidden bg-slate-950 text-slate-100 flex flex-col md:flex-row antialiased font-sans">
-      {/* Desktop Sidebar (Cố định toàn màn hình với hiệu ứng glassmorphism đẳng cấp) */}
+      {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-72 h-full bg-slate-950/95 border-r border-slate-800/80 p-5 shrink-0 select-none overflow-y-auto z-30">
-        {/* Brand Header */}
-        <div className="flex items-center gap-3 px-3 py-3 mb-6 bg-gradient-to-r from-blue-900/20 via-indigo-900/10 to-transparent rounded-2xl border border-blue-500/20">
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 flex items-center justify-center font-black text-white text-xl shadow-lg shadow-blue-500/25 ring-2 ring-blue-400/30">
+        {/* Brand Header with Link to Store */}
+        <Link
+          href="/"
+          title="Bấm để quay về trang chủ mua sắm manb.id.vn"
+          className="group flex items-center gap-3 px-3 py-3 mb-4 bg-gradient-to-r from-blue-900/20 via-indigo-900/10 to-transparent hover:from-blue-900/30 rounded-2xl border border-blue-500/20 hover:border-blue-500/40 transition shadow-sm"
+        >
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 flex items-center justify-center font-black text-white text-xl shadow-lg shadow-blue-500/25 ring-2 ring-blue-400/30 group-hover:scale-105 transition-transform">
             M
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <span className="font-black text-base tracking-tight text-white block">MANB STORE</span>
+              <span className="font-black text-base tracking-tight text-white block group-hover:text-blue-300 transition">MANB STORE</span>
               <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             </div>
             <span className="text-[10px] font-extrabold uppercase tracking-widest text-blue-400 bg-blue-500/15 px-2 py-0.5 rounded-md border border-blue-500/30 inline-block mt-0.5">
               Admin Portal PRO
             </span>
           </div>
-        </div>
+        </Link>
+
+        {/* Big Highlight: Button Về Trang Chủ Mua Sắm */}
+        <Link
+          href="/"
+          className="flex items-center justify-between p-3 mb-5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 text-white transition shadow-lg shadow-blue-600/25 group active:scale-98"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-sm shadow-inner group-hover:scale-110 transition-transform">
+              🛒
+            </div>
+            <div>
+              <p className="text-xs font-black text-white">Về Trang Mua Sắm</p>
+              <p className="text-[10px] text-blue-100 font-medium">Trang chủ manb.id.vn</p>
+            </div>
+          </div>
+          <svg className="w-4 h-4 text-white/80 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </Link>
 
         {/* Navigation Grouped List */}
         <nav className="space-y-6 flex-1">
@@ -231,20 +254,19 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           ))}
         </nav>
 
-        {/* Quick Store Links & User Footer */}
+        {/* Quick Store Link & User Footer */}
         <div className="pt-4 mt-6 border-t border-slate-800/80 space-y-3">
           <Link
             href="/"
-            target="_blank"
-            className="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-300 hover:bg-slate-900 hover:text-white border border-slate-800 transition"
+            className="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold text-blue-300 bg-blue-950/40 hover:bg-blue-900/40 border border-blue-500/30 transition"
           >
             <div className="flex items-center gap-2.5">
               <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
-              <span>Xem trang bán lẻ</span>
+              <span>Trở về Trang chủ Shop</span>
             </div>
-            <span className="text-[10px] font-semibold text-slate-400 bg-slate-800/60 px-1.5 py-0.5 rounded">↗ Shop</span>
+            <span className="text-[10px] font-bold text-white bg-blue-600 px-2 py-0.5 rounded-md">manb.id.vn</span>
           </Link>
 
           {/* Current Admin User Card */}
@@ -286,7 +308,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
       {/* Mobile Top Header */}
       <div className="md:hidden flex items-center justify-between px-4 py-3.5 bg-slate-950/95 backdrop-blur-md border-b border-slate-800 shrink-0 z-40">
-        <div className="flex items-center gap-2.5">
+        <Link href="/" className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center font-black text-white text-sm shadow-md">
             M
           </div>
@@ -294,15 +316,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             <span className="font-black text-sm tracking-tight text-white block">MANB ADMIN</span>
             <span className="text-[9px] font-bold text-blue-400">Portal v2.5</span>
           </div>
-        </div>
+        </Link>
 
         <div className="flex items-center gap-2">
           <Link
             href="/"
-            target="_blank"
-            className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 text-xs font-bold"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold shadow-md shadow-blue-600/30"
           >
-            ↗ Shop
+            <span>🛒</span>
+            <span>Về Shop</span>
           </Link>
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -349,9 +371,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             <Link
               href="/"
               onClick={() => setMobileMenuOpen(false)}
-              className="text-xs font-bold text-slate-400 hover:text-white"
+              className="flex items-center gap-2 text-xs font-bold text-blue-400 hover:text-blue-300"
             >
-              ← Về trang bán lẻ
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              <span>Về trang chủ mua sắm (Shop)</span>
             </Link>
             <button
               onClick={handleLogout}
@@ -363,19 +388,35 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </div>
       )}
 
-      {/* Main Content Area (Cuộn độc lập, giữ cố định Sidebar) */}
+      {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto bg-slate-950">
         {/* Top bar for desktop */}
         <header className="sticky top-0 z-20 hidden md:flex items-center justify-between px-8 py-3.5 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800/80 shrink-0">
-          <div className="flex items-center gap-3 text-xs font-medium">
-            <span className="text-slate-400 font-semibold">Admin</span>
-            <span className="text-slate-500">/</span>
-            <span className="text-white font-bold bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700/60 shadow-xs">
-              {getActiveLabel()}
-            </span>
+          <div className="flex items-center gap-3">
+            {/* Direct Back to Home Link */}
+            <Link
+              href="/"
+              title="Quay lại trang chủ bán lẻ https://manb.id.vn/"
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-xs font-bold text-slate-200 border border-slate-700/80 transition group shadow-sm active:scale-95"
+            >
+              <svg className="w-4 h-4 text-blue-400 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              <span>Về Trang Chủ Mua Sắm</span>
+            </Link>
+
+            <span className="text-slate-600">|</span>
+
+            <div className="flex items-center gap-2 text-xs font-medium">
+              <span className="text-slate-400 font-semibold">Admin</span>
+              <span className="text-slate-500">/</span>
+              <span className="text-white font-bold bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700/60 shadow-xs">
+                {getActiveLabel()}
+              </span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-4">
             {currentTime && (
               <div className="hidden lg:flex items-center gap-2 text-xs font-bold text-slate-400 bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-800">
                 <svg className="w-3.5 h-3.5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -387,13 +428,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
             <Link
               href="/"
-              target="_blank"
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600/20 to-indigo-600/20 hover:from-blue-600/30 hover:to-indigo-600/30 text-xs font-bold text-blue-300 border border-blue-500/30 transition shadow-sm cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 text-xs font-black text-white shadow-lg shadow-blue-600/30 transition transform active:scale-95"
             >
-              <svg className="w-3.5 h-3.5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
-              <span>Xem trang bán lẻ (Shop)</span>
+              <span>🛒 Mua sắm (manb.id.vn)</span>
             </Link>
           </div>
         </header>
@@ -409,8 +449,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block shadow-sm shadow-emerald-400/50 animate-pulse" />
             <span>Hệ thống MANB Admin Portal v2.5 • Máy chủ hoạt động ổn định</span>
           </div>
-          <div>
-            © {new Date().getFullYear()} MANB.VN. Bản quyền quản trị hệ thống.
+          <div className="flex items-center gap-4">
+            <Link href="/" className="text-blue-400 hover:text-blue-300 font-bold">
+              ← Về trang chủ mua sắm
+            </Link>
+            <span>© {new Date().getFullYear()} MANB.VN. Bản quyền quản trị hệ thống.</span>
           </div>
         </footer>
       </div>
