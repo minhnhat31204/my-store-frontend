@@ -18,6 +18,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import FavoriteButton from "@/app/components/FavoriteButton";
 import ScrollReveal from "@/app/components/ScrollReveal";
+import CustomSelect from "@/app/components/CustomSelect";
 import { addToCart } from "@/lib/cart";
 import { animateFlyToCart } from "@/lib/cart-animation";
 
@@ -56,6 +57,24 @@ export default function ProductsPage() {
   }, []);
 
   const brands = useMemo(() => [...new Set(products.map((p) => extractBrand(p.ProductName)).filter(Boolean))].sort(), [products]);
+  
+  const categoryOptions = useMemo(() => [
+    { value: 'all', label: 'Tất cả danh mục' },
+    ...categories.map((c) => ({ value: String(c.CategoryID), label: c.CategoryName }))
+  ], [categories]);
+
+  const brandOptions = useMemo(() => [
+    { value: 'all', label: 'Tất cả thương hiệu' },
+    ...brands.map((b) => ({ value: b, label: b }))
+  ], [brands]);
+
+  const sortOptions = useMemo(() => [
+    { value: 'recommended', label: 'Gợi ý nổi bật' },
+    { value: 'price-low', label: 'Giá: Thấp đến cao' },
+    { value: 'price-high', label: 'Giá: Cao đến thấp' },
+    { value: 'name', label: 'Tên sản phẩm: A → Z' },
+  ], []);
+
   const filtered = useMemo(() => {
     const list = products.filter((p) => {
       const matchesKeyword = p.ProductName.toLowerCase().includes(keyword.toLowerCase());
@@ -100,47 +119,26 @@ export default function ProductsPage() {
         </div>
 
         <section aria-label="Lọc và sắp xếp sản phẩm" className="mb-6 grid gap-3.5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-4 items-end">
-          <label className="text-xs font-bold uppercase tracking-wide text-slate-500">
-            <span>Danh mục</span>
-            <select
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              className="mt-1 block w-full h-[42px] rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold normal-case text-slate-800 focus:outline-none focus:border-blue-500 transition cursor-pointer"
-            >
-              <option value="all">Tất cả danh mục</option>
-              {categories.map((item) => (
-                <option key={item.CategoryID} value={item.CategoryID}>{item.CategoryName}</option>
-              ))}
-            </select>
-          </label>
+          <CustomSelect
+            label="Danh mục"
+            value={categoryId}
+            onChange={setCategoryId}
+            options={categoryOptions}
+          />
 
-          <label className="text-xs font-bold uppercase tracking-wide text-slate-500">
-            <span>Thương hiệu</span>
-            <select
-              value={brand}
-              onChange={(e) => setBrand(e.target.value)}
-              className="mt-1 block w-full h-[42px] rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold normal-case text-slate-800 focus:outline-none focus:border-blue-500 transition cursor-pointer"
-            >
-              <option value="all">Tất cả thương hiệu</option>
-              {brands.map((item) => (
-                <option key={item} value={item}>{item}</option>
-              ))}
-            </select>
-          </label>
+          <CustomSelect
+            label="Thương hiệu"
+            value={brand}
+            onChange={setBrand}
+            options={brandOptions}
+          />
 
-          <label className="text-xs font-bold uppercase tracking-wide text-slate-500">
-            <span>Sắp xếp giá & tên</span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="mt-1 block w-full h-[42px] rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold normal-case text-slate-800 focus:outline-none focus:border-blue-500 transition cursor-pointer"
-            >
-              <option value="recommended">Gợi ý nổi bật</option>
-              <option value="price-low">Giá: Thấp đến cao</option>
-              <option value="price-high">Giá: Cao đến thấp</option>
-              <option value="name">Tên sản phẩm: A → Z</option>
-            </select>
-          </label>
+          <CustomSelect
+            label="Sắp xếp giá & tên"
+            value={sortBy}
+            onChange={setSortBy}
+            options={sortOptions}
+          />
 
           <div>
             <span className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-1">
