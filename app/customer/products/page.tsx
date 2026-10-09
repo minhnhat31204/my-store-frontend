@@ -99,11 +99,60 @@ export default function ProductsPage() {
           </div>
         </div>
 
-        <section aria-label="Lọc và sắp xếp sản phẩm" className="mb-5 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
-          <label className="text-xs font-bold uppercase tracking-wide text-slate-500">Danh mục<select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold normal-case text-slate-800"><option value="all">Tất cả danh mục</option>{categories.map((item) => <option key={item.CategoryID} value={item.CategoryID}>{item.CategoryName}</option>)}</select></label>
-          <label className="text-xs font-bold uppercase tracking-wide text-slate-500">Thương hiệu<select value={brand} onChange={(e) => setBrand(e.target.value)} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold normal-case text-slate-800"><option value="all">Tất cả thương hiệu</option>{brands.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-          <label className="text-xs font-bold uppercase tracking-wide text-slate-500">Sắp xếp<select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold normal-case text-slate-800"><option value="recommended">Gợi ý</option><option value="price-low">Giá thấp đến cao</option><option value="price-high">Giá cao đến thấp</option><option value="name">Tên A–Z</option></select></label>
-          <div className="flex items-end text-sm font-semibold text-slate-600">{filtered.length} sản phẩm</div>
+        <section aria-label="Lọc và sắp xếp sản phẩm" className="mb-6 grid gap-3.5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-4 items-end">
+          <label className="text-xs font-bold uppercase tracking-wide text-slate-500">
+            <span>Danh mục</span>
+            <select
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+              className="mt-1 block w-full h-[42px] rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold normal-case text-slate-800 focus:outline-none focus:border-blue-500 transition cursor-pointer"
+            >
+              <option value="all">Tất cả danh mục</option>
+              {categories.map((item) => (
+                <option key={item.CategoryID} value={item.CategoryID}>{item.CategoryName}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="text-xs font-bold uppercase tracking-wide text-slate-500">
+            <span>Thương hiệu</span>
+            <select
+              value={brand}
+              onChange={(e) => setBrand(e.target.value)}
+              className="mt-1 block w-full h-[42px] rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold normal-case text-slate-800 focus:outline-none focus:border-blue-500 transition cursor-pointer"
+            >
+              <option value="all">Tất cả thương hiệu</option>
+              {brands.map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="text-xs font-bold uppercase tracking-wide text-slate-500">
+            <span>Sắp xếp giá & tên</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="mt-1 block w-full h-[42px] rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold normal-case text-slate-800 focus:outline-none focus:border-blue-500 transition cursor-pointer"
+            >
+              <option value="recommended">Gợi ý nổi bật</option>
+              <option value="price-low">Giá: Thấp đến cao</option>
+              <option value="price-high">Giá: Cao đến thấp</option>
+              <option value="name">Tên sản phẩm: A → Z</option>
+            </select>
+          </label>
+
+          <div>
+            <span className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-1">
+              Kết quả hiển thị
+            </span>
+            <div className="flex items-center justify-between h-[42px] rounded-xl border border-blue-200/80 bg-blue-50/60 px-3.5 text-xs font-bold text-blue-900 shadow-xs">
+              <span className="text-slate-600 font-medium">Tìm thấy:</span>
+              <span className="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-black text-xs shadow-xs">
+                {filtered.length} sản phẩm
+              </span>
+            </div>
+          </div>
         </section>
 
         {filtered.length === 0 ? (
