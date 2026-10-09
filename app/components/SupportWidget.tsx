@@ -331,19 +331,19 @@ export default function SupportWidget() {
           <button
             onClick={() => setMenuOpen((open) => !open)}
             aria-label="Liên hệ và hỗ trợ"
-            className="relative flex items-center gap-2.5 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 px-4 py-3 md:px-5 md:py-3.5 text-xs md:text-sm font-black text-white shadow-2xl transition-all duration-300 group-hover:scale-105 active:scale-95 cursor-pointer ring-2 ring-white/30"
+            className="relative flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 w-[116px] md:w-[130px] h-[44px] md:h-[48px] text-xs md:text-sm font-black text-white shadow-2xl transition-all duration-300 group-hover:scale-105 active:scale-95 cursor-pointer ring-2 ring-white/30"
           >
             {/* Online Green Indicator Dot */}
-            <span className="relative flex h-2.5 w-2.5">
+            <span className="relative flex h-2.5 w-2.5 shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400" />
             </span>
 
-            <span className={`text-base md:text-xl transition-transform duration-300 ${menuOpen ? 'rotate-90' : 'support-icon-anim'}`}>
+            <span className={`text-base md:text-lg transition-transform duration-300 shrink-0 ${menuOpen ? 'rotate-90' : 'support-icon-anim'}`}>
               {menuOpen ? '✕' : '💬'}
             </span>
 
-            <span className="tracking-wide">
+            <span className="tracking-wide shrink-0">
               {menuOpen ? 'Đóng' : 'Hỗ trợ'}
             </span>
           </button>
