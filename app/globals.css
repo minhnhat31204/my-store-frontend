@@ -893,8 +893,77 @@ a { text-decoration: none; -webkit-tap-highlight-color: transparent; }
 .store-footer { margin-top: 48px; background: #f8fafc; border-top: 1px solid #e5e7eb; color: #64748b; }
 .footer-inner { max-width: 1200px; margin: 0 auto; padding: 36px 24px; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 32px; }
 .footer-brand { color: #1d4ed8; font-size: 24px; font-weight: 900; }
-.footer-brand span { color: #60a5fa; }
-.footer-inner h3 { color: #1e293b; font-size: 14px; margin: 0 0 10px; }
-.footer-inner p { margin: 6px 0; font-size: 13px; }
-.footer-bottom { border-top: 1px solid #e5e7eb; padding: 16px 24px; text-align: center; font-size: 12px; }
 @media (max-width: 700px) { .footer-inner { grid-template-columns: 1fr; gap: 18px; padding: 28px 20px; } }
+
+/* Support Floating Button Effects */
+@keyframes supportPulseRadar {
+  0% {
+    transform: scale(0.96);
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7);
+  }
+  70% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 16px rgba(37, 99, 235, 0);
+  }
+  100% {
+    transform: scale(0.96);
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+  }
+}
+
+@keyframes supportFloating {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes supportIconWobble {
+  0%, 100% {
+    transform: rotate(0deg) scale(1);
+  }
+  15% {
+    transform: rotate(-14deg) scale(1.2);
+  }
+  30% {
+    transform: rotate(12deg) scale(1.2);
+  }
+  45% {
+    transform: rotate(-8deg) scale(1.1);
+  }
+  60% {
+    transform: rotate(6deg) scale(1.05);
+  }
+  75% {
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+@keyframes bubbleFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.support-btn-radar {
+  animation: supportPulseRadar 2.4s infinite cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.support-btn-float {
+  animation: supportFloating 3.2s ease-in-out infinite;
+}
+
+.support-icon-anim {
+  animation: supportIconWobble 4s ease-in-out infinite;
+  display: inline-block;
+}
+
+.support-teaser-bubble {
+  animation: bubbleFloat 3s ease-in-out infinite;
+}
+
