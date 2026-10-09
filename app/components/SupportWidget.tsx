@@ -28,6 +28,7 @@ export default function SupportWidget() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showTeaser, setShowTeaser] = useState(true);
+  const [activeOption, setActiveOption] = useState<'ai' | 'staff' | 'zalo' | null>(null);
   const messagesPane = useRef<HTMLDivElement>(null);
 
   const identity = useCallback((channel: 'ai' | 'staff') => {
@@ -94,6 +95,14 @@ export default function SupportWidget() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSelectOption = (option: 'ai' | 'staff') => {
+    setActiveOption(option);
+    setTimeout(() => {
+      setActiveOption(null);
+      void openChat(option === 'ai');
+    }, 140);
   };
 
   useEffect(() => {
@@ -172,7 +181,10 @@ export default function SupportWidget() {
 
       {/* Chat Window */}
       {chatOpen && (
-        <section aria-label="Nhắn tin chăm sóc khách hàng" className="flex h-[min(580px,70vh)] w-[min(390px,calc(100vw-1.75rem))] flex-col overflow-hidden rounded-3xl border border-blue-500/20 bg-white shadow-2xl animate-fadeIn">
+        <section
+          aria-label="Nhắn tin chăm sóc khách hàng"
+          className="chat-window-pop flex h-[min(580px,70vh)] w-[min(390px,calc(100vw-1.75rem))] flex-col overflow-hidden rounded-3xl border border-blue-500/20 bg-white shadow-2xl origin-bottom-right"
+        >
           <header className="flex items-center justify-between bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-600 px-4 py-3.5 text-white shadow-md">
             <div className="flex items-center gap-2.5">
               <div className="relative w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center text-lg shadow-inner">
@@ -187,7 +199,7 @@ export default function SupportWidget() {
             <button
               onClick={() => setChatOpen(false)}
               aria-label="Đóng cửa sổ chat"
-              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-lg leading-none transition cursor-pointer"
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-lg leading-none transition cursor-pointer active:scale-90"
             >
               ✕
             </button>
@@ -243,7 +255,7 @@ export default function SupportWidget() {
               <div role="alert" className="rounded-xl bg-red-50 p-2.5 text-xs text-red-700 border border-red-200">
                 {error}
                 {aiMode && (
-                  <button onClick={() => void openChat(false)} className="mt-2 block font-bold underline cursor-pointer text-blue-700">
+                  <button onClick={() => void handleSelectOption('staff')} className="mt-2 block font-bold underline cursor-pointer text-blue-700">
                     Chuyển sang nhân viên hỗ trợ
                   </button>
                 )}
@@ -277,10 +289,11 @@ export default function SupportWidget() {
       {menuOpen && !chatOpen && (
         <div className="support-menu-pop w-64 md:w-72 overflow-hidden rounded-3xl border border-slate-200 bg-white/95 p-2.5 shadow-2xl backdrop-blur-md space-y-1.5 ring-1 ring-black/5">
           <button
-            onClick={() => void openChat(true)}
-            className="support-item-1 flex w-full items-center gap-3 rounded-2xl p-3 text-left bg-gradient-to-r from-violet-50 to-indigo-50/50 hover:from-violet-100 hover:to-indigo-100 border border-violet-100/80 transition group cursor-pointer shadow-xs active:scale-95"
+            type="button"
+            onClick={() => handleSelectOption('ai')}
+            className={`support-item-1 support-btn-option flex w-full items-center gap-3 rounded-2xl p-3 text-left bg-gradient-to-r from-violet-50 to-indigo-50/50 hover:from-violet-100 hover:to-indigo-100 border border-violet-100/80 cursor-pointer shadow-xs ${activeOption === 'ai' ? 'is-pressing ring-2 ring-violet-500 bg-violet-100' : ''}`}
           >
-            <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-600 text-lg text-white shadow-md group-hover:scale-110 transition-transform">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-600 text-lg text-white shadow-md group-hover:scale-110 transition-transform">
               🤖
             </span>
             <div className="min-w-0 flex-1">
@@ -293,10 +306,11 @@ export default function SupportWidget() {
           </button>
 
           <button
-            onClick={() => void openChat(false)}
-            className="support-item-2 flex w-full items-center gap-3 rounded-2xl p-3 text-left hover:bg-blue-50 transition group cursor-pointer active:scale-95"
+            type="button"
+            onClick={() => handleSelectOption('staff')}
+            className={`support-item-2 support-btn-option flex w-full items-center gap-3 rounded-2xl p-3 text-left hover:bg-blue-50 border border-transparent hover:border-blue-100 cursor-pointer ${activeOption === 'staff' ? 'is-pressing ring-2 ring-blue-500 bg-blue-100' : ''}`}
           >
-            <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-600 text-lg text-white shadow-md group-hover:scale-110 transition-transform">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-600 text-lg text-white shadow-md group-hover:scale-110 transition-transform">
               💬
             </span>
             <div className="min-w-0 flex-1">
@@ -309,9 +323,16 @@ export default function SupportWidget() {
             href={ZALO_URL}
             target="_blank"
             rel="noreferrer"
-            className="support-item-3 flex items-center gap-3 rounded-2xl p-3 hover:bg-blue-50 transition group active:scale-95"
+            onClick={(e) => {
+              setActiveOption('zalo');
+              setTimeout(() => {
+                setActiveOption(null);
+                setMenuOpen(false);
+              }, 180);
+            }}
+            className={`support-item-3 support-btn-option flex items-center gap-3 rounded-2xl p-3 hover:bg-blue-50 border border-transparent hover:border-blue-100 cursor-pointer ${activeOption === 'zalo' ? 'is-pressing ring-2 ring-blue-500 bg-blue-100' : ''}`}
           >
-            <span className="grid h-10 w-10 place-items-center rounded-2xl bg-[#0068ff] text-base font-black text-white shadow-md group-hover:scale-110 transition-transform">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[#0068ff] text-base font-black text-white shadow-md group-hover:scale-110 transition-transform">
               Z
             </span>
             <div className="min-w-0 flex-1">
