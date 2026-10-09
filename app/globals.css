@@ -1029,25 +1029,31 @@ a { text-decoration: none; -webkit-tap-highlight-color: transparent; }
 @keyframes chatSpringEntrance {
   0% {
     opacity: 0;
-    transform: scale(0.7) translateY(40px);
+    transform: scale(0.2) translateY(60px) translateZ(0);
+    filter: blur(4px);
   }
-  60% {
+  45% {
     opacity: 1;
-    transform: scale(1.03) translateY(-4px);
+    transform: scale(1.07) translateY(-10px) translateZ(0);
+    filter: blur(0);
   }
-  85% {
-    transform: scale(0.99) translateY(1px);
+  70% {
+    transform: scale(0.96) translateY(4px) translateZ(0);
+  }
+  88% {
+    transform: scale(1.015) translateY(-1px) translateZ(0);
   }
   100% {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: scale(1) translateY(0) translateZ(0);
   }
 }
 
 .chat-window-pop {
-  animation: chatSpringEntrance 0.36s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation: chatSpringEntrance 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   transform-origin: bottom right;
   will-change: transform, opacity;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.28), 0 0 0 1px rgba(59, 130, 246, 0.18);
 }
 
 .support-btn-option {
