@@ -193,7 +193,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </div>
             <div>
               <p className="text-xs font-black text-white">Về Trang Mua Sắm</p>
-              <p className="text-[10px] text-blue-100 font-medium">Trang chủ devora.vn</p>
+              <p className="text-[10px] text-blue-100 font-medium">Trang chủ devora.id.vn</p>
             </div>
           </div>
           <svg className="w-4 h-4 text-white/80 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
@@ -264,7 +264,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               </svg>
               <span>Trở về Trang chủ Shop</span>
             </div>
-            <span className="text-[10px] font-bold text-white bg-blue-600 px-2 py-0.5 rounded-md">devora.vn</span>
+            <span className="text-[10px] font-bold text-white bg-blue-600 px-2 py-0.5 rounded-md">devora.id.vn</span>
           </Link>
 
           {/* Current Admin User Card */}
@@ -392,7 +392,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             {/* Direct Back to Home Link */}
             <Link
               href="/"
-              title="Quay lại trang chủ bán lẻ https://devora.vn/"
+              title="Quay lại trang chủ bán lẻ https://devora.id.vn/"
               className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-xs font-bold text-slate-200 border border-slate-700/80 transition group shadow-sm active:scale-95"
             >
               <svg className="w-4 h-4 text-blue-400 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
@@ -429,7 +429,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
-              <span>🛒 Mua sắm (devora.vn)</span>
+              <span>🛒 Mua sắm (devora.id.vn)</span>
             </Link>
           </div>
         </header>

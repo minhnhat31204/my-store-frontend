@@ -31,11 +31,11 @@ export default function Footer() {
         </div>
         <div>
           <h3>Liên hệ</h3>
-          <p>Email: support@devora.vn</p>
+          <p>Email: support@devora.id.vn</p>
           <p>Hotline: 0909 680 426</p>
         </div>
       </div>
-      <div className="footer-bottom">© {new Date().getFullYear()} DEVORA.VN. All rights reserved.</div>
+      <div className="footer-bottom">© {new Date().getFullYear()} DEVORA.ID.VN. All rights reserved.</div>
     </footer>
   );
 }
