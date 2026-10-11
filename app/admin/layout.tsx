@@ -167,15 +167,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         {/* Brand Header with Link to Store */}
         <Link
           href="/"
-          title="Bấm để quay về trang chủ mua sắm manb.id.vn"
+          title="Bấm để quay về trang chủ mua sắm DEVORA"
           className="group flex items-center gap-3 px-3 py-3 mb-4 bg-gradient-to-r from-blue-900/20 via-indigo-900/10 to-transparent hover:from-blue-900/30 rounded-2xl border border-blue-500/20 hover:border-blue-500/40 transition shadow-sm"
         >
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 flex items-center justify-center font-black text-white text-xl shadow-lg shadow-blue-500/25 ring-2 ring-blue-400/30 group-hover:scale-105 transition-transform">
-            M
-          </div>
+          <img src="/devora-icon.png" alt="DEVORA" className="w-11 h-11 rounded-xl object-cover shadow-lg shadow-blue-500/25 ring-2 ring-blue-400/30 group-hover:scale-105 transition-transform shrink-0" />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <span className="font-black text-base tracking-tight text-white block group-hover:text-blue-300 transition">MANB STORE</span>
+              <span className="font-black text-base tracking-tight text-white block group-hover:text-blue-300 transition">DEVORA</span>
               <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             </div>
             <span className="text-[10px] font-extrabold uppercase tracking-widest text-blue-400 bg-blue-500/15 px-2 py-0.5 rounded-md border border-blue-500/30 inline-block mt-0.5">
@@ -195,7 +193,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </div>
             <div>
               <p className="text-xs font-black text-white">Về Trang Mua Sắm</p>
-              <p className="text-[10px] text-blue-100 font-medium">Trang chủ manb.id.vn</p>
+              <p className="text-[10px] text-blue-100 font-medium">Trang chủ devora.vn</p>
             </div>
           </div>
           <svg className="w-4 h-4 text-white/80 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
@@ -266,7 +264,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               </svg>
               <span>Trở về Trang chủ Shop</span>
             </div>
-            <span className="text-[10px] font-bold text-white bg-blue-600 px-2 py-0.5 rounded-md">manb.id.vn</span>
+            <span className="text-[10px] font-bold text-white bg-blue-600 px-2 py-0.5 rounded-md">devora.vn</span>
           </Link>
 
           {/* Current Admin User Card */}
@@ -309,11 +307,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       {/* Mobile Top Header */}
       <div className="md:hidden flex items-center justify-between px-4 py-3.5 bg-slate-950/95 backdrop-blur-md border-b border-slate-800 shrink-0 z-40">
         <Link href="/" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center font-black text-white text-sm shadow-md">
-            M
-          </div>
+          <img src="/devora-icon.png" alt="DEVORA" className="w-8 h-8 rounded-lg object-cover shadow-md shrink-0" />
           <div>
-            <span className="font-black text-sm tracking-tight text-white block">MANB ADMIN</span>
+            <span className="font-black text-sm tracking-tight text-white block">DEVORA ADMIN</span>
             <span className="text-[9px] font-bold text-blue-400">Portal v2.5</span>
           </div>
         </Link>
@@ -396,7 +392,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             {/* Direct Back to Home Link */}
             <Link
               href="/"
-              title="Quay lại trang chủ bán lẻ https://manb.id.vn/"
+              title="Quay lại trang chủ bán lẻ https://devora.vn/"
               className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-xs font-bold text-slate-200 border border-slate-700/80 transition group shadow-sm active:scale-95"
             >
               <svg className="w-4 h-4 text-blue-400 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
@@ -433,7 +429,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
-              <span>🛒 Mua sắm (manb.id.vn)</span>
+              <span>🛒 Mua sắm (devora.vn)</span>
             </Link>
           </div>
         </header>
@@ -447,13 +443,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <footer className="mt-auto py-4 px-8 border-t border-slate-800/80 bg-slate-950/70 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400 shrink-0">
           <div className="flex items-center gap-2 font-medium">
             <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block shadow-sm shadow-emerald-400/50 animate-pulse" />
-            <span>Hệ thống MANB Admin Portal v2.5 • Máy chủ hoạt động ổn định</span>
+            <span>Hệ thống DEVORA Admin Portal v2.5 • Máy chủ hoạt động ổn định</span>
           </div>
           <div className="flex items-center gap-4">
             <Link href="/" className="text-blue-400 hover:text-blue-300 font-bold">
               ← Về trang chủ mua sắm
             </Link>
-            <span>© {new Date().getFullYear()} MANB.VN. Bản quyền quản trị hệ thống.</span>
+            <span>© {new Date().getFullYear()} DEVORA.VN. Bản quyền quản trị hệ thống.</span>
           </div>
         </footer>
       </div>

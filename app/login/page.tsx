@@ -200,7 +200,10 @@ export default function LoginPage() {
       <div className="mx-auto flex min-h-[80vh] max-w-md items-center">
         <div className="w-full rounded-3xl bg-white p-8 shadow-lg">
           <div className="mb-8 text-center">
-            <div className="text-3xl font-black text-blue-700">MANB<span className="text-blue-400">.VN</span></div>
+            <div className="flex items-center justify-center gap-2.5 text-3xl font-black text-blue-700">
+              <img src="/devora-icon.png" alt="DEVORA" className="h-10 w-10 object-cover rounded-xl shadow-md border border-blue-500/20" />
+              <span>DEVORA<span className="text-blue-500">.VN</span></span>
+            </div>
             <h1 className="mt-4 text-2xl font-black">{title[step]}</h1>
             <p className="mt-2 text-sm text-slate-500">
               {step === 'login' && 'Đăng nhập bằng số điện thoại của bạn.'}

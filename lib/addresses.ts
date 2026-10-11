@@ -18,7 +18,7 @@ export function formatShippingAddress(address: Pick<ShippingAddress, "address" |
   return [address.address, address.wardName, address.provinceName].filter(Boolean).join(", ");
 }
 
-const key = (userId: number) => `manb-addresses-${userId}`;
+const key = (userId: number) => `devora-addresses-${userId}`;
 
 export function fromAddressRecord(record: UserAddressRecord): ShippingAddress {
   const latitude = record.Latitude == null ? undefined : Number(record.Latitude);
@@ -41,7 +41,7 @@ export function fromAddressRecord(record: UserAddressRecord): ShippingAddress {
 export function getLegacyAddresses(user: User): ShippingAddress[] {
   if (typeof window === "undefined") return [];
   try {
-    const saved: unknown = JSON.parse(localStorage.getItem(key(user.UserID)) || "[]");
+    const saved: unknown = JSON.parse(localStorage.getItem(key(user.UserID)) || localStorage.getItem(`manb-addresses-${user.UserID}`) || "[]");
     if (Array.isArray(saved) && saved.length) return saved as ShippingAddress[];
   } catch { /* Fall back to the address on the account profile. */ }
   if (!user.Address) return [];
@@ -65,9 +65,9 @@ export async function loadAddresses(user: User): Promise<ShippingAddress[]> {
 }
 
 export function getSelectedAddressId(userId: number) {
-  return localStorage.getItem(`manb-selected-address-${userId}`);
+  return localStorage.getItem(`devora-selected-address-${userId}`) || localStorage.getItem(`manb-selected-address-${userId}`);
 }
 
 export function saveSelectedAddressId(userId: number, addressId: string) {
-  localStorage.setItem(`manb-selected-address-${userId}`, addressId);
+  localStorage.setItem(`devora-selected-address-${userId}`, addressId);
 }

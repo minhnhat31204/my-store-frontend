@@ -15,8 +15,12 @@ export default function Footer() {
     <footer className="store-footer">
       <div className="footer-inner">
         <div>
-          <div className="footer-brand">MANB<span>.VN</span></div>
-          <p>Thế giới công nghệ trong tầm tay bạn.</p>
+          <div className="footer-brand flex items-center gap-2.5">
+            <img src="/devora-icon.png" alt="DEVORA" className="h-8 w-8 object-cover rounded-xl shadow-md border border-white/20" />
+            <span>DEVORA<span>.VN</span></span>
+          </div>
+          <p className="font-bold text-blue-200 mt-2 text-xs tracking-wider uppercase">INNOVATION THROUGH TECHNOLOGY</p>
+          <p className="text-xs text-slate-300">Development & Innovation</p>
         </div>
         <div>
           <h3>Hỗ trợ khách hàng</h3>
@@ -27,11 +31,11 @@ export default function Footer() {
         </div>
         <div>
           <h3>Liên hệ</h3>
-          <p>Email: support@manb.vn</p>
+          <p>Email: support@devora.vn</p>
           <p>Hotline: 0909 680 426</p>
         </div>
       </div>
-      <div className="footer-bottom">© {new Date().getFullYear()} MANB.VN. All rights reserved.</div>
+      <div className="footer-bottom">© {new Date().getFullYear()} DEVORA.VN. All rights reserved.</div>
     </footer>
   );
 }

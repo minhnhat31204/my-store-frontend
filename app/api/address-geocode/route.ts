@@ -17,7 +17,7 @@ async function photonRequest(url: URL) {
     if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
     nextRequestAt = Date.now();
     const response = await fetch(url, {
-      headers: { Accept: "application/json", "User-Agent": "MANB-Store-Address-Map/1.0" },
+      headers: { Accept: "application/json", "User-Agent": "DEVORA-Store-Address-Map/1.0" },
       signal: AbortSignal.timeout(10000),
       cache: "no-store",
     });

@@ -710,7 +710,7 @@ export default function AccountPage() {
                 <p className="text-xs text-blue-600 font-semibold">@{user.Username}</p>
               )}
               {(() => {
-                const isInternalEmail = user.Email?.includes('@phone.manb.local') || user.Email?.includes('@phone.local');
+                const isInternalEmail = user.Email?.includes('@phone.devora.local') || user.Email?.includes('@phone.manb.local') || user.Email?.includes('@phone.local');
                 const contact = user.Email && !isInternalEmail ? user.Email : (user.RecoveryEmail || (user.Phone ? `SĐT: ${user.Phone}` : ''));
                 return contact ? (
                   <p className="mt-0.5 text-xs text-slate-500 truncate">{contact}</p>
@@ -884,7 +884,7 @@ export default function AccountPage() {
                           type="text"
                           value={username}
                           onChange={(e) => setUsername(e.target.value.replace(/\s+/g, ''))}
-                          placeholder="username_manb"
+                          placeholder="username_devora"
                           className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2.5 pl-9 pr-4 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
                         />
                       </div>
@@ -1036,7 +1036,7 @@ export default function AccountPage() {
                   </div>
 
                   {/* Primary Account Email Display */}
-                  {user.Email && !user.Email.includes('@phone.manb.local') && !user.Email.includes('@phone.local') ? (
+                  {user.Email && !user.Email.includes('@phone.devora.local') && !user.Email.includes('@phone.manb.local') && !user.Email.includes('@phone.local') ? (
                     <div className="mt-6 rounded-xl bg-slate-50 p-4 border border-slate-200">
                       <span className="text-xs font-bold text-slate-500">Email tài khoản chính:</span>
                       <p className="mt-0.5 text-sm font-bold text-slate-800">{user.Email}</p>

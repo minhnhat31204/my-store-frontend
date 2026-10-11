@@ -447,8 +447,9 @@ export default function CustomerNav({
     <>
       <header className={`store-header${navVisible ? "" : " nav-hidden"}`}>
         <div className="header-inner">
-          <Link href="/" className="brand">
-            MANB<span>.VN</span>
+          <Link href="/" className="brand flex items-center gap-2.5">
+            <img src="/devora-icon.png" alt="DEVORA" className="h-9 w-9 object-cover rounded-xl shadow-md border border-white/20 shrink-0" />
+            <span className="tracking-tight">DEVORA<span>.VN</span></span>
           </Link>
 
           <div className="header-search">
@@ -572,7 +573,7 @@ export default function CustomerNav({
                             {user.FullName || "Tài khoản của tôi"}
                           </p>
                           {(() => {
-                            const isInternalEmail = user.Email?.includes("@phone.manb.local") || user.Email?.includes("@phone.local");
+                            const isInternalEmail = user.Email?.includes("@phone.devora.local") || user.Email?.includes("@phone.manb.local") || user.Email?.includes("@phone.local");
                             const contact = user.Email && !isInternalEmail ? user.Email : (user.RecoveryEmail || (user.Phone ? `SĐT: ${user.Phone}` : ''));
                             return contact ? (
                               <p className="truncate text-xs font-medium text-slate-500 mt-0.5">{contact}</p>

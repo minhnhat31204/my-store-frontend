@@ -220,7 +220,7 @@ export default function AdminSupportPage() {
                         <span className={`text-[11px] font-bold ${
                           isAdmin ? 'text-blue-100' : isAI ? 'text-violet-400' : 'text-emerald-400'
                         }`}>
-                          {isAdmin ? 'Quản trị viên (Bạn)' : isAI ? '🤖 Trợ lý MANB AI' : item.SenderName || 'Khách hàng'}
+                          {isAdmin ? 'Quản trị viên (Bạn)' : isAI ? '🤖 Trợ lý DEVORA AI' : item.SenderName || 'Khách hàng'}
                         </span>
                         <time className="text-[10px] opacity-60">
                           {new Date(item.CreatedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}

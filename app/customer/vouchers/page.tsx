@@ -117,7 +117,7 @@ export default function VouchersPage() {
               type="text"
               value={customCode}
               onChange={(e) => setCustomCode(e.target.value.toUpperCase())}
-              placeholder="Nhập mã giảm giá (ví dụ: SALE20, MANB50...)"
+              placeholder="Nhập mã giảm giá (ví dụ: SALE20, DEVORA50...)"
               className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold uppercase placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:outline-none transition"
             />
             <button

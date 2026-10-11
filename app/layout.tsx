@@ -11,7 +11,15 @@ import './globals.css';
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] });
 
-export const metadata: Metadata = { title: 'MANB SHOP', description: 'Computer Store' };
+export const metadata: Metadata = {
+  title: 'DEVORA - Innovation Through Technology',
+  description: 'Hệ thống bán lẻ Laptop, Máy tính & Thiết bị Công nghệ Chính hãng DEVORA',
+  icons: {
+    icon: '/devora-icon.png',
+    shortcut: '/devora-icon.png',
+    apple: '/devora-icon.png',
+  },
+};
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (

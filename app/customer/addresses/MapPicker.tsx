@@ -26,16 +26,16 @@ type LeafletTileLayer = {
 };
 
 declare global {
-  interface Window { L?: LeafletApi; __manbLeafletLoading?: Promise<void> }
+  interface Window { L?: LeafletApi; __devoraLeafletLoading?: Promise<void> }
 }
 
 function loadLeaflet() {
   if (window.L) return Promise.resolve();
-  if (window.__manbLeafletLoading) return window.__manbLeafletLoading;
-  window.__manbLeafletLoading = new Promise<void>((resolve, reject) => {
-    if (!document.querySelector("#manb-leaflet-css")) {
+  if (window.__devoraLeafletLoading) return window.__devoraLeafletLoading;
+  window.__devoraLeafletLoading = new Promise<void>((resolve, reject) => {
+    if (!document.querySelector("#devora-leaflet-css")) {
       const css = document.createElement("link");
-      css.id = "manb-leaflet-css";
+      css.id = "devora-leaflet-css";
       css.rel = "stylesheet";
       css.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
       document.head.appendChild(css);
@@ -46,7 +46,7 @@ function loadLeaflet() {
     script.onerror = () => reject(new Error("Không tải được bản đồ. Kiểm tra kết nối mạng rồi tải lại."));
     document.body.appendChild(script);
   });
-  return window.__manbLeafletLoading;
+  return window.__devoraLeafletLoading;
 }
 
 export default function MapPicker({ latitude, longitude, onPick }: Props) {

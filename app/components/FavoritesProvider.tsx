@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api, getStoredUser, type Product } from "@/lib/api";
 
-const STORAGE_KEY = "manb-shop-favorites";
+const STORAGE_KEY = "devora-shop-favorites";
 
 type FavoritesContextValue = {
   products: Product[];
@@ -16,7 +16,8 @@ const FavoritesContext = createContext<FavoritesContextValue | null>(null);
 
 function readGuestFavorites(): Product[] {
   try {
-    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem("manb-shop-favorites") || "[]";
+    const stored = JSON.parse(raw);
     return Array.isArray(stored) ? stored : [];
   } catch {
     return [];

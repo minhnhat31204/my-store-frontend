@@ -1,6 +1,9 @@
 import type { Voucher } from "@/lib/api";
 
 export const voucherStorageKey = (userId?: number | null) =>
+  userId ? `devora-voucher-${userId}` : 'devora-voucher-guest';
+
+export const legacyVoucherStorageKey = (userId?: number | null) =>
   userId ? `manb-voucher-${userId}` : 'manb-voucher-guest';
 
 export function isVoucherValid(voucher: Voucher, now = new Date()) {
@@ -35,6 +38,6 @@ export function saveSelectedVoucher(userId: number | undefined | null, voucherId
 export function getSelectedVoucherId(userId?: number | null): number | null {
   if (typeof window === 'undefined') return null;
   const key = voucherStorageKey(userId);
-  const val = localStorage.getItem(key);
+  const val = localStorage.getItem(key) || localStorage.getItem(legacyVoucherStorageKey(userId));
   return val ? Number(val) : null;
 }

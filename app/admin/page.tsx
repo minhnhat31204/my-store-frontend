@@ -91,7 +91,7 @@ export default function AdminDashboard() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `doanh-thu-manb-${year}.csv`;
+    link.download = `doanh-thu-devora-${year}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -107,7 +107,7 @@ export default function AdminDashboard() {
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold mb-3">
               <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping" />
-              Hệ thống Quản trị Doanh nghiệp MANB SHOP
+              Hệ thống Quản trị Doanh nghiệp DEVORA
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
               Bảng điều khiển Tổng quan

@@ -544,7 +544,7 @@ export default function AdminVouchersPage() {
                 <input
                   required
                   type="text"
-                  placeholder="VD: MANB2026, HELLO50K"
+                  placeholder="VD: DEVORA2026, HELLO50K"
                   value={form.Code}
                   onChange={(e) => setForm({ ...form, Code: e.target.value.toUpperCase() })}
                   className="w-full rounded-2xl bg-slate-950 border border-slate-800 p-3 font-mono text-sm text-white focus:outline-none focus:border-blue-500 uppercase transition"

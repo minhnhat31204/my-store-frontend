@@ -5,11 +5,11 @@ import { usePathname } from 'next/navigation';
 import { api, getStoredUser, type SupportMessage } from '@/lib/api';
 
 const ZALO_URL = process.env.NEXT_PUBLIC_ZALO_URL || 'https://zalo.me/0909680426';
-const VISITOR_KEY = 'manb-support-visitor';
+const VISITOR_KEY = 'devora-support-visitor';
 
 function getVisitorKey(channel: 'ai' | 'staff') {
   const storageKey = `${VISITOR_KEY}-${channel}`;
-  let key = typeof window !== 'undefined' ? localStorage.getItem(storageKey) : null;
+  let key = typeof window !== 'undefined' ? (localStorage.getItem(storageKey) || localStorage.getItem(`manb-support-visitor-${channel}`)) : null;
   if (!key) {
     key = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `visitor-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     if (typeof window !== 'undefined') localStorage.setItem(storageKey, key);
@@ -232,7 +232,7 @@ export default function SupportWidget() {
                 <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-blue-700 animate-pulse" />
               </div>
               <div>
-                <h2 className="font-black text-sm md:text-base leading-tight">{aiMode ? 'Trợ lý MANB AI' : 'Chăm sóc khách hàng'}</h2>
+                <h2 className="font-black text-sm md:text-base leading-tight">{aiMode ? 'Trợ lý DEVORA AI' : 'Chăm sóc khách hàng'}</h2>
                 <p className="text-[11px] text-blue-100 font-medium">{aiMode ? 'Tư vấn thông minh & kiểm tra tồn kho' : 'Nhân viên trực tuyến sẵn sàng hỗ trợ'}</p>
               </div>
             </div>
@@ -253,7 +253,7 @@ export default function SupportWidget() {
             {!messages.length && !loading && (
               <div className="space-y-2.5">
                 <div className="chat-msg-bubble rounded-2xl bg-white p-3.5 text-xs md:text-sm text-slate-700 shadow-sm border border-slate-100 leading-relaxed">
-                  {aiMode ? '👋 Dạ MANB SHOP xin chào quý khách! Em là Trợ lý AI chuyên tư vấn laptop. Em có thể gợi ý cấu hình, so sánh máy, báo giá và kiểm tra tồn kho theo nhu cầu của anh/chị.' : 'Dạ MANB SHOP xin chào! Quý khách cần hỗ trợ đơn hàng hoặc tư vấn sản phẩm gì ạ?'}
+                  {aiMode ? '👋 Dạ DEVORA xin chào quý khách! Em là Trợ lý AI chuyên tư vấn laptop. Em có thể gợi ý cấu hình, so sánh máy, báo giá và kiểm tra tồn kho theo nhu cầu của anh/chị.' : 'Dạ DEVORA xin chào! Quý khách cần hỗ trợ đơn hàng hoặc tư vấn sản phẩm gì ạ?'}
                 </div>
                 {aiMode && (
                   <div className="space-y-2 pt-1">
@@ -293,7 +293,7 @@ export default function SupportWidget() {
               >
                 {item.SenderRole !== 'Customer' && (
                   <p className={`mb-1 text-[11px] font-bold ${item.SenderRole === 'AI' ? 'text-violet-700' : 'text-blue-700'}`}>
-                    {item.SenderRole === 'AI' ? '🤖 Trợ lý MANB AI' : item.SenderName || 'Nhân viên CSKH'}
+                    {item.SenderRole === 'AI' ? '🤖 Trợ lý DEVORA AI' : item.SenderName || 'Nhân viên CSKH'}
                   </p>
                 )}
                 <p className="whitespace-pre-wrap break-words leading-relaxed">{item.Message}</p>
