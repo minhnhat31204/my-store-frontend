@@ -21,6 +21,7 @@ export default function SupportWidget() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const [aiMode, setAiMode] = useState(false);
   const [conversationIds, setConversationIds] = useState<{ ai: number | null; staff: number | null }>({ ai: null, staff: null });
   const [messages, setMessages] = useState<SupportMessage[]>([]);
@@ -102,6 +103,7 @@ export default function SupportWidget() {
   }, [chatOpen, scrollToBottom]);
 
   const openChat = async (useAi = false) => {
+    setIsClosing(false);
     setChatOpen(true);
     setAiMode(useAi);
     setMenuOpen(false);
@@ -128,6 +130,15 @@ export default function SupportWidget() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const closeChat = () => {
+    if (isClosing) return;
+    setIsClosing(true);
+    setTimeout(() => {
+      setChatOpen(false);
+      setIsClosing(false);
+    }, 270);
   };
 
   const handleSelectOption = (option: 'ai' | 'staff') => {
@@ -220,10 +231,10 @@ export default function SupportWidget() {
       )}
 
       {/* Chat Window */}
-      {chatOpen && (
+      {(chatOpen || isClosing) && (
         <section
           aria-label="Nhắn tin chăm sóc khách hàng"
-          className="chat-window-pop flex h-[min(580px,70vh)] w-[min(390px,calc(100vw-1.75rem))] flex-col overflow-hidden rounded-3xl border border-blue-500/20 bg-white shadow-2xl origin-bottom-right"
+          className={`chat-window-pop flex h-[min(580px,70vh)] w-[min(390px,calc(100vw-1.75rem))] flex-col overflow-hidden rounded-3xl border border-blue-500/20 bg-white shadow-2xl origin-bottom-right ${isClosing ? 'chat-window-closing' : ''}`}
         >
           <header className="flex items-center justify-between bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-600 px-4 py-3.5 text-white shadow-md">
             <div className="flex items-center gap-2.5">
@@ -237,9 +248,9 @@ export default function SupportWidget() {
               </div>
             </div>
             <button
-              onClick={() => setChatOpen(false)}
+              onClick={closeChat}
               aria-label="Đóng cửa sổ chat"
-              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-lg leading-none transition cursor-pointer active:scale-90"
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 hover:rotate-90 flex items-center justify-center text-lg leading-none transition duration-200 cursor-pointer active:scale-75"
             >
               ✕
             </button>
@@ -406,7 +417,7 @@ export default function SupportWidget() {
       )}
 
       {/* Main Floating Trigger Button with Radar Wave & Glowing Aura */}
-      {!chatOpen && (
+      {!chatOpen && !isClosing && (
         <div className="relative group">
           {/* Pulsing Radar Glow Aura */}
           <span className="absolute -inset-1.5 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-400 opacity-60 blur-md group-hover:opacity-100 transition animate-pulse pointer-events-none" />
