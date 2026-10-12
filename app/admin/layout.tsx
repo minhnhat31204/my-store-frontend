@@ -435,12 +435,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </header>
 
         {/* Page Inner Container */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 min-h-0">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8">
           {children}
         </main>
 
         {/* Admin Dark Footer */}
-        <footer className="mt-auto py-4 px-8 border-t border-slate-800/80 bg-slate-950/70 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400 shrink-0">
+        <footer className="mt-auto py-4 px-8 border-t border-slate-800 bg-slate-950 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400 shrink-0">
           <div className="flex items-center gap-2 font-medium">
             <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block shadow-sm shadow-emerald-400/50 animate-pulse" />
             <span>Hệ thống DEVORA Admin Portal v2.5 • Máy chủ hoạt động ổn định</span>
@@ -449,7 +449,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             <Link href="/" className="text-blue-400 hover:text-blue-300 font-bold">
               ← Về trang chủ mua sắm
             </Link>
-            <span>© {new Date().getFullYear()} DEVORA.VN. Bản quyền quản trị hệ thống.</span>
+            <span>© {new Date().getFullYear()} DEVORA.ID.VN. Bản quyền quản trị hệ thống.</span>
           </div>
         </footer>
       </div>
