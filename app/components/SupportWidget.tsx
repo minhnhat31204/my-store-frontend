@@ -138,7 +138,7 @@ export default function SupportWidget() {
     setTimeout(() => {
       setChatOpen(false);
       setIsClosing(false);
-    }, 270);
+    }, 250);
   };
 
   const handleSelectOption = (option: 'ai' | 'staff') => {
