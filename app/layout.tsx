@@ -15,9 +15,13 @@ export const metadata: Metadata = {
   title: 'DEVORA - Innovation Through Technology',
   description: 'Hệ thống bán lẻ Laptop, Máy tính & Thiết bị Công nghệ Chính hãng DEVORA',
   icons: {
-    icon: '/devora-icon.png',
-    shortcut: '/devora-icon.png',
-    apple: '/devora-icon.png',
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icon.png', type: 'image/png' },
+      { url: '/devora-icon.png', type: 'image/png' },
+    ],
+    shortcut: '/favicon.ico',
+    apple: '/icon.png',
   },
 };
 
