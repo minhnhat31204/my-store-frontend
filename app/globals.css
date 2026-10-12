@@ -977,53 +977,28 @@ a { text-decoration: none; -webkit-tap-highlight-color: transparent; }
   animation: bubbleFloat 3s ease-in-out infinite;
 }
 
-@keyframes springPopOut {
+@keyframes menuFadeIn {
   0% {
     opacity: 0;
-    transform: scale(0.65) translateY(24px);
-  }
-  60% {
-    opacity: 1;
-    transform: scale(1.06) translateY(-4px);
-  }
-  85% {
-    transform: scale(0.98) translateY(1px);
+    transform: translateY(8px);
   }
   100% {
     opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-@keyframes springSlideItem {
-  0% {
-    opacity: 0;
-    transform: translateY(12px) scale(0.92);
-  }
-  70% {
-    opacity: 1;
-    transform: translateY(-2px) scale(1.02);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
 }
 
 .support-menu-pop {
-  animation: springPopOut 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation: menuFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   transform-origin: bottom right;
   will-change: transform, opacity;
 }
 
-.support-item-1 {
-  animation: springSlideItem 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 0.04s both;
+.support-btn-option {
+  transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease !important;
 }
-.support-item-2 {
-  animation: springSlideItem 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;
-}
-.support-item-3 {
-  animation: springSlideItem 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 0.16s both;
+.support-btn-option:active {
+  opacity: 0.85;
 }
 
 /* Hiệu ứng mở box chat: Phóng to êm ái từ góc dưới, đồng bộ tuyệt đối với lúc đóng */
@@ -1066,19 +1041,8 @@ a { text-decoration: none; -webkit-tap-highlight-color: transparent; }
   pointer-events: none;
 }
 
-.support-btn-option {
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.15s ease, box-shadow 0.2s ease, border-color 0.15s ease !important;
-  will-change: transform;
-}
 .support-btn-option:hover {
-  transform: translateY(-2px) scale(1.025);
-  box-shadow: 0 8px 20px -4px rgba(59, 130, 246, 0.15);
-}
-.support-btn-option:active,
-.support-btn-option.is-pressing {
-  transform: scale(0.92) !important;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
-  filter: brightness(0.96);
+  background-color: #f8fafc;
 }
 
 @keyframes msgPopIn {

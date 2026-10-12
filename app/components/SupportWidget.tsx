@@ -30,7 +30,6 @@ export default function SupportWidget() {
   const [loading, setLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [showTeaser, setShowTeaser] = useState(true);
-  const [activeOption, setActiveOption] = useState<'ai' | 'staff' | 'zalo' | null>(null);
   const messagesPane = useRef<HTMLDivElement>(null);
   const isUserNearBottomRef = useRef(true);
 
@@ -142,11 +141,7 @@ export default function SupportWidget() {
   };
 
   const handleSelectOption = (option: 'ai' | 'staff') => {
-    setActiveOption(option);
-    setTimeout(() => {
-      setActiveOption(null);
-      void openChat(option === 'ai');
-    }, 140);
+    void openChat(option === 'ai');
   };
 
   useEffect(() => {
@@ -364,15 +359,15 @@ export default function SupportWidget() {
           <button
             type="button"
             onClick={() => handleSelectOption('ai')}
-            className={`support-item-1 support-btn-option flex w-full items-center gap-3 rounded-2xl p-3 text-left bg-gradient-to-r from-violet-50 to-indigo-50/50 hover:from-violet-100 hover:to-indigo-100 border border-violet-100/80 cursor-pointer shadow-xs ${activeOption === 'ai' ? 'is-pressing ring-2 ring-violet-500 bg-violet-100' : ''}`}
+            className="support-btn-option flex w-full items-center gap-3 rounded-2xl p-3 text-left bg-gradient-to-r from-violet-50 to-indigo-50/50 hover:from-violet-100 hover:to-indigo-100 border border-violet-100/80 cursor-pointer shadow-xs transition"
           >
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-600 text-lg text-white shadow-md group-hover:scale-110 transition-transform">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-600 text-lg text-white shadow-md">
               🤖
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
                 <b className="text-xs md:text-sm text-slate-900 font-bold">AI Tư Vấn 24/7</b>
-                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-violet-600 text-white shadow-xs animate-pulse">PRO</span>
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-violet-600 text-white shadow-xs">PRO</span>
               </div>
               <small className="text-[11px] text-slate-500 line-clamp-1">Tra cứu tồn kho & cấu hình ngay</small>
             </div>
@@ -381,9 +376,9 @@ export default function SupportWidget() {
           <button
             type="button"
             onClick={() => handleSelectOption('staff')}
-            className={`support-item-2 support-btn-option flex w-full items-center gap-3 rounded-2xl p-3 text-left hover:bg-blue-50 border border-transparent hover:border-blue-100 cursor-pointer ${activeOption === 'staff' ? 'is-pressing ring-2 ring-blue-500 bg-blue-100' : ''}`}
+            className="support-btn-option flex w-full items-center gap-3 rounded-2xl p-3 text-left hover:bg-blue-50 border border-transparent hover:border-blue-100 cursor-pointer transition"
           >
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-600 text-lg text-white shadow-md group-hover:scale-110 transition-transform">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-600 text-lg text-white shadow-md">
               💬
             </span>
             <div className="min-w-0 flex-1">
@@ -396,16 +391,10 @@ export default function SupportWidget() {
             href={ZALO_URL}
             target="_blank"
             rel="noreferrer"
-            onClick={(e) => {
-              setActiveOption('zalo');
-              setTimeout(() => {
-                setActiveOption(null);
-                setMenuOpen(false);
-              }, 180);
-            }}
-            className={`support-item-3 support-btn-option flex items-center gap-3 rounded-2xl p-3 hover:bg-blue-50 border border-transparent hover:border-blue-100 cursor-pointer ${activeOption === 'zalo' ? 'is-pressing ring-2 ring-blue-500 bg-blue-100' : ''}`}
+            onClick={() => setMenuOpen(false)}
+            className="support-btn-option flex items-center gap-3 rounded-2xl p-3 hover:bg-blue-50 border border-transparent hover:border-blue-100 cursor-pointer transition"
           >
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[#0068ff] text-base font-black text-white shadow-md group-hover:scale-110 transition-transform">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[#0068ff] text-base font-black text-white shadow-md">
               Z
             </span>
             <div className="min-w-0 flex-1">
@@ -416,24 +405,20 @@ export default function SupportWidget() {
         </div>
       )}
 
-      {/* Main Floating Trigger Button with Radar Wave & Glowing Aura */}
+      {/* Main Floating Trigger Button */}
       {!chatOpen && !isClosing && (
         <div className="relative group">
-          {/* Pulsing Radar Glow Aura */}
-          <span className="absolute -inset-1.5 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-400 opacity-60 blur-md group-hover:opacity-100 transition animate-pulse pointer-events-none" />
-
           <button
             onClick={() => setMenuOpen((open) => !open)}
             aria-label="Liên hệ và hỗ trợ"
-            className="relative flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 w-[116px] md:w-[130px] h-[44px] md:h-[48px] text-xs md:text-sm font-black text-white shadow-2xl transition-all duration-300 group-hover:scale-105 active:scale-95 cursor-pointer ring-2 ring-white/30"
+            className="relative flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 w-[116px] md:w-[130px] h-[44px] md:h-[48px] text-xs md:text-sm font-black text-white shadow-xl transition-colors duration-200 cursor-pointer ring-2 ring-white/30"
           >
             {/* Online Green Indicator Dot */}
             <span className="relative flex h-2.5 w-2.5 shrink-0">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400" />
             </span>
 
-            <span className={`text-base md:text-lg transition-transform duration-300 shrink-0 ${menuOpen ? 'rotate-90' : 'support-icon-anim'}`}>
+            <span className={`text-base md:text-lg transition-transform duration-200 shrink-0 ${menuOpen ? 'rotate-90' : ''}`}>
               {menuOpen ? '✕' : '💬'}
             </span>
 
