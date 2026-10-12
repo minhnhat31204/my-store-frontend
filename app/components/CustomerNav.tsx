@@ -414,7 +414,9 @@ export default function CustomerNav({
   const handleLogout = () => {
     localStorage.removeItem("user");
     localStorage.removeItem("sessionToken");
+    localStorage.removeItem("auth_token");
     sessionStorage.removeItem("user");
+    sessionStorage.removeItem("auth_token");
     setUser(null);
     setAccountMenuOpen(false);
     window.dispatchEvent(new Event("user-updated"));

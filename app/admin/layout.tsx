@@ -144,7 +144,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const handleLogout = () => {
     localStorage.removeItem('user');
     localStorage.removeItem('sessionToken');
+    localStorage.removeItem('auth_token');
     sessionStorage.removeItem('user');
+    sessionStorage.removeItem('auth_token');
     window.dispatchEvent(new Event('user-updated'));
     router.push('/login');
   };

@@ -235,17 +235,53 @@ export type SupportMessage = {
   CreatedAt: string;
 };
 
+const AUTH_TOKEN_KEY = "auth_token";
+
+export function getStoredToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return localStorage.getItem(AUTH_TOKEN_KEY) || sessionStorage.getItem(AUTH_TOKEN_KEY) || null;
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredToken(token: string, persist = true) {
+  if (typeof window === "undefined") return;
+  try {
+    if (persist) {
+      localStorage.setItem(AUTH_TOKEN_KEY, token);
+      sessionStorage.removeItem(AUTH_TOKEN_KEY);
+    } else {
+      sessionStorage.setItem(AUTH_TOKEN_KEY, token);
+      localStorage.removeItem(AUTH_TOKEN_KEY);
+    }
+  } catch {}
+}
+
+export function clearStoredToken() {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    sessionStorage.removeItem(AUTH_TOKEN_KEY);
+  } catch {}
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
   const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
+  const token = getStoredToken();
+  const headers: Record<string, string> = {
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...((options.headers as Record<string, string>) || {}),
+  };
+
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
-    headers: {
-      ...(isFormData ? {} : { "Content-Type": "application/json" }),
-      ...(options.headers || {}),
-    },
+    headers,
     cache: "no-store",
   });
 
@@ -433,6 +469,7 @@ export const api = {
   register: (payload: { phone: string; otp: string; password: string }) =>
     request<{
       message: string;
+      token?: string;
       user: User;
     }>("/auth/register", {
       method: "POST",
@@ -442,6 +479,7 @@ export const api = {
   login: (phone: string, password: string) =>
     request<{
       message: string;
+      token?: string;
       user: User;
     }>("/auth/login", {
       method: "POST",

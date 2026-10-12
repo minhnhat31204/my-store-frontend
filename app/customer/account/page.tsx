@@ -597,7 +597,9 @@ export default function AccountPage() {
   const handleLogout = () => {
     localStorage.removeItem('user');
     localStorage.removeItem('sessionToken');
+    localStorage.removeItem('auth_token');
     sessionStorage.removeItem('user');
+    sessionStorage.removeItem('auth_token');
     setUser(null);
     window.dispatchEvent(new Event('user-updated'));
     window.location.href = '/login';
