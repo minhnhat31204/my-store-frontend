@@ -258,14 +258,43 @@ export default function ProductDetailPage() {
 
   const specList = useMemo(() => {
     if (!product) return [];
-    return ([
+    const list: [string, string][] = [];
+    const handled = new Set<string>();
+
+    const baseSpecs: [string, string | null | undefined][] = [
       ["CPU", product.CPU],
       ["RAM", product.RAM],
       ["Lưu trữ", product.Storage],
       ["Màn hình", product.Display],
       ["Tần số quét", product.RefreshRate],
       ["Dòng máy", product.Series],
-    ] as const).filter(([, value]) => Boolean(value));
+    ];
+
+    for (const [k, v] of baseSpecs) {
+      if (v) {
+        list.push([k, v]);
+        handled.add(k.toLowerCase());
+      }
+    }
+
+    if (product.Description) {
+      const lines = product.Description.split("\n");
+      for (const rawLine of lines) {
+        const line = rawLine.replace(/^[•\-\*\+\s]+/, "").trim();
+        if (!line) continue;
+        const colonIndex = line.indexOf(":");
+        if (colonIndex > 0) {
+          const k = line.slice(0, colonIndex).trim();
+          const v = line.slice(colonIndex + 1).trim();
+          if (k && v && !handled.has(k.toLowerCase())) {
+            list.push([k, v]);
+            handled.add(k.toLowerCase());
+          }
+        }
+      }
+    }
+
+    return list;
   }, [product]);
 
   return (
