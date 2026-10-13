@@ -254,10 +254,12 @@ export default function OrderDetailPage() {
                 sessionStorage.setItem("is_pop_nav", "1");
               } catch {}
             }
-            if (typeof window !== "undefined" && window.history.length > 1) {
+            if (isPaymentCancelled) {
+              router.push("/checkout");
+            } else if (typeof window !== "undefined" && window.history.length > 1) {
               router.back();
             } else {
-              router.push("/customer/orders");
+              router.push("/checkout");
             }
           }}
           className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-xs transition hover:border-slate-300 hover:bg-slate-50 hover:text-blue-600 cursor-pointer"
@@ -305,6 +307,12 @@ export default function OrderDetailPage() {
                     >
                       {paymentBusy ? "Đang mở PayOS..." : "Mở lại trang thanh toán QR"}
                     </button>
+                    <Link
+                      href="/checkout"
+                      className="rounded-xl border border-blue-600 bg-white px-3.5 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-50 transition inline-block"
+                    >
+                      Quay lại trang thanh toán
+                    </Link>
                     <Link
                       href="/customer/cart"
                       className="rounded-xl border border-amber-300 bg-white px-3.5 py-1.5 text-xs font-bold text-amber-900 hover:bg-amber-100 transition inline-block"
