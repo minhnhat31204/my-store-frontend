@@ -11,6 +11,7 @@ import {
   getCachedCategoriesSync,
   getCachedProductsSync,
   getPrimaryProductImage,
+  getStoredUser,
   Product,
 } from "@/lib/api";
 import type { StoreCategory } from "@/lib/api";
@@ -89,6 +90,11 @@ export default function ProductsPage() {
   }, [products, keyword, categoryId, brand, sortBy]);
 
   async function add(product: Product, event: React.MouseEvent) {
+    const user = getStoredUser();
+    if (!user) {
+      router.push('/login');
+      return;
+    }
     animateFlyToCart(event, getPrimaryProductImage(product.ImageUrl));
     try {
       setAddingId(product.ProductID);

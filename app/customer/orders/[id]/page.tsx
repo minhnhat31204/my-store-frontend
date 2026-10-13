@@ -48,6 +48,7 @@ export default function OrderDetailPage() {
   const [cancelBusy, setCancelBusy] = useState(false);
   const [cancelError, setCancelError] = useState("");
   const [isCodSuccess, setIsCodSuccess] = useState(false);
+  const [isPaymentCancelled, setIsPaymentCancelled] = useState(false);
 
   // Refund modal state
   const [refundModalOpen, setRefundModalOpen] = useState(false);
@@ -73,6 +74,9 @@ export default function OrderDetailPage() {
       const params = new URLSearchParams(window.location.search);
       if (params.get("method") === "cod" && (params.get("status") === "success" || params.get("status") === "created")) {
         setIsCodSuccess(true);
+      }
+      if (params.get("payment") === "cancel" || params.get("status") === "cancel" || params.get("cancel") === "true") {
+        setIsPaymentCancelled(true);
       }
       if (params.get("action") === "review") {
         setReviewModalOpen(true);
@@ -278,6 +282,36 @@ export default function OrderDetailPage() {
                   <p className="text-xs text-emerald-800 mt-0.5 leading-relaxed">
                     Đơn hàng của bạn đã được ghi nhận với phương thức <strong>Thanh toán khi nhận hàng (COD)</strong>. Đơn hàng hiện đang ở trạng thái <strong>Chờ thanh toán</strong> khi nhận hàng.
                   </p>
+                </div>
+              </div>
+            )}
+
+            {isPaymentCancelled && (
+              <div className="mt-4 rounded-2xl bg-amber-50 border border-amber-200 p-4 text-amber-900 flex items-start gap-3 shadow-xs animate-in fade-in duration-200">
+                <div className="w-8 h-8 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold text-sm shrink-0">
+                  !
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-base">Bạn đã hủy giao dịch quét mã QR PayOS</p>
+                  <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
+                    Giao dịch thanh toán chưa được hoàn tất. Đơn hàng vẫn được lưu lại để bạn có thể thanh toán lại bất cứ lúc nào, hoặc bạn có thể quay lại giỏ hàng để chỉnh sửa sản phẩm.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2.5">
+                    <button
+                      type="button"
+                      onClick={retryPayment}
+                      disabled={paymentBusy}
+                      className="rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-blue-700 transition cursor-pointer shadow-xs disabled:opacity-50"
+                    >
+                      {paymentBusy ? "Đang mở PayOS..." : "Mở lại trang thanh toán QR"}
+                    </button>
+                    <Link
+                      href="/customer/cart"
+                      className="rounded-xl border border-amber-300 bg-white px-3.5 py-1.5 text-xs font-bold text-amber-900 hover:bg-amber-100 transition inline-block"
+                    >
+                      Quay lại giỏ hàng
+                    </Link>
+                  </div>
                 </div>
               </div>
             )}

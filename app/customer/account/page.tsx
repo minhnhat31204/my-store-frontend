@@ -350,6 +350,7 @@ type ActiveTab = 'profile' | 'phone' | 'email' | 'password' | 'delete';
 export default function AccountPage() {
   const [user, setUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>('profile');
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // Profile Form States
   const [profileName, setProfileName] = useState('');
@@ -832,8 +833,8 @@ export default function AccountPage() {
                 </Link>
                 <button
                   type="button"
-                  onClick={handleLogout}
-                  className="w-full rounded-xl px-4 py-2.5 text-left text-xs font-bold text-red-600 hover:bg-red-50 transition"
+                  onClick={() => setShowLogoutConfirm(true)}
+                  className="w-full rounded-xl px-4 py-2.5 text-left text-xs font-bold text-red-600 hover:bg-red-50 transition cursor-pointer"
                 >
                   Đăng xuất tài khoản
                 </button>
@@ -1323,6 +1324,43 @@ export default function AccountPage() {
 
         </div>
       </div>
+
+      {/* MODAL XÁC NHẬN ĐĂNG XUẤT */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl border border-slate-100 text-center space-y-4">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-600">
+              <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-slate-900">Xác nhận đăng xuất?</h3>
+              <p className="mt-1.5 text-xs text-slate-500">
+                Bạn có chắc chắn muốn đăng xuất khỏi tài khoản của mình không?
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowLogoutConfirm(false)}
+                className="w-full rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+              >
+                Ở lại
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full rounded-xl bg-red-600 py-2.5 text-xs font-bold text-white hover:bg-red-700 transition cursor-pointer shadow-xs"
+              >
+                Đăng xuất
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

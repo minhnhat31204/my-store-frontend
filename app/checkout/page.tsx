@@ -8,7 +8,7 @@ import type { Voucher } from '@/lib/api';
 import { formatShippingAddress, getLegacyAddresses, getSelectedAddressId, loadAddresses, saveSelectedAddressId, type ShippingAddress } from '@/lib/addresses';
 import { getSelectedVoucherId, saveSelectedVoucher, voucherDiscount } from '@/lib/vouchers';
 
-const SHIPPING_FEE = 40000;
+const SHIPPING_FEE = 20000;
 
 function itemPrice(item: any) {
   return Number(item.DiscountPrice ?? item.Product?.DiscountPrice ?? item.Price ?? item.Product?.Price ?? 0);

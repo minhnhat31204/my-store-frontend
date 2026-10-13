@@ -28,6 +28,8 @@ export default function CartPage() {
   const [couponInput, setCouponInput] = useState("");
   const [applyingCoupon, setApplyingCoupon] = useState(false);
   const [voucherFeedback, setVoucherFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<CartItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -75,22 +77,19 @@ export default function CartPage() {
     }
   }
 
-  async function remove(
-    item: CartItem
-  ) {
+  async function confirmDelete() {
+    if (!itemToDelete) return;
     try {
+      setDeleting(true);
       setError("");
-
-      const next =
-        await removeFromCart(item);
-
+      const next = await removeFromCart(itemToDelete);
       setCart(next);
+      setItemToDelete(null);
     } catch (err) {
       console.error(err);
-
-      setError(
-        "Không thể xóa sản phẩm."
-      );
+      setError("Không thể xóa sản phẩm.");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -240,10 +239,9 @@ export default function CartPage() {
                       </button>
 
                       <button
-                        onClick={() =>
-                          remove(item)
-                        }
-                        className="ml-3 text-sm font-semibold text-red-600 hover:underline"
+                        type="button"
+                        onClick={() => setItemToDelete(item)}
+                        className="ml-3 text-sm font-semibold text-red-600 hover:underline cursor-pointer"
                       >
                         Xóa
                       </button>
@@ -298,19 +296,21 @@ export default function CartPage() {
                     </div>
                   </div>
                 ) : (
-                  <form onSubmit={applyVoucherCode} className="space-y-2">
-                    <div className="flex gap-2">
+                  <form onSubmit={applyVoucherCode} className="space-y-2.5">
+                    <div>
                       <input
                         type="text"
                         value={couponInput}
                         onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
                         placeholder="Nhập mã voucher (vd: SALE20)"
-                        className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium uppercase placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium uppercase placeholder-slate-400 focus:border-blue-500 focus:outline-none"
                       />
+                    </div>
+                    <div className="flex justify-end">
                       <button
                         type="submit"
                         disabled={applyingCoupon || !couponInput.trim()}
-                        className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-blue-700 disabled:bg-slate-300 shrink-0"
+                        className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-blue-700 disabled:bg-slate-300 cursor-pointer shadow-xs"
                       >
                         {applyingCoupon ? 'Kiểm tra...' : 'Áp dụng'}
                       </button>
@@ -352,6 +352,47 @@ export default function CartPage() {
           </div>
         )}
       </div>
+
+      {/* MODAL XÁC NHẬN XÓA SẢN PHẨM KHỎI GIỎ HÀNG */}
+      {itemToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl border border-slate-100 text-center space-y-4">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-100 text-red-600">
+              <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h18" />
+                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                <line x1="10" y1="11" x2="10" y2="17" />
+                <line x1="14" y1="11" x2="14" y2="17" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-slate-900">Xóa khỏi giỏ hàng?</h3>
+              <p className="mt-1.5 text-xs text-slate-500 line-clamp-2">
+                Bạn có chắc chắn muốn xóa sản phẩm <strong className="text-slate-800 font-bold">{itemToDelete.ProductName}</strong> khỏi giỏ hàng không?
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => setItemToDelete(null)}
+                disabled={deleting}
+                className="w-full rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={deleting}
+                className="w-full rounded-xl bg-red-600 py-2.5 text-xs font-bold text-white hover:bg-red-700 transition cursor-pointer shadow-xs disabled:opacity-50"
+              >
+                {deleting ? 'Đang xóa...' : 'Xóa sản phẩm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

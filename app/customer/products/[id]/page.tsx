@@ -9,6 +9,7 @@ import {
   api,
   getCachedProductsSync,
   getPrimaryProductImage,
+  getStoredUser,
   Product,
   ProductReview,
   ProductVariant,
@@ -164,6 +165,11 @@ export default function ProductDetailPage() {
 
   async function handleAddToCart(event: React.MouseEvent) {
     if (!product) return;
+    const user = getStoredUser();
+    if (!user) {
+      router.push('/login');
+      return;
+    }
     animateFlyToCart(event, allImages[selectedImageIndex] || allImages[0] || "");
     setAdding(true);
     try {

@@ -147,6 +147,10 @@ export default function CustomerNav({
   searchValue = "",
   onSearchChange,
 }: CustomerNavProps) {
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   const [cartCount, setCartCount] = useState(() => {
     if (typeof window !== "undefined") {
       try {
@@ -159,6 +163,7 @@ export default function CustomerNav({
   const [cartBump, setCartBump] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [user, setUser] = useState<User | null>(() => getStoredUser());
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [authLoaded, setAuthLoaded] = useState(true);
   const isAdmin = String(user?.Role || (user as (User & { role?: string }) | null)?.role || '').toLowerCase() === 'admin';
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
@@ -411,7 +416,7 @@ export default function CustomerNav({
     };
   }, [accountMenuOpen]);
 
-  const handleLogout = () => {
+  const performLogout = () => {
     localStorage.removeItem("user");
     localStorage.removeItem("sessionToken");
     localStorage.removeItem("auth_token");
@@ -419,11 +424,17 @@ export default function CustomerNav({
     sessionStorage.removeItem("auth_token");
     setUser(null);
     setAccountMenuOpen(false);
+    setShowLogoutConfirm(false);
     window.dispatchEvent(new Event("user-updated"));
     window.location.href = "/login";
   };
 
-  // Xử lý khi người dùng nhập tìm kiếm hoặc nhấn Enter
+  const handleLogoutClick = () => {
+    setAccountMenuOpen(false);
+    setShowLogoutConfirm(true);
+  };
+
+  // Xử lý khi người dùng nhập tìm kiếm hoặc nhấn Enter / bấm icon mũi tên
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const val = event.target.value;
     if (onSearchChange) {
@@ -434,10 +445,18 @@ export default function CustomerNav({
     window.dispatchEvent(new CustomEvent("store-search", { detail: val }));
   };
 
-  const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+  const triggerSearch = () => {
     const value = onSearchChange ? searchValue : localSearch;
-    if (event.key === "Enter" && value.trim()) {
+    if (value.trim()) {
       router.push(`/customer/products?search=${encodeURIComponent(value.trim())}`);
+    } else {
+      router.push(`/customer/products`);
+    }
+  };
+
+  const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      triggerSearch();
     }
   };
 
@@ -463,6 +482,18 @@ export default function CustomerNav({
               onChange={handleSearchChange}
               onKeyDown={handleSearchKeyDown}
             />
+            <button
+              type="button"
+              onClick={triggerSearch}
+              className="search-submit-btn"
+              title="Tìm kiếm"
+              aria-label="Thực hiện tìm kiếm"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14" />
+                <path d="m12 5 7 7-7 7" />
+              </svg>
+            </button>
           </div>
 
           <nav className="desktop-links">
@@ -697,7 +728,7 @@ export default function CustomerNav({
                     <button
                       role="menuitem"
                       type="button"
-                      onClick={handleLogout}
+                      onClick={handleLogoutClick}
                       className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-bold text-red-600 transition hover:bg-red-50 hover:text-red-700 active:scale-95 cursor-pointer"
                     >
                       <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50"><LogoutMenuIcon /></span>
@@ -722,10 +753,9 @@ export default function CustomerNav({
             try { sessionStorage.setItem("active_nav_origin", "home"); } catch {}
             setActiveNav("home");
           }}
-          className={`mobile-nav-item ${activeNav === "home" ? "active" : ""}`}
+          className={`nav-bubble-link ${isMounted && activeNav === "home" ? "active" : ""}`}
         >
-          <MobileHomeIcon active={activeNav === "home"} />
-          <small>Trang chủ</small>
+          <span>Trang chủ</span>
         </Link>
 
         <Link
@@ -791,6 +821,43 @@ export default function CustomerNav({
           )
         )}
       </nav>
+
+      {/* MODAL XÁC NHẬN ĐĂNG XUẤT */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl border border-slate-100 text-center space-y-4">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-600">
+              <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-slate-900">Xác nhận đăng xuất?</h3>
+              <p className="mt-1.5 text-xs text-slate-500">
+                Bạn có chắc chắn muốn đăng xuất khỏi tài khoản của mình không?
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowLogoutConfirm(false)}
+                className="w-full rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+              >
+                Ở lại
+              </button>
+              <button
+                type="button"
+                onClick={performLogout}
+                className="w-full rounded-xl bg-red-600 py-2.5 text-xs font-bold text-white hover:bg-red-700 transition cursor-pointer shadow-xs"
+              >
+                Đăng xuất
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -3,7 +3,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { api, getPrimaryProductImage, Product, Promotion } from '@/lib/api';
+import { api, getPrimaryProductImage, getStoredUser, Product, Promotion } from '@/lib/api';
 import { addToCart } from '@/lib/cart';
 import { animateFlyToCart } from '@/lib/cart-animation';
 import FavoriteButton from '@/app/components/FavoriteButton';
@@ -53,6 +53,11 @@ export default function PromotionDetailPage() {
   }, [promoId]);
 
   async function handleAdd(product: Product, event: React.MouseEvent) {
+    const user = getStoredUser();
+    if (!user) {
+      router.push('/login');
+      return;
+    }
     animateFlyToCart(event, getPrimaryProductImage(product.ImageUrl));
     try {
       await addToCart({

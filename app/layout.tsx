@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import CustomerNav from './components/CustomerNav';
 import Footer from './components/Footer';
 import SupportWidget from './components/SupportWidget';
+import CartNotificationToast from './components/CartNotificationToast';
 import { FavoritesProvider } from './components/FavoritesProvider';
 import PageTransitionProvider from './components/PageTransitionProvider';
 import './globals.css';
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         </FavoritesProvider>
         <Footer />
         <SupportWidget />
+        <CartNotificationToast />
       </body>
     </html>
   );
