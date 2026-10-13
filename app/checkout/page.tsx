@@ -225,8 +225,8 @@ export default function CheckoutPage() {
             <h2 className="text-xl font-bold mb-4">Thông tin nhận hàng</h2>
 
             <div className="rounded-xl border border-blue-100 bg-blue-50 p-3">
-              <div className="flex flex-wrap items-center justify-between gap-2"><label htmlFor="saved-address" className="text-sm font-bold">Địa chỉ đã lưu</label><Link href="/customer/addresses" className="text-sm font-bold text-blue-700">Quản lý sổ địa chỉ →</Link></div>
-                {addresses.length ? <select id="saved-address" value={selectedAddressId} onChange={(e) => selectAddress(e.target.value)} className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="">Nhập địa chỉ khác</option>{addresses.map((item) => <option key={item.id} value={item.id}>{item.recipientName} · {item.phone} · {formatShippingAddress(item)}</option>)}</select> : <p className="mt-2 text-xs text-slate-600">Bạn chưa lưu địa chỉ. <Link href="/customer/addresses" className="font-bold text-blue-700">Thêm địa chỉ</Link></p>}
+              <div className="flex flex-wrap items-center justify-between gap-2"><label htmlFor="saved-address" className="text-sm font-bold">Địa chỉ đã lưu</label><Link href="/customer/addresses?returnTo=/checkout" className="text-sm font-bold text-blue-700">Quản lý sổ địa chỉ →</Link></div>
+                {addresses.length ? <select id="saved-address" value={selectedAddressId} onChange={(e) => selectAddress(e.target.value)} className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="">Nhập địa chỉ khác</option>{addresses.map((item) => <option key={item.id} value={item.id}>{item.recipientName} · {item.phone} · {formatShippingAddress(item)}</option>)}</select> : <p className="mt-2 text-xs text-slate-600">Bạn chưa lưu địa chỉ. <Link href="/customer/addresses?returnTo=/checkout" className="font-bold text-blue-700">Thêm địa chỉ</Link></p>}
             </div>
 
             <div>

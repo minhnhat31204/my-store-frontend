@@ -94,7 +94,13 @@ export type Promotion = {
   BannerImageUrl?: string | null;
   Image?: string | null;
   Url?: string | null;
+  LinkUrl?: string | null;
+  DiscountPercent?: number | null;
+  ProductIDs?: string | number[] | null;
   IsActive?: boolean;
+  StartDate?: string | null;
+  EndDate?: string | null;
+  CreatedAt?: string | null;
 };
 
 export type StoreCategory = { CategoryID: number; CategoryName: string; ImageUrl?: string | null };
@@ -191,6 +197,14 @@ export type StoreOrder = {
   VoucherID?: number | null;
   User?: { FullName?: string | null; Email?: string | null; Phone?: string | null } | null;
   OrderItems?: OrderItem[];
+  RefundRequestAt?: string | null;
+  RefundBankName?: string | null;
+  RefundBankAccount?: string | null;
+  RefundBankHolder?: string | null;
+  RefundPhone?: string | null;
+  RefundReason?: string | null;
+  RefundStatus?: string | null;
+  RefundApprovedAt?: string | null;
   Payments?: Array<{
     PaymentTransactionID: number;
     Status: string;
@@ -428,6 +442,15 @@ export const api = {
   getProductReviews: (productId: number) =>
     request<ProductReview[]>(`/reviews/product/${productId}`),
 
+  checkOrderReview: (orderId: number, userId: number) =>
+    request<{ reviewed: boolean; review?: ProductReview | null }>(`/reviews/check-order?orderId=${orderId}&userId=${userId}`),
+
+  createOrderReview: (payload: { UserID: number; OrderID: number; Rating: number; Comment?: string }) =>
+    request<{ message: string; review: ProductReview }>("/reviews/order", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
   getFavorites: (userId: number) =>
     request<FavoriteRecord[]>(`/favorites/${userId}`),
 
@@ -472,6 +495,26 @@ export const api = {
 
   getPromotions: () =>
     request<Promotion[]>("/promotions"),
+
+  getPromotionById: (id: number) =>
+    request<{ promotion: Promotion; products: Product[] }>(`/promotions/${id}`),
+
+  createPromotion: (payload: Partial<Promotion>) =>
+    request<Promotion>("/promotions", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  updatePromotion: (id: number, payload: Partial<Promotion>) =>
+    request<{ message: string; promotion?: Promotion }>(`/promotions/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  deletePromotion: (id: number) =>
+    request<{ message: string }>(`/promotions/${id}`, {
+      method: "DELETE",
+    }),
 
   // =========================
   // AUTHENTICATION
@@ -696,6 +739,29 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ UserID: userId }),
     }),
+
+  submitRefundRequest: (
+    orderId: number,
+    payload: { UserID: number; Phone: string; BankName: string; BankAccount: string; BankHolder: string; Reason?: string }
+  ) =>
+    request<{ message: string; order: StoreOrder }>(`/orders/${orderId}/refund-request`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  approveRefundRequest: (orderId: number) =>
+    request<{ message: string; order: StoreOrder }>(`/orders/${orderId}/refund-approve`, {
+      method: "POST",
+    }),
+
+  rejectRefundRequest: (orderId: number, note?: string) =>
+    request<{ message: string; order: StoreOrder }>(`/orders/${orderId}/refund-reject`, {
+      method: "POST",
+      body: JSON.stringify({ note }),
+    }),
+
+  getRefundRequests: () =>
+    request<StoreOrder[]>("/orders/refund-requests"),
 
   getOrdersByUser: (userId: number) =>
     request<StoreOrder[]>(`/orders/user/${userId}`),

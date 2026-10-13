@@ -36,6 +36,26 @@ const NAV_GROUPS = [
         ),
       },
       {
+        href: '/admin/refunds',
+        label: 'Yêu cầu hoàn tiền',
+        badgeKey: 'pendingRefunds',
+        icon: (
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+          </svg>
+        ),
+      },
+      {
+        href: '/admin/banners',
+        label: 'Quản lý Banner',
+        badgeKey: null,
+        icon: (
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        ),
+      },
+      {
         href: '/admin/vouchers',
         label: 'Khuyến mãi & Voucher',
         badgeKey: null,
@@ -90,7 +110,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [badges, setBadges] = useState<{ pendingOrders?: number; lowStock?: number; unreadSupport?: number }>({});
+  const [badges, setBadges] = useState<{ pendingOrders?: number; pendingRefunds?: number; lowStock?: number; unreadSupport?: number }>({});
   const [currentTime, setCurrentTime] = useState('');
 
   useEffect(() => {
@@ -107,15 +127,21 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   useEffect(() => {
     async function fetchBadges() {
       try {
-        const [ordersRes, productsRes, supportRes] = await Promise.allSettled([
+        const [ordersRes, productsRes, supportRes, refundsRes] = await Promise.allSettled([
           api.getOrders(),
           api.getProducts(),
           api.getSupportConversations(),
+          api.getRefundRequests(),
         ]);
 
         let pendingCount = 0;
         if (ordersRes.status === 'fulfilled' && Array.isArray(ordersRes.value)) {
           pendingCount = ordersRes.value.filter((o) => (o.Status || '').toLowerCase() === 'pending').length;
+        }
+
+        let pendingRefundCount = 0;
+        if (refundsRes.status === 'fulfilled' && Array.isArray(refundsRes.value)) {
+          pendingRefundCount = refundsRes.value.length;
         }
 
         let lowStockCount = 0;
@@ -130,6 +156,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
         setBadges({
           pendingOrders: pendingCount,
+          pendingRefunds: pendingRefundCount,
           lowStock: lowStockCount,
           unreadSupport: unreadCount,
         });

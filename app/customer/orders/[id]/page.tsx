@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { api, getPrimaryProductImage, getStoredUser, type StoreOrder } from "@/lib/api";
+import { api, getPrimaryProductImage, getStoredUser, type StoreOrder, type ProductReview } from "@/lib/api";
 
 function statusLabel(status?: string | null) {
   const value = (status || "Pending").toLowerCase();
@@ -11,12 +11,30 @@ function statusLabel(status?: string | null) {
   if (["shipping", "delivering"].includes(value)) return "Đang giao";
   if (["completed", "delivered"].includes(value)) return "Đã giao";
   if (["cancelled", "canceled"].includes(value)) return "Đã hủy";
+  if (["refundpending", "pending refund"].includes(value)) return "Chờ hoàn tiền";
   return status || "Chờ xác nhận";
 }
 
 function currency(value: number | string | null | undefined) {
   return `${Number(value || 0).toLocaleString("vi-VN")} ₫`;
 }
+
+const COMMON_BANKS = [
+  "Vietcombank",
+  "MB Bank",
+  "Techcombank",
+  "BIDV",
+  "VietinBank",
+  "Agribank",
+  "ACB",
+  "TPBank",
+  "VPBank",
+  "MSB",
+  "Sacombank",
+  "HDBank",
+  "VIB",
+  "OCB"
+];
 
 export default function OrderDetailPage() {
   const router = useRouter();
@@ -31,16 +49,38 @@ export default function OrderDetailPage() {
   const [cancelError, setCancelError] = useState("");
   const [isCodSuccess, setIsCodSuccess] = useState(false);
 
+  // Refund modal state
+  const [refundModalOpen, setRefundModalOpen] = useState(false);
+  const [refundPhone, setRefundPhone] = useState("");
+  const [refundBankName, setRefundBankName] = useState(COMMON_BANKS[0]);
+  const [refundBankAccount, setRefundBankAccount] = useState("");
+  const [refundBankHolder, setRefundBankHolder] = useState("");
+  const [refundReason, setRefundReason] = useState("");
+  const [refundSubmitting, setRefundSubmitting] = useState(false);
+  const [refundError, setRefundError] = useState("");
+
+  // Review modal state
+  const [reviewed, setReviewed] = useState(false);
+  const [existingReview, setExistingReview] = useState<ProductReview | null>(null);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewError, setReviewError] = useState("");
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       if (params.get("method") === "cod" && (params.get("status") === "success" || params.get("status") === "created")) {
         setIsCodSuccess(true);
       }
+      if (params.get("action") === "review") {
+        setReviewModalOpen(true);
+      }
     }
   }, []);
 
-  useEffect(() => {
+  const loadOrder = async () => {
     const user = getStoredUser();
     if (!user) {
       setError("Vui lòng đăng nhập để xem chi tiết đơn hàng.");
@@ -52,15 +92,41 @@ export default function OrderDetailPage() {
       setLoading(false);
       return;
     }
-    api.getOrdersByUser(user.UserID)
-      .then((items) => {
-        const found = items.find((item) => item.OrderID === orderId);
-        if (!found) setError("Không tìm thấy đơn hàng này trong tài khoản của bạn.");
-        setOrder(found || null);
-      })
-      .catch(() => setError("Không thể tải chi tiết đơn hàng."))
-      .finally(() => setLoading(false));
+    try {
+      const items = await api.getOrdersByUser(user.UserID);
+      const found = items.find((item) => item.OrderID === orderId);
+      if (!found) {
+        setError("Không tìm thấy đơn hàng này trong tài khoản của bạn.");
+      } else {
+        setOrder(found);
+        setRefundPhone(found.RecipientPhone || user.Phone || "");
+        setRefundBankHolder(found.RecipientName || user.FullName || "");
+      }
+    } catch {
+      setError("Không thể tải chi tiết đơn hàng.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadOrder();
   }, [orderId]);
+
+  // Check review status if order is delivered
+  useEffect(() => {
+    const user = getStoredUser();
+    if (!user || !order) return;
+    const isDelivered = ["completed", "delivered", "đã giao"].includes((order.Status || "").toLowerCase());
+    if (isDelivered) {
+      api.checkOrderReview(order.OrderID, user.UserID)
+        .then((res) => {
+          setReviewed(res.reviewed);
+          if (res.review) setExistingReview(res.review);
+        })
+        .catch(() => {});
+    }
+  }, [order]);
 
   useEffect(() => {
     const user = getStoredUser();
@@ -105,10 +171,73 @@ export default function OrderDetailPage() {
     }
   }
 
+  async function handleRefundSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const user = getStoredUser();
+    if (!user || !order) return;
+
+    if (!refundPhone.trim() || !refundBankAccount.trim() || !refundBankHolder.trim() || !refundBankName.trim()) {
+      setRefundError("Vui lòng nhập đầy đủ thông tin tài khoản ngân hàng.");
+      return;
+    }
+
+    setRefundSubmitting(true);
+    setRefundError("");
+    try {
+      const result = await api.submitRefundRequest(order.OrderID, {
+        UserID: user.UserID,
+        Phone: refundPhone.trim(),
+        BankName: refundBankName.trim(),
+        BankAccount: refundBankAccount.trim(),
+        BankHolder: refundBankHolder.trim().toUpperCase(),
+        Reason: refundReason.trim(),
+      });
+      setOrder(result.order);
+      setRefundModalOpen(false);
+      alert("Đã gửi yêu cầu hoàn tiền thành công! Cửa hàng sẽ xét duyệt và chuyển tiền về tài khoản của bạn.");
+    } catch (err) {
+      setRefundError(err instanceof Error ? err.message : "Không gửi được yêu cầu hoàn tiền.");
+    } finally {
+      setRefundSubmitting(false);
+    }
+  }
+
+  async function handleReviewSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const user = getStoredUser();
+    if (!user || !order) return;
+
+    setReviewSubmitting(true);
+    setReviewError("");
+    try {
+      const res = await api.createOrderReview({
+        UserID: user.UserID,
+        OrderID: order.OrderID,
+        Rating: reviewRating,
+        Comment: reviewComment.trim(),
+      });
+      setReviewed(true);
+      setExistingReview(res.review);
+      setReviewModalOpen(false);
+      alert("Cảm ơn bạn đã gửi đánh giá cho đơn hàng!");
+    } catch (err) {
+      setReviewError(err instanceof Error ? err.message : "Không thể gửi đánh giá.");
+    } finally {
+      setReviewSubmitting(false);
+    }
+  }
+
   const items = order?.OrderItems || [];
   const itemSubtotal = items.reduce((sum, item) => sum + Number(item.UnitPrice || 0) * Number(item.Quantity || 0), 0);
   const discount = Number(order?.DiscountAmount || 0);
   const shipping = Math.max(0, Number(order?.TotalAmount || 0) - itemSubtotal + discount);
+
+  const isPaid = order?.Payments?.[0]?.Status === "PAID";
+  const orderStatus = (order?.Status || "").toLowerCase();
+  const canSimpleCancel = orderStatus === "pending" && !isPaid;
+  const canRefundCancel = isPaid && !["shipping", "shipped", "delivering", "delivered", "completed", "cancelled", "canceled", "refundpending", "pending refund"].includes(orderStatus);
+  const isRefundPending = ["refundpending", "pending refund"].includes(orderStatus) || order?.RefundStatus === "pending";
+  const isDelivered = ["completed", "delivered", "đã giao"].includes(orderStatus);
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
@@ -160,16 +289,106 @@ export default function OrderDetailPage() {
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-blue-100 px-4 py-2 text-sm font-bold text-blue-800">
-                  {order.PaymentMethod === "COD" && !["cancelled", "canceled", "delivered", "completed"].includes((order.Status || "").toLowerCase())
+                  {isRefundPending
+                    ? "Chờ hoàn tiền"
+                    : order.PaymentMethod === "COD" && !["cancelled", "canceled", "delivered", "completed"].includes((order.Status || "").toLowerCase())
                     ? "Chờ thanh toán (COD)"
                     : order.PaymentMethod === "PayOS" && order.Payments?.[0]?.Status !== "PAID" && !["cancelled", "canceled"].includes((order.Status || "").toLowerCase())
                     ? "Chờ thanh toán"
                     : statusLabel(order.Status)}
                 </span>
-                {order.Status?.toLowerCase() === "pending" && <button type="button" onClick={cancelOrder} disabled={cancelBusy} className="rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-bold text-red-700 hover:bg-red-50 disabled:opacity-60">{cancelBusy ? "Đang hủy..." : "Hủy đơn hàng"}</button>}
+
+                {/* Nút hủy đơn thường (chưa thanh toán) */}
+                {canSimpleCancel && (
+                  <button
+                    type="button"
+                    onClick={cancelOrder}
+                    disabled={cancelBusy}
+                    className="rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-bold text-red-700 hover:bg-red-50 disabled:opacity-60 transition"
+                  >
+                    {cancelBusy ? "Đang hủy..." : "Hủy đơn hàng"}
+                  </button>
+                )}
+
+                {/* Nút yêu cầu hủy & hoàn tiền (đã chuyển khoản) */}
+                {canRefundCancel && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRefundError("");
+                      setRefundModalOpen(true);
+                    }}
+                    className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-bold text-white hover:bg-rose-500 shadow-sm transition"
+                  >
+                    Yêu cầu hủy & hoàn tiền
+                  </button>
+                )}
+
+                {/* Nút đánh giá đơn hàng (khi đã giao) */}
+                {isDelivered && (
+                  reviewed ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-xl bg-amber-50 border border-amber-200 px-3.5 py-2 text-xs font-bold text-amber-800">
+                      ★ Đã đánh giá
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setReviewError("");
+                        setReviewModalOpen(true);
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 px-4 py-2 text-sm font-bold text-white hover:bg-amber-600 shadow-sm transition cursor-pointer"
+                    >
+                      ★ Đánh giá đơn hàng
+                    </button>
+                  )
+                )}
               </div>
             </div>
+
             {cancelError && <p role="alert" className="mt-3 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{cancelError}</p>}
+
+            {/* Banner trạng thái hoàn tiền */}
+            {isRefundPending && (
+              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-xs">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-xl bg-amber-500 p-2 text-white shrink-0">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="text-sm">
+                    <p className="font-bold text-amber-950">Yêu cầu hoàn tiền đang chờ Admin phê duyệt</p>
+                    <p className="mt-1 text-xs text-amber-800 leading-relaxed">
+                      Bạn đã gửi yêu cầu hoàn tiền cho đơn hàng này. Shop sẽ kiểm tra và thực hiện chuyển khoản vào số tài khoản <strong>{order.RefundBankAccount}</strong> ({order.RefundBankName} - {order.RefundBankHolder}) sớm nhất.
+                    </p>
+                    <p className="mt-1.5 text-[11px] text-amber-700 italic">
+                      Số lượng sản phẩm trong kho sẽ tự động hoàn lại sau 3 phút để những người mua khác có thể đặt mua.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {order.RefundStatus === "approved" && (
+              <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900 flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shrink-0">✓</div>
+                <div>
+                  <p className="font-bold text-sm">Đã hoàn tiền thành công</p>
+                  <p className="text-xs text-emerald-800 mt-0.5">Admin đã phê duyệt yêu cầu hoàn tiền và hoàn tất chuyển trả vào tài khoản {order.RefundBankName} ({order.RefundBankAccount}).</p>
+                </div>
+              </div>
+            )}
+
+            {order.RefundStatus === "rejected" && (
+              <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-900 flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-rose-600 text-white flex items-center justify-center font-bold text-sm shrink-0">✕</div>
+                <div>
+                  <p className="font-bold text-sm">Yêu cầu hoàn tiền bị từ chối</p>
+                  <p className="text-xs text-rose-800 mt-0.5">Yêu cầu hoàn tiền không được chấp thuận. Đơn hàng vẫn được xử lý bình thường.</p>
+                </div>
+              </div>
+            )}
 
             <section className="mt-6 grid gap-5 md:grid-cols-2">
               <div className="rounded-2xl bg-white p-5 shadow-sm">
@@ -263,6 +482,209 @@ export default function OrderDetailPage() {
           </>
         )}
       </div>
+
+      {/* POPUP YÊU CẦU HOÀN TIỀN */}
+      {refundModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-lg font-black text-slate-900">Yêu cầu hoàn tiền đơn hàng #{orderId}</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Số tiền hoàn lại: <span className="font-bold text-rose-600">{currency(order?.TotalAmount)}</span></p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRefundModalOpen(false)}
+                className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            {refundError && (
+              <div className="rounded-xl bg-red-50 p-3 text-xs font-semibold text-red-700">
+                {refundError}
+              </div>
+            )}
+
+            <form onSubmit={handleRefundSubmit} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Số điện thoại liên hệ *</label>
+                <input
+                  type="tel"
+                  required
+                  value={refundPhone}
+                  onChange={(e) => setRefundPhone(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-blue-600"
+                  placeholder="Nhập số điện thoại"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Tên ngân hàng *</label>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <select
+                    value={refundBankName}
+                    onChange={(e) => setRefundBankName(e.target.value)}
+                    className="col-span-2 rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm bg-white outline-none focus:border-blue-600"
+                  >
+                    {COMMON_BANKS.map((b) => (
+                      <option key={b} value={b}>{b}</option>
+                    ))}
+                    <option value="Khác">Ngân hàng khác (tự nhập)</option>
+                  </select>
+                </div>
+                {refundBankName === "Khác" && (
+                  <input
+                    type="text"
+                    required
+                    onChange={(e) => setRefundBankName(e.target.value)}
+                    placeholder="Nhập tên ngân hàng của bạn..."
+                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm outline-none focus:border-blue-600"
+                  />
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Số tài khoản nhận tiền *</label>
+                <input
+                  type="text"
+                  required
+                  value={refundBankAccount}
+                  onChange={(e) => setRefundBankAccount(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-semibold tracking-wider outline-none focus:border-blue-600"
+                  placeholder="Nhập số tài khoản ngân hàng"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Tên chủ tài khoản (viết hoa không dấu) *</label>
+                <input
+                  type="text"
+                  required
+                  value={refundBankHolder}
+                  onChange={(e) => setRefundBankHolder(e.target.value.toUpperCase())}
+                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-semibold uppercase outline-none focus:border-blue-600"
+                  placeholder="NGUYEN VAN A"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Lý do hủy đơn *</label>
+                <textarea
+                  rows={2}
+                  required
+                  value={refundReason}
+                  onChange={(e) => setRefundReason(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm outline-none focus:border-blue-600"
+                  placeholder="Ví dụ: Đổi ý không mua nữa, đặt nhầm sản phẩm..."
+                />
+              </div>
+
+              <div className="rounded-xl bg-amber-50 p-3 text-[11px] text-amber-800 leading-relaxed border border-amber-200/60">
+                📌 Sau khi bạn gửi yêu cầu, đơn hàng sẽ chuyển trạng thái <strong>Chờ hoàn tiền</strong>. Số lượng tồn kho sẽ được hoàn lại sau 3 phút. Shop sẽ tiến hành chuyển tiền hoàn theo thông tin tài khoản trên và cập nhật trạng thái đơn sang <strong>Đã hủy</strong>.
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setRefundModalOpen(false)}
+                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                >
+                  Đóng
+                </button>
+                <button
+                  type="submit"
+                  disabled={refundSubmitting}
+                  className="rounded-xl bg-rose-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-rose-500 disabled:opacity-60 transition"
+                >
+                  {refundSubmitting ? "Đang gửi..." : "Gửi yêu cầu hoàn tiền"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* POPUP ĐÁNH GIÁ ĐƠN HÀNG */}
+      {reviewModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-lg font-black text-slate-900">Đánh giá đơn hàng #{orderId}</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Bạn đã nhận được sản phẩm? Hãy chia sẻ trải nghiệm của bạn nhé!</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReviewModalOpen(false)}
+                className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            {reviewError && (
+              <div className="rounded-xl bg-red-50 p-3 text-xs font-semibold text-red-700">
+                {reviewError}
+              </div>
+            )}
+
+            <form onSubmit={handleReviewSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-2">Chất lượng sản phẩm & dịch vụ</label>
+                <div className="flex items-center gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setReviewRating(star)}
+                      className="text-3xl transition hover:scale-110 focus:outline-none cursor-pointer"
+                    >
+                      <span className={star <= reviewRating ? "text-amber-400" : "text-slate-300"}>★</span>
+                    </button>
+                  ))}
+                  <span className="ml-2 text-sm font-bold text-amber-600">
+                    {reviewRating === 5 && "Rất hài lòng (5/5)"}
+                    {reviewRating === 4 && "Hài lòng (4/5)"}
+                    {reviewRating === 3 && "Bình thường (3/5)"}
+                    {reviewRating === 2 && "Không hài lòng (2/5)"}
+                    {reviewRating === 1 && "Tệ (1/5)"}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Nhận xét chi tiết (tùy chọn)</label>
+                <textarea
+                  rows={3}
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-blue-600"
+                  placeholder="Chia sẻ thêm cảm nhận của bạn về chất lượng đóng gói, tốc độ giao hàng, sản phẩm..."
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setReviewModalOpen(false)}
+                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={reviewSubmitting}
+                  className="rounded-xl bg-blue-700 px-5 py-2.5 text-xs font-bold text-white hover:bg-blue-600 disabled:opacity-60 transition"
+                >
+                  {reviewSubmitting ? "Đang gửi..." : "Gửi đánh giá"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

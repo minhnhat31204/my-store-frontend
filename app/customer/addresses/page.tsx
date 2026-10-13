@@ -2,7 +2,8 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, getStoredUser, type User } from "@/lib/api";
 import { fromAddressRecord, getLegacyAddresses, loadAddresses, saveSelectedAddressId, type ShippingAddress } from "@/lib/addresses";
 
@@ -46,7 +47,11 @@ function addressLookupText(address: string, ward: string, province: string) {
   return [address.trim(), ward.trim(), province.trim()].filter(Boolean).join(", ");
 }
 
-export default function AddressesPage() {
+function AddressesContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = searchParams.get("returnTo") || "";
+
   const [user, setUser] = useState<User | null>(null);
   const [addresses, setAddressList] = useState<ShippingAddress[]>([]);
   const [form, setForm] = useState<AddressForm>(emptyForm);
@@ -239,7 +244,11 @@ export default function AddressesPage() {
       setEditingId(null);
       setError("");
       setSaved(true);
-      window.setTimeout(() => setSaved(false), 2200);
+      if (returnTo) {
+        window.setTimeout(() => router.push(returnTo), 1000);
+      } else {
+        window.setTimeout(() => setSaved(false), 2200);
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Không lưu được địa chỉ vào tài khoản.");
     } finally {
@@ -306,13 +315,13 @@ export default function AddressesPage() {
 
   return <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900"><div className="mx-auto max-w-5xl">
     <Link
-      href="/customer/account"
+      href={returnTo || "/customer/account"}
       className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-xs transition hover:border-slate-300 hover:bg-slate-50 hover:text-blue-600"
     >
       <svg className="h-4 w-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
         <path d="M19 12H5M12 19l-7-7 7-7" />
       </svg>
-      <span>Quay lại</span>
+      <span>{returnTo ? "Quay lại trang đặt hàng" : "Quay lại"}</span>
     </Link>
     <h1 className="mt-4 text-2xl sm:text-3xl font-black">Sổ địa chỉ</h1>
     <p className="mt-2 text-sm text-slate-600">Chọn địa giới hành chính hiện hành và ghim điểm giao hàng cụ thể trên bản đồ.</p>
@@ -369,4 +378,12 @@ export default function AddressesPage() {
       </form>
     </div>
   </div></main>;
+}
+
+export default function AddressesPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 text-slate-500 font-medium">Đang tải sổ địa chỉ...</div>}>
+      <AddressesContent />
+    </Suspense>
+  );
 }

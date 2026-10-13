@@ -289,16 +289,25 @@ export default function Home() {
                 transition: withTransition && !isDragging ? "transform 0.35s cubic-bezier(0.2, 0.85, 0.3, 1)" : "none",
               }}
             >
-              {slides.map((promotion, idx) => (
-                <div key={`${promotion.PromotionID ?? idx}-${idx}`} className="promo-slide">
-                  <img
-                    className="banner-image"
-                    src={getBannerImage(promotion)}
-                    alt={promotion.Title || `Khuyến mãi`}
-                    draggable={false}
-                  />
-                </div>
-              ))}
+              {slides.map((promotion, idx) => {
+                const targetUrl = promotion.LinkUrl
+                  ? promotion.LinkUrl
+                  : promotion.PromotionID
+                  ? `/promotions/${promotion.PromotionID}`
+                  : '/customer/products';
+                return (
+                  <div key={`${promotion.PromotionID ?? idx}-${idx}`} className="promo-slide">
+                    <Link href={targetUrl} className="block w-full h-full cursor-pointer">
+                      <img
+                        className="banner-image"
+                        src={getBannerImage(promotion)}
+                        alt={promotion.Title || `Khuyến mãi`}
+                        draggable={false}
+                      />
+                    </Link>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="banner-fallback">

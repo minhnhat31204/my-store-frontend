@@ -134,7 +134,14 @@ export default function OrdersPage() {
               </p>
               <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-4">
                 <span className="text-sm font-semibold text-slate-500">{order.PaymentMethod || "Chưa có phương thức thanh toán"}</span>
-                <span className="font-black text-blue-800">{Number(order.TotalAmount || 0).toLocaleString("vi-VN")} ₫</span>
+                <div className="flex items-center gap-3">
+                  {bucket === "delivered" && (
+                    <span className="rounded-lg bg-amber-50 border border-amber-200 px-2.5 py-1 text-xs font-bold text-amber-700">
+                      ★ Viết đánh giá
+                    </span>
+                  )}
+                  <span className="font-black text-blue-800">{Number(order.TotalAmount || 0).toLocaleString("vi-VN")} ₫</span>
+                </div>
               </div>
             </Link>
           );})}
