@@ -408,6 +408,23 @@ export const api = {
   getProductVariants: () =>
     request<ProductVariant[]>("/product-variants"),
 
+  createProductVariant: (payload: Partial<ProductVariant>) =>
+    request<ProductVariant>("/product-variants", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  updateProductVariant: (id: number, payload: Partial<ProductVariant>) =>
+    request<{ message: string }>(`/product-variants/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  deleteProductVariant: (id: number) =>
+    request<{ message: string }>(`/product-variants/${id}`, {
+      method: "DELETE",
+    }),
+
   getProductReviews: (productId: number) =>
     request<ProductReview[]>(`/reviews/product/${productId}`),
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { api, getPrimaryProductImage, Product, resolveApiAssetUrl } from '@/lib/api';
+import { api, getPrimaryProductImage, Product, ProductVariant, resolveApiAssetUrl } from '@/lib/api';
 
 interface SpecItem {
   id: string;
@@ -9,11 +9,30 @@ interface SpecItem {
   value: string;
 }
 
+interface VariantItem {
+  id: string;
+  variantId?: number;
+  color: string;
+  configuration: string;
+  price: string;
+  stockQuantity: string;
+}
+
 function createNewSpec(key = '', value = ''): SpecItem {
   return {
     id: `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
     key,
     value,
+  };
+}
+
+function createNewVariant(color = '', configuration = '', price = '', stockQuantity = '0'): VariantItem {
+  return {
+    id: `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    color,
+    configuration,
+    price,
+    stockQuantity,
   };
 }
 
@@ -41,6 +60,8 @@ export default function AdminProducts() {
   const [products, setProducts] = useState<Product[]>([]);
   const [form, setForm] = useState(emptyForm);
   const [specsList, setSpecsList] = useState<SpecItem[]>([]);
+  const [variantsList, setVariantsList] = useState<VariantItem[]>([]);
+  const [deletedVariantIds, setDeletedVariantIds] = useState<number[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -108,6 +129,8 @@ export default function AdminProducts() {
     setImageList([]);
     setUrlInput('');
     setShowUrlInput(false);
+    setVariantsList([]);
+    setDeletedVariantIds([]);
     setSpecsList([
       createNewSpec('CPU', ''),
       createNewSpec('RAM', ''),
@@ -118,7 +141,7 @@ export default function AdminProducts() {
     setOpen(true);
   }
 
-  function openEdit(item: Product) {
+  async function openEdit(item: Product) {
     setEditingId(item.ProductID);
     setForm({
       ProductName: item.ProductName || '',
@@ -133,6 +156,8 @@ export default function AdminProducts() {
     setImageList(uniqueImgs);
     setUrlInput('');
     setShowUrlInput(false);
+    setVariantsList([]);
+    setDeletedVariantIds([]);
 
     // Phân tích và nạp danh sách thông số kỹ thuật (Specs)
     const parsedSpecs: SpecItem[] = [];
@@ -191,6 +216,26 @@ export default function AdminProducts() {
     setSpecsList(parsedSpecs);
     setError('');
     setOpen(true);
+
+    // Tải danh sách các phiên bản (Variants) hiện có của sản phẩm này
+    try {
+      const allVariants = await api.getProductVariants();
+      const currentVariants = (Array.isArray(allVariants) ? allVariants : []).filter(
+        (v) => v.ProductID === item.ProductID
+      );
+      setVariantsList(
+        currentVariants.map((v) => ({
+          id: String(v.VariantID),
+          variantId: v.VariantID,
+          color: v.Color || '',
+          configuration: v.Configuration || '',
+          price: v.Price != null ? String(v.Price) : '',
+          stockQuantity: String(v.StockQuantity ?? 0),
+        }))
+      );
+    } catch (vErr) {
+      console.warn('Không tải được phiên bản biến thể:', vErr);
+    }
   }
 
   function handleAddImageUrl() {
@@ -276,6 +321,25 @@ export default function AdminProducts() {
     );
   }
 
+  // Quản lý phiên bản sản phẩm (Variants)
+  function handleAddVariant(color = '', configuration = '', price = '', stockQuantity = '0') {
+    setVariantsList((current) => [...current, createNewVariant(color, configuration, price, stockQuantity)]);
+  }
+
+  function handleRemoveVariant(index: number) {
+    const item = variantsList[index];
+    if (item && item.variantId) {
+      setDeletedVariantIds((prev) => [...prev, item.variantId!]);
+    }
+    setVariantsList((current) => current.filter((_, i) => i !== index));
+  }
+
+  function handleUpdateVariant(index: number, field: keyof VariantItem, value: string) {
+    setVariantsList((current) =>
+      current.map((v, i) => (i === index ? { ...v, [field]: value } : v))
+    );
+  }
+
   async function save(e: FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -351,11 +415,47 @@ export default function AdminProducts() {
         }
       }
 
+      let targetProductId = editingId;
+
       if (editingId === null) {
-        await api.createProduct(payload);
+        const created = await api.createProduct(payload);
+        targetProductId = created.ProductID;
       } else {
         await api.updateProduct(editingId, payload);
       }
+
+      // Đồng bộ các phiên bản (Variants)
+      if (targetProductId) {
+        // 1. Xóa các phiên bản đã bấm nút xóa
+        for (const vId of deletedVariantIds) {
+          try {
+            await api.deleteProductVariant(vId);
+          } catch (delErr) {
+            console.error('Lỗi khi xóa variant:', delErr);
+          }
+        }
+
+        // 2. Thêm mới hoặc cập nhật các phiên bản còn lại
+        for (const v of variantsList) {
+          const hasContent = v.color.trim() || v.configuration.trim() || v.price.trim();
+          if (!hasContent) continue;
+
+          const variantPayload: Partial<ProductVariant> = {
+            ProductID: targetProductId,
+            Color: v.color.trim() || undefined,
+            Configuration: v.configuration.trim() || undefined,
+            Price: v.price.trim() ? Number(v.price) : Number(payload.Price),
+            StockQuantity: Number(v.stockQuantity || 0),
+          };
+
+          if (v.variantId) {
+            await api.updateProductVariant(v.variantId, variantPayload);
+          } else {
+            await api.createProductVariant(variantPayload);
+          }
+        }
+      }
+
       setOpen(false);
       await load();
     } catch (e) {
@@ -387,7 +487,7 @@ export default function AdminProducts() {
             Quản Lý Sản Phẩm
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            Thiết lập giá bán gốc, giá hiển thị khuyến mãi, thư viện ảnh thứ tự từ 1... và thông số kỹ thuật chi tiết.
+            Thiết lập giá bán gốc, giá hiển thị khuyến mãi, thư viện ảnh thứ tự từ 1..., thông số chi tiết và phiên bản (variants).
           </p>
         </div>
 
@@ -582,7 +682,7 @@ export default function AdminProducts() {
                       </td>
                       <td className="px-5 py-4 text-right whitespace-nowrap space-x-2">
                         <button
-                          onClick={() => openEdit(item)}
+                          onClick={() => void openEdit(item)}
                           className="px-3 py-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 text-xs font-bold transition active:scale-95"
                         >
                           Chỉnh sửa
@@ -603,15 +703,15 @@ export default function AdminProducts() {
         </div>
       )}
 
-      {/* Modal Thêm / Sửa Sản Phẩm */}
+      {/* Modal Thêm / Sửa Sản Phẩm (Bố cục flexbox chống lỗi cuộn dính header) */}
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 sm:p-4 backdrop-blur-md overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-6 backdrop-blur-md">
           <form
             onSubmit={save}
-            className="w-full max-w-3xl space-y-5 rounded-3xl bg-slate-900 border border-slate-800 p-5 sm:p-8 shadow-2xl my-6 text-slate-200 max-h-[92vh] overflow-y-auto"
+            className="w-full max-w-3xl flex flex-col rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl text-slate-200 max-h-[92vh] overflow-hidden"
           >
-            {/* Header Modal */}
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4 sticky -top-2 bg-slate-900 z-20">
+            {/* Header Modal (Cố định ở đỉnh, không bị trôi, không dính hay chồng lấn khi cuộn) */}
+            <div className="flex items-center justify-between px-6 py-4 sm:px-8 sm:py-5 border-b border-slate-800 bg-slate-900 shrink-0">
               <div>
                 <span className="text-[11px] font-bold uppercase tracking-wider text-blue-400">
                   {editingId === null ? 'Tạo mới sản phẩm' : 'Cập nhật sản phẩm'}
@@ -629,364 +729,498 @@ export default function AdminProducts() {
               </button>
             </div>
 
-            {error && (
-              <p className="rounded-2xl bg-rose-500/10 border border-rose-500/20 p-3 text-xs font-semibold text-rose-300">
-                {error}
-              </p>
-            )}
+            {/* Body Modal (Vùng cuộn nội dung độc lập, mượt mà và sạch sẽ) */}
+            <div className="flex-1 overflow-y-auto p-5 sm:p-8 space-y-5">
+              {error && (
+                <p className="rounded-2xl bg-rose-500/10 border border-rose-500/20 p-3 text-xs font-semibold text-rose-300">
+                  {error}
+                </p>
+              )}
 
-            {/* Tên sản phẩm */}
-            <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                Tên sản phẩm đầy đủ *
-              </label>
-              <input
-                required
-                type="text"
-                placeholder="VD: Laptop DELL XPS 13 Plus 9320 (i7-1360P / 16GB / 512GB / 3.5K OLED Touch)..."
-                value={form.ProductName}
-                onChange={(e) => setForm({ ...form, ProductName: e.target.value })}
-                className="w-full rounded-2xl bg-slate-950 border border-slate-800 p-3 text-sm text-white focus:outline-none focus:border-blue-500 transition placeholder:text-slate-600"
-              />
-            </div>
-
-            {/* 1. GIÁ BÁN GỐC, GIÁ HIỂN THỊ, TỒN KHO */}
-            <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80 space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">💰 Thiết lập giá & tồn kho</span>
+              {/* Tên sản phẩm */}
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                  Tên sản phẩm đầy đủ *
+                </label>
+                <input
+                  required
+                  type="text"
+                  placeholder="VD: Laptop DELL XPS 13 Plus 9320 (i7-1360P / 16GB / 512GB / 3.5K OLED Touch)..."
+                  value={form.ProductName}
+                  onChange={(e) => setForm({ ...form, ProductName: e.target.value })}
+                  className="w-full rounded-2xl bg-slate-950 border border-slate-800 p-3 text-sm text-white focus:outline-none focus:border-blue-500 transition placeholder:text-slate-600"
+                />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {/* Giá bán gốc */}
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
-                    Giá bán gốc (VNĐ) *
-                  </label>
-                  <input
-                    required
-                    type="number"
-                    min="0"
-                    placeholder="VD: 35990000"
-                    value={form.Price}
-                    onChange={(e) => setForm({ ...form, Price: e.target.value })}
-                    className="w-full rounded-xl bg-slate-900 border border-slate-800 p-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition font-mono"
-                  />
-                  <span className="text-[10px] text-slate-400 block mt-1">Giá niêm yết ban đầu</span>
-                </div>
 
-                {/* Giá hiển thị (Khuyến mãi) */}
-                <div>
-                  <label className="block text-[11px] font-bold text-emerald-400 uppercase tracking-wider mb-1">
-                    Giá hiển thị / Giảm giá (VNĐ)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="VD: 29990000"
-                    value={form.DiscountPrice}
-                    onChange={(e) => setForm({ ...form, DiscountPrice: e.target.value })}
-                    className="w-full rounded-xl bg-slate-900 border border-slate-800 p-2.5 text-sm text-emerald-300 focus:outline-none focus:border-emerald-500 transition font-mono placeholder:text-slate-600"
-                  />
-                  <span className="text-[10px] text-slate-400 block mt-1">
-                    Để trống nếu không có khuyến mãi
-                  </span>
+              {/* 1. GIÁ BÁN GỐC, GIÁ HIỂN THỊ, TỒN KHO */}
+              <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80 space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">💰 Thiết lập giá & tồn kho</span>
                 </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* Giá bán gốc */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
+                      Giá bán gốc (VNĐ) *
+                    </label>
+                    <input
+                      required
+                      type="number"
+                      min="0"
+                      placeholder="VD: 35990000"
+                      value={form.Price}
+                      onChange={(e) => setForm({ ...form, Price: e.target.value })}
+                      className="w-full rounded-xl bg-slate-900 border border-slate-800 p-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition font-mono"
+                    />
+                    <span className="text-[10px] text-slate-400 block mt-1">Giá niêm yết ban đầu</span>
+                  </div>
 
-                {/* Số lượng tồn kho */}
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
-                    Số lượng tồn kho
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="VD: 15"
-                    value={form.StockQuantity}
-                    onChange={(e) => setForm({ ...form, StockQuantity: e.target.value })}
-                    className="w-full rounded-xl bg-slate-900 border border-slate-800 p-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition font-mono"
-                  />
-                  <span className="text-[10px] text-slate-400 block mt-1">Số máy sẵn sàng bán</span>
-                </div>
-              </div>
-            </div>
-
-            {/* 2. HÌNH ẢNH (BẤM + RỒI THÊM ẢNH, THEO THỨ TỰ TỪ 1...) */}
-            <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">
-                      🖼️ Thư viện hình ảnh
-                    </span>
-                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-bold">
-                      {imageList.length} ảnh
+                  {/* Giá hiển thị (Khuyến mãi) */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-emerald-400 uppercase tracking-wider mb-1">
+                      Giá hiển thị / Giảm giá (VNĐ)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="VD: 29990000"
+                      value={form.DiscountPrice}
+                      onChange={(e) => setForm({ ...form, DiscountPrice: e.target.value })}
+                      className="w-full rounded-xl bg-slate-900 border border-slate-800 p-2.5 text-sm text-emerald-300 focus:outline-none focus:border-emerald-500 transition font-mono placeholder:text-slate-600"
+                    />
+                    <span className="text-[10px] text-slate-400 block mt-1">
+                      Để trống nếu không có khuyến mãi
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    Ảnh hiển thị theo thứ tự từ 1... (Ảnh 1 là ảnh chính đại diện cho sản phẩm).
-                  </p>
+
+                  {/* Số lượng tồn kho */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
+                      Số lượng tồn kho
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="VD: 15"
+                      value={form.StockQuantity}
+                      onChange={(e) => setForm({ ...form, StockQuantity: e.target.value })}
+                      className="w-full rounded-xl bg-slate-900 border border-slate-800 p-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition font-mono"
+                    />
+                    <span className="text-[10px] text-slate-400 block mt-1">Số máy sẵn sàng bán</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. HÌNH ẢNH (BẤM + RỒI THÊM ẢNH, THEO THỨ TỰ TỪ 1...) */}
+              <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">
+                        🖼️ Thư viện hình ảnh
+                      </span>
+                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-bold">
+                        {imageList.length} ảnh
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Ảnh hiển thị theo thứ tự từ 1... (Ảnh 1 là ảnh chính đại diện cho sản phẩm).
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {/* Nút bấm + Thêm ảnh từ máy */}
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingImages}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95 disabled:opacity-50 shadow-md shadow-blue-600/30"
+                    >
+                      <span className="text-sm font-black">+</span>
+                      <span>{uploadingImages ? 'Đang tải...' : 'Thêm ảnh từ máy'}</span>
+                    </button>
+
+                    {/* Nút bấm + Thêm link URL */}
+                    <button
+                      type="button"
+                      onClick={() => setShowUrlInput(!showUrlInput)}
+                      className="inline-flex items-center gap-1 rounded-xl bg-slate-800 hover:bg-slate-700 px-3 py-1.5 text-xs font-bold text-slate-300 transition"
+                    >
+                      <span>+ Link URL</span>
+                    </button>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  {/* Nút bấm + Thêm ảnh từ máy */}
+                {/* Input file ẩn */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  multiple
+                  onChange={handleFileChange}
+                  disabled={uploadingImages}
+                  className="hidden"
+                />
+
+                {/* Ô nhập URL trực tiếp nếu người dùng muốn */}
+                {showUrlInput && (
+                  <div className="flex gap-2 p-3 rounded-xl bg-slate-900 border border-slate-800 animate-fadeIn">
+                    <input
+                      type="text"
+                      placeholder="Dán link ảnh (http:// hoặc https://)..."
+                      value={urlInput}
+                      onChange={(e) => setUrlInput(e.target.value)}
+                      className="flex-1 rounded-lg bg-slate-950 border border-slate-800 px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddImageUrl}
+                      disabled={!urlInput.trim()}
+                      className="rounded-lg bg-blue-600 hover:bg-blue-500 px-3 py-1.5 text-xs font-bold text-white transition disabled:opacity-50"
+                    >
+                      + Thêm vào danh sách
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowUrlInput(false)}
+                      className="rounded-lg bg-slate-800 px-2.5 py-1.5 text-xs text-slate-400 hover:text-white"
+                    >
+                      Đóng
+                    </button>
+                  </div>
+                )}
+
+                {/* Danh sách ảnh theo thứ tự 1... kèm nút + trực tiếp */}
+                <div className="pt-2 flex flex-wrap gap-3 items-center">
+                  {imageList.map((img, idx) => (
+                    <div
+                      key={idx}
+                      className="relative group rounded-2xl border-2 border-slate-800 hover:border-slate-700 bg-slate-900 p-2 flex flex-col items-center w-28 sm:w-32 transition shadow-md"
+                    >
+                      {/* Badge thứ tự từ 1... */}
+                      <div className="absolute top-1.5 left-1.5 z-10">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black tracking-tight ${
+                            idx === 0
+                              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/40'
+                              : 'bg-slate-800/90 text-slate-300 border border-slate-700'
+                          }`}
+                        >
+                          {idx === 0 ? '1 (Chính)' : `${idx + 1}`}
+                        </span>
+                      </div>
+
+                      {/* Nút xóa ảnh */}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(idx)}
+                        className="absolute top-1.5 right-1.5 z-10 w-5 h-5 rounded-full bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-black flex items-center justify-center transition shadow"
+                        title="Xóa ảnh này"
+                      >
+                        ✕
+                      </button>
+
+                      {/* Thumbnail ảnh */}
+                      <div className="w-24 h-24 flex items-center justify-center overflow-hidden rounded-xl bg-slate-950 border border-slate-800/80 mt-4 mb-2">
+                        <img
+                          src={resolveApiAssetUrl(img)}
+                          alt={`Ảnh thứ ${idx + 1}`}
+                          className="w-full h-full object-contain p-1"
+                        />
+                      </div>
+
+                      {/* Nút điều chỉnh thứ tự (lên / xuống) */}
+                      <div className="flex items-center justify-between w-full px-1 pt-1 border-t border-slate-800/80 text-[11px]">
+                        <button
+                          type="button"
+                          disabled={idx === 0}
+                          onClick={() => handleMoveImage(idx, -1)}
+                          className="p-1 rounded hover:bg-slate-800 disabled:opacity-20 text-slate-300 font-bold transition"
+                          title="Đẩy lên vị trí trước"
+                        >
+                          ◀
+                        </button>
+                        <span className="text-[10px] font-bold text-slate-400">
+                          Vị trí {idx + 1}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={idx === imageList.length - 1}
+                          onClick={() => handleMoveImage(idx, 1)}
+                          className="p-1 rounded hover:bg-slate-800 disabled:opacity-20 text-slate-300 font-bold transition"
+                          title="Đẩy về vị trí sau"
+                        >
+                          ▶
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Ô dấu + Thêm ảnh to trực tiếp trong danh sách */}
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploadingImages}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95 disabled:opacity-50 shadow-md shadow-blue-600/30"
+                    className="flex flex-col items-center justify-center w-28 h-36 sm:w-32 rounded-2xl border-2 border-dashed border-blue-500/40 hover:border-blue-400 bg-blue-500/5 hover:bg-blue-500/10 text-blue-400 transition cursor-pointer p-3 text-center group active:scale-95"
+                    title="Bấm để thêm ảnh tiếp theo"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-blue-500/20 group-hover:bg-blue-500/30 flex items-center justify-center text-2xl font-black mb-1 transition text-blue-300">
+                      +
+                    </div>
+                    <span className="text-xs font-bold text-white">Thêm ảnh</span>
+                    <span className="text-[10px] text-blue-400/80 mt-0.5 font-mono">
+                      Ảnh số {imageList.length + 1}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 3. MÔ TẢ THÔNG TIN CHI TIẾT (BẤM + ĐỂ THÊM TỪNG MỤC) */}
+              <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div>
+                    <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">
+                      ⚙️ Thông số kỹ thuật & Chi tiết sản phẩm
+                    </span>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Bấm dấu <strong className="text-blue-400">[+]</strong> để thêm từng mục thông số (CPU, RAM, Ổ cứng, VGA, Màn hình...).
+                    </p>
+                  </div>
+
+                  {/* Nút + Thêm từng mục */}
+                  <button
+                    type="button"
+                    onClick={() => handleAddSpec('', '')}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 px-3 py-1.5 text-xs font-bold text-blue-400 transition active:scale-95 self-start sm:self-auto"
                   >
                     <span className="text-sm font-black">+</span>
-                    <span>{uploadingImages ? 'Đang tải...' : 'Thêm ảnh từ máy'}</span>
-                  </button>
-
-                  {/* Nút bấm + Thêm link URL */}
-                  <button
-                    type="button"
-                    onClick={() => setShowUrlInput(!showUrlInput)}
-                    className="inline-flex items-center gap-1 rounded-xl bg-slate-800 hover:bg-slate-700 px-3 py-1.5 text-xs font-bold text-slate-300 transition"
-                  >
-                    <span>+ Link URL</span>
+                    <span>Thêm mục thông số</span>
                   </button>
                 </div>
-              </div>
 
-              {/* Input file ẩn */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif"
-                multiple
-                onChange={handleFileChange}
-                disabled={uploadingImages}
-                className="hidden"
-              />
-
-              {/* Ô nhập URL trực tiếp nếu người dùng muốn */}
-              {showUrlInput && (
-                <div className="flex gap-2 p-3 rounded-xl bg-slate-900 border border-slate-800 animate-fadeIn">
-                  <input
-                    type="text"
-                    placeholder="Dán link ảnh (http:// hoặc https://)..."
-                    value={urlInput}
-                    onChange={(e) => setUrlInput(e.target.value)}
-                    className="flex-1 rounded-lg bg-slate-950 border border-slate-800 px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddImageUrl}
-                    disabled={!urlInput.trim()}
-                    className="rounded-lg bg-blue-600 hover:bg-blue-500 px-3 py-1.5 text-xs font-bold text-white transition disabled:opacity-50"
-                  >
-                    + Thêm vào danh sách
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowUrlInput(false)}
-                    className="rounded-lg bg-slate-800 px-2.5 py-1.5 text-xs text-slate-400 hover:text-white"
-                  >
-                    Đóng
-                  </button>
-                </div>
-              )}
-
-              {/* Danh sách ảnh theo thứ tự 1... kèm nút + trực tiếp */}
-              <div className="pt-2 flex flex-wrap gap-3 items-center">
-                {imageList.map((img, idx) => (
-                  <div
-                    key={idx}
-                    className="relative group rounded-2xl border-2 border-slate-800 hover:border-slate-700 bg-slate-900 p-2 flex flex-col items-center w-28 sm:w-32 transition shadow-md"
-                  >
-                    {/* Badge thứ tự từ 1... */}
-                    <div className="absolute top-1.5 left-1.5 z-10">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black tracking-tight ${
-                          idx === 0
-                            ? 'bg-blue-600 text-white shadow-md shadow-blue-600/40'
-                            : 'bg-slate-800/90 text-slate-300 border border-slate-700'
+                {/* Các nút bấm thêm nhanh mẫu thông số */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase">Gợi ý nhanh:</span>
+                  {COMMON_SPEC_SUGGESTIONS.map((spec) => {
+                    const alreadyExists = specsList.some((s) => s.key.toLowerCase() === spec.toLowerCase());
+                    return (
+                      <button
+                        key={spec}
+                        type="button"
+                        onClick={() => handleAddSpec(spec, '')}
+                        className={`text-[11px] px-2.5 py-0.5 rounded-lg border transition font-medium ${
+                          alreadyExists
+                            ? 'border-slate-800 bg-slate-900/40 text-slate-500 hover:text-slate-400'
+                            : 'border-slate-700/80 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:border-slate-600'
                         }`}
                       >
-                        {idx === 0 ? '1 (Chính)' : `${idx + 1}`}
-                      </span>
-                    </div>
-
-                    {/* Nút xóa ảnh */}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveImage(idx)}
-                      className="absolute top-1.5 right-1.5 z-10 w-5 h-5 rounded-full bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-black flex items-center justify-center transition shadow"
-                      title="Xóa ảnh này"
-                    >
-                      ✕
-                    </button>
-
-                    {/* Thumbnail ảnh */}
-                    <div className="w-24 h-24 flex items-center justify-center overflow-hidden rounded-xl bg-slate-950 border border-slate-800/80 mt-4 mb-2">
-                      <img
-                        src={resolveApiAssetUrl(img)}
-                        alt={`Ảnh thứ ${idx + 1}`}
-                        className="w-full h-full object-contain p-1"
-                      />
-                    </div>
-
-                    {/* Nút điều chỉnh thứ tự (lên / xuống) */}
-                    <div className="flex items-center justify-between w-full px-1 pt-1 border-t border-slate-800/80 text-[11px]">
-                      <button
-                        type="button"
-                        disabled={idx === 0}
-                        onClick={() => handleMoveImage(idx, -1)}
-                        className="p-1 rounded hover:bg-slate-800 disabled:opacity-20 text-slate-300 font-bold transition"
-                        title="Đẩy lên vị trí trước"
-                      >
-                        ◀
+                        + {spec}
                       </button>
-                      <span className="text-[10px] font-bold text-slate-400">
-                        Vị trí {idx + 1}
-                      </span>
-                      <button
-                        type="button"
-                        disabled={idx === imageList.length - 1}
-                        onClick={() => handleMoveImage(idx, 1)}
-                        className="p-1 rounded hover:bg-slate-800 disabled:opacity-20 text-slate-300 font-bold transition"
-                        title="Đẩy về vị trí sau"
-                      >
-                        ▶
-                      </button>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Ô dấu + Thêm ảnh to trực tiếp trong danh sách */}
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadingImages}
-                  className="flex flex-col items-center justify-center w-28 h-36 sm:w-32 rounded-2xl border-2 border-dashed border-blue-500/40 hover:border-blue-400 bg-blue-500/5 hover:bg-blue-500/10 text-blue-400 transition cursor-pointer p-3 text-center group active:scale-95"
-                  title="Bấm để thêm ảnh tiếp theo"
-                >
-                  <div className="w-10 h-10 rounded-full bg-blue-500/20 group-hover:bg-blue-500/30 flex items-center justify-center text-2xl font-black mb-1 transition text-blue-300">
-                    +
-                  </div>
-                  <span className="text-xs font-bold text-white">Thêm ảnh</span>
-                  <span className="text-[10px] text-blue-400/80 mt-0.5 font-mono">
-                    Ảnh số {imageList.length + 1}
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            {/* 3. MÔ TẢ THÔNG TIN CHI TIẾT (BẤM + ĐỂ THÊM TỪNG MỤC) */}
-            <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div>
-                  <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">
-                    ⚙️ Thông số kỹ thuật & Chi tiết sản phẩm
-                  </span>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    Bấm dấu <strong className="text-blue-400">[+]</strong> để thêm từng mục thông số (CPU, RAM, Ổ cứng, VGA, Màn hình...).
-                  </p>
+                    );
+                  })}
                 </div>
 
-                {/* Nút + Thêm từng mục */}
-                <button
-                  type="button"
-                  onClick={() => handleAddSpec('', '')}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 px-3 py-1.5 text-xs font-bold text-blue-400 transition active:scale-95 self-start sm:self-auto"
-                >
-                  <span className="text-sm font-black">+</span>
-                  <span>Thêm mục thông số</span>
-                </button>
+                {/* Danh sách các dòng thông số (Key - Value) */}
+                <div className="space-y-2 pt-2">
+                  {specsList.length === 0 ? (
+                    <div className="text-center py-4 border border-dashed border-slate-800 rounded-xl text-slate-500 text-xs">
+                      Chưa có mục thông số nào. Bấm nút <strong>[+ Thêm mục thông số]</strong> ở trên để bắt đầu thêm.
+                    </div>
+                  ) : (
+                    specsList.map((item, idx) => (
+                      <div key={item.id} className="flex items-center gap-2">
+                        <div className="w-1/3 sm:w-1/4">
+                          <input
+                            type="text"
+                            placeholder={`Mục ${idx + 1} (VD: CPU...)`}
+                            value={item.key}
+                            onChange={(e) => handleUpdateSpecKey(item.id, e.target.value)}
+                            className="w-full rounded-xl bg-slate-900 border border-slate-800 px-3 py-2 text-xs text-white font-semibold focus:outline-none focus:border-blue-500 placeholder:text-slate-600"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <input
+                            type="text"
+                            placeholder="Chi tiết cấu hình (VD: Intel Core i7-1360P, 16GB DDR5...)"
+                            value={item.value}
+                            onChange={(e) => handleUpdateSpecValue(item.id, e.target.value)}
+                            className="w-full rounded-xl bg-slate-900 border border-slate-800 px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 placeholder:text-slate-600"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSpec(item.id)}
+                          className="w-8 h-8 rounded-xl bg-slate-900 hover:bg-rose-600/20 text-slate-500 hover:text-rose-400 border border-slate-800 hover:border-rose-500/30 flex items-center justify-center transition shrink-0"
+                          title="Xóa mục này"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Nút + Thêm mục ở cuối danh sách */}
+                {specsList.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => handleAddSpec('', '')}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-400 hover:text-blue-300 pt-1 transition"
+                  >
+                    <span className="text-sm font-black">+</span>
+                    <span>Thêm mục thông số tiếp theo</span>
+                  </button>
+                )}
+
+                {/* Ghi chú mô tả thêm (tùy chọn) */}
+                <div className="pt-3 border-t border-slate-800/80">
+                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                    Mô tả / Ghi chú bổ sung (tùy chọn)
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="Nhập thông tin quà tặng kèm theo, tình trạng máy, chính sách đổi trả hoặc ghi chú khác..."
+                    value={form.ExtraNotes}
+                    onChange={(e) => setForm({ ...form, ExtraNotes: e.target.value })}
+                    className="w-full rounded-xl bg-slate-900 border border-slate-800 p-2.5 text-xs text-white focus:outline-none focus:border-blue-500 transition placeholder:text-slate-600"
+                  />
+                </div>
               </div>
 
-              {/* Các nút bấm thêm nhanh mẫu thông số */}
-              <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                <span className="text-[10px] text-slate-500 font-bold uppercase">Gợi ý nhanh:</span>
-                {COMMON_SPEC_SUGGESTIONS.map((spec) => {
-                  const alreadyExists = specsList.some((s) => s.key.toLowerCase() === spec.toLowerCase());
-                  return (
+              {/* 4. PHIÊN BẢN SẢN PHẨM (VARIANTS - BẤM + ĐỂ THÊM PHIÊN BẢN) */}
+              <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">
+                        🧬 Danh sách Phiên bản sản phẩm (Variants)
+                      </span>
+                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-bold">
+                        {variantsList.length} phiên bản
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Thêm các tùy chọn biến thể màu sắc, dung lượng cấu hình (RAM/SSD), giá bán và số lượng tồn kho riêng biệt.
+                    </p>
+                  </div>
+
+                  {/* Nút + Thêm phiên bản ở trên */}
+                  <button
+                    type="button"
+                    onClick={() => handleAddVariant('', '', '', '0')}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 px-3 py-1.5 text-xs font-bold text-blue-400 transition active:scale-95 self-start sm:self-auto"
+                  >
+                    <span className="text-sm font-black">+</span>
+                    <span>Thêm phiên bản</span>
+                  </button>
+                </div>
+
+                {variantsList.length === 0 ? (
+                  <div className="text-center py-5 border border-dashed border-slate-800 rounded-xl text-slate-500 text-xs">
+                    <p>Chưa có phiên bản biến thể nào cho sản phẩm này.</p>
                     <button
-                      key={spec}
                       type="button"
-                      onClick={() => handleAddSpec(spec, '')}
-                      className={`text-[11px] px-2.5 py-0.5 rounded-lg border transition font-medium ${
-                        alreadyExists
-                          ? 'border-slate-800 bg-slate-900/40 text-slate-500 hover:text-slate-400'
-                          : 'border-slate-700/80 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:border-slate-600'
-                      }`}
+                      onClick={() => handleAddVariant('', '', '', '0')}
+                      className="mt-2 text-blue-400 hover:text-blue-300 font-bold underline text-xs"
                     >
-                      + {spec}
+                      + Bấm vào đây để thêm phiên bản đầu tiên
                     </button>
-                  );
-                })}
-              </div>
-
-              {/* Danh sách các dòng thông số (Key - Value) */}
-              <div className="space-y-2 pt-2">
-                {specsList.length === 0 ? (
-                  <div className="text-center py-4 border border-dashed border-slate-800 rounded-xl text-slate-500 text-xs">
-                    Chưa có mục thông số nào. Bấm nút <strong>[+ Thêm mục thông số]</strong> ở trên để bắt đầu thêm.
                   </div>
                 ) : (
-                  specsList.map((item, idx) => (
-                    <div key={item.id} className="flex items-center gap-2">
-                      <div className="w-1/3 sm:w-1/4">
-                        <input
-                          type="text"
-                          placeholder={`Mục ${idx + 1} (VD: CPU...)`}
-                          value={item.key}
-                          onChange={(e) => handleUpdateSpecKey(item.id, e.target.value)}
-                          className="w-full rounded-xl bg-slate-900 border border-slate-800 px-3 py-2 text-xs text-white font-semibold focus:outline-none focus:border-blue-500 placeholder:text-slate-600"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <input
-                          type="text"
-                          placeholder="Chi tiết cấu hình (VD: Intel Core i7-1360P, 16GB DDR5...)"
-                          value={item.value}
-                          onChange={(e) => handleUpdateSpecValue(item.id, e.target.value)}
-                          className="w-full rounded-xl bg-slate-900 border border-slate-800 px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 placeholder:text-slate-600"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveSpec(item.id)}
-                        className="w-8 h-8 rounded-xl bg-slate-900 hover:bg-rose-600/20 text-slate-500 hover:text-rose-400 border border-slate-800 hover:border-rose-500/30 flex items-center justify-center transition shrink-0"
-                        title="Xóa mục này"
+                  <div className="space-y-3 pt-1">
+                    {variantsList.map((variant, idx) => (
+                      <div
+                        key={variant.id}
+                        className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2.5 shadow-sm relative group"
                       >
-                        ✕
-                      </button>
-                    </div>
-                  ))
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-slate-300">
+                            Phiên bản #{idx + 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveVariant(idx)}
+                            className="w-6 h-6 rounded-lg bg-slate-800 hover:bg-rose-600/20 text-slate-400 hover:text-rose-400 flex items-center justify-center text-xs transition"
+                            title="Xóa phiên bản này"
+                          >
+                            ✕
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
+                              Màu sắc
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="VD: Xám Bạc, Đen..."
+                              value={variant.color}
+                              onChange={(e) => handleUpdateVariant(idx, 'color', e.target.value)}
+                              className="w-full rounded-xl bg-slate-950 border border-slate-800 p-2 text-xs text-white focus:outline-none focus:border-blue-500"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
+                              Cấu hình tùy chọn
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="VD: 16GB / 512GB SSD..."
+                              value={variant.configuration}
+                              onChange={(e) => handleUpdateVariant(idx, 'configuration', e.target.value)}
+                              className="w-full rounded-xl bg-slate-950 border border-slate-800 p-2 text-xs text-white focus:outline-none focus:border-blue-500"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
+                              Giá phiên bản (VNĐ)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="Để trống = Giá gốc"
+                              value={variant.price}
+                              onChange={(e) => handleUpdateVariant(idx, 'price', e.target.value)}
+                              className="w-full rounded-xl bg-slate-950 border border-slate-800 p-2 text-xs text-emerald-300 focus:outline-none focus:border-blue-500 font-mono"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
+                              Tồn kho phiên bản
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="VD: 5"
+                              value={variant.stockQuantity}
+                              onChange={(e) => handleUpdateVariant(idx, 'stockQuantity', e.target.value)}
+                              className="w-full rounded-xl bg-slate-950 border border-slate-800 p-2 text-xs text-white focus:outline-none focus:border-blue-500 font-mono"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Nút thêm phiên bản ở dưới danh sách */}
+                    <button
+                      type="button"
+                      onClick={() => handleAddVariant('', '', '', '0')}
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-400 hover:text-blue-300 pt-1 transition"
+                    >
+                      <span className="text-sm font-black">+</span>
+                      <span>Thêm phiên bản tiếp theo</span>
+                    </button>
+                  </div>
                 )}
-              </div>
-
-              {/* Nút + Thêm mục ở cuối danh sách */}
-              {specsList.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => handleAddSpec('', '')}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-400 hover:text-blue-300 pt-1 transition"
-                >
-                  <span className="text-sm font-black">+</span>
-                  <span>Thêm mục thông số tiếp theo</span>
-                </button>
-              )}
-
-              {/* Ghi chú mô tả thêm (tùy chọn) */}
-              <div className="pt-3 border-t border-slate-800/80">
-                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                  Mô tả / Ghi chú bổ sung (tùy chọn)
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="Nhập thông tin quà tặng kèm theo, tình trạng máy, chính sách đổi trả hoặc ghi chú khác..."
-                  value={form.ExtraNotes}
-                  onChange={(e) => setForm({ ...form, ExtraNotes: e.target.value })}
-                  className="w-full rounded-xl bg-slate-900 border border-slate-800 p-2.5 text-xs text-white focus:outline-none focus:border-blue-500 transition placeholder:text-slate-600"
-                />
               </div>
             </div>
 
-            {/* Nút Submit / Cancel */}
-            <div className="flex justify-end gap-3 pt-3 border-t border-slate-800 sticky -bottom-2 bg-slate-900 z-20">
+            {/* Footer Modal (Cố định ở đáy, không trôi, có nút Hủy và Lưu) */}
+            <div className="flex justify-end gap-3 px-6 py-4 sm:px-8 border-t border-slate-800 bg-slate-900 shrink-0">
               <button
                 type="button"
                 onClick={() => setOpen(false)}
