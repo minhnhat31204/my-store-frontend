@@ -521,9 +521,15 @@ export const api = {
   // =========================
 
   sendRegistrationOtp: (phone: string) =>
-    request<{ message: string }>("/auth/register/send-otp", {
+    request<{ message: string; otp?: string }>("/auth/register/send-otp", {
       method: "POST",
       body: JSON.stringify({ phone }),
+    }),
+
+  verifyRegistrationOtp: (phone: string, otp: string) =>
+    request<{ message: string }>("/auth/register/verify-otp", {
+      method: "POST",
+      body: JSON.stringify({ phone, otp }),
     }),
 
   register: (payload: { phone: string; otp: string; password: string }) =>
