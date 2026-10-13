@@ -556,7 +556,7 @@ export const api = {
     }),
 
   sendPasswordResetOtp: (payload: { channel: 'phone' | 'email'; phone?: string; email?: string }) =>
-    request<{ message: string }>("/auth/forgot-password/send-otp", {
+    request<{ message: string; otp?: string }>("/auth/forgot-password/send-otp", {
       method: "POST",
       body: JSON.stringify(payload),
     }),

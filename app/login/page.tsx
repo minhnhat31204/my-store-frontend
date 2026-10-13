@@ -42,6 +42,7 @@ export default function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [displayedOtp, setDisplayedOtp] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -147,7 +148,11 @@ export default function LoginPage() {
       const result = await api.sendPasswordResetOtp(resetContactPayload());
       setStep('forgot_otp');
       setCountdown(60);
-      setMessage(channel === 'phone' ? `${result.message} Mã OTP mặc định: 123456.` : result.message);
+      setOtp('');
+      if (result.otp) {
+        setDisplayedOtp(result.otp);
+      }
+      setMessage(result.message || 'Mã xác thực đã được tạo thành công.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không gửi được mã OTP.');
     } finally {
@@ -167,6 +172,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await api.verifyPasswordResetOtp({ ...resetContactPayload(), otp });
+      setDisplayedOtp(null);
       setStep('forgot_new');
       setMessage('Mã xác thực hợp lệ. Hãy đặt mật khẩu mới.');
     } catch (err) {
@@ -189,6 +195,7 @@ export default function LoginPage() {
       setNewPassword('');
       setConfirmPassword('');
       setOtp('');
+      setDisplayedOtp(null);
       setMessage('Đặt lại mật khẩu thành công. Hãy đăng nhập lại.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không đặt lại được mật khẩu.');
@@ -290,11 +297,11 @@ export default function LoginPage() {
             <fieldset className="space-y-2">
               <legend className="mb-2 text-sm font-semibold">Phương thức nhận OTP</legend>
               <label className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 ${channel === 'phone' ? 'border-blue-600 bg-blue-50' : 'border-slate-200'}`}>
-                <input type="radio" name="reset-channel" value="phone" checked={channel === 'phone'} onChange={() => { setChannel('phone'); setContact(''); }} />
-                <span className="font-medium">OTP số điện thoại (mã mặc định 123456)</span>
+                <input type="radio" name="reset-channel" value="phone" checked={channel === 'phone'} onChange={() => { setChannel('phone'); setContact(''); setDisplayedOtp(null); }} />
+                <span className="font-medium">OTP qua số điện thoại</span>
               </label>
               <label className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 ${channel === 'email' ? 'border-blue-600 bg-blue-50' : 'border-slate-200'}`}>
-                <input type="radio" name="reset-channel" value="email" checked={channel === 'email'} onChange={() => { setChannel('email'); setContact(''); }} />
+                <input type="radio" name="reset-channel" value="email" checked={channel === 'email'} onChange={() => { setChannel('email'); setContact(''); setDisplayedOtp(null); }} />
                 <span className="font-medium">Email tài khoản</span>
               </label>
             </fieldset>
@@ -302,10 +309,10 @@ export default function LoginPage() {
               <label htmlFor="reset-contact" className="mb-1 block text-sm font-semibold">{channel === 'phone' ? 'Số điện thoại tài khoản' : 'Email khôi phục'}</label>
               <input id="reset-contact" type={channel === 'phone' ? 'tel' : 'email'} inputMode={channel === 'phone' ? 'tel' : 'email'} required value={contact} onChange={(e) => setContact(e.target.value)} placeholder={channel === 'phone' ? '0901234567' : 'email@example.com'} className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500" />
             </div>
-            <button type="submit" disabled={loading || !contact.trim()} className="w-full rounded-xl bg-blue-600 py-3 font-bold text-white hover:bg-blue-700 disabled:opacity-50">{loading ? 'Đang gửi…' : 'Gửi'}</button>
+            <button type="submit" disabled={loading || !contact.trim()} className="w-full rounded-xl bg-blue-600 py-3 font-bold text-white hover:bg-blue-700 disabled:opacity-50">{loading ? 'Đang gửi…' : 'Gửi mã xác thực'}</button>
             <button
               type="button"
-              onClick={() => { setStep('login'); resetNotice(); }}
+              onClick={() => { setStep('login'); setDisplayedOtp(null); resetNotice(); }}
               className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-bold text-slate-700 shadow-xs transition hover:border-slate-300 hover:bg-slate-50 hover:text-blue-600"
             >
               <svg className="h-4 w-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -316,14 +323,25 @@ export default function LoginPage() {
           </form>}
 
           {step === 'forgot_otp' && <form onSubmit={handleVerifyOtp} className="space-y-4">
+            {/* Hiển thị mã OTP giống trang đăng ký */}
+            {displayedOtp && (
+              <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                <span className="text-xl">📩</span>
+                <div>
+                  <p className="text-xs font-semibold text-amber-700">Mã OTP của bạn:</p>
+                  <p className="text-2xl font-black tracking-[0.3em] text-amber-900">{displayedOtp}</p>
+                </div>
+              </div>
+            )}
+
             <p className="text-center text-sm font-semibold text-blue-700">Mã hết hạn sau 5 phút · Gửi lại sau {timeLabel}</p>
             <div>
               <label htmlFor="reset-otp" className="mb-1 block text-center text-sm font-semibold">Mã OTP</label>
-              <input id="reset-otp" type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6} required value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} placeholder={channel === 'phone' ? '123456' : '000000'} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-center text-2xl font-black tracking-[0.35em] outline-none focus:border-blue-500" />
+              <input id="reset-otp" type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6} required value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} placeholder="000000" className="w-full rounded-xl border border-slate-200 px-4 py-3 text-center text-2xl font-black tracking-[0.35em] outline-none focus:border-blue-500" />
             </div>
             <button type="submit" disabled={loading || otp.length !== 6} className="w-full rounded-xl bg-blue-600 py-3 font-bold text-white hover:bg-blue-700 disabled:opacity-50">{loading ? 'Đang xác thực…' : 'Xác nhận mã OTP'}</button>
             <div className="flex justify-between text-sm">
-              <button type="button" onClick={() => { setStep('forgot_contact'); resetNotice(); }} className="font-semibold text-slate-600 hover:underline">Đổi phương thức</button>
+              <button type="button" onClick={() => { setStep('forgot_contact'); setDisplayedOtp(null); resetNotice(); }} className="font-semibold text-slate-600 hover:underline">Đổi phương thức</button>
               <button type="button" disabled={loading || countdown > 0} onClick={sendResetOtp} className="font-bold text-blue-700 disabled:text-slate-400">Gửi lại mã</button>
             </div>
           </form>}
