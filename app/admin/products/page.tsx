@@ -1,13 +1,46 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { api, getPrimaryProductImage, Product, resolveApiAssetUrl } from '@/lib/api';
 
-const emptyForm = { ProductName: '', Price: '', StockQuantity: '0', Description: '' };
+interface SpecItem {
+  id: string;
+  key: string;
+  value: string;
+}
+
+function createNewSpec(key = '', value = ''): SpecItem {
+  return {
+    id: `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    key,
+    value,
+  };
+}
+
+const COMMON_SPEC_SUGGESTIONS = [
+  'CPU',
+  'RAM',
+  'Ổ cứng',
+  'Card đồ họa (VGA)',
+  'Màn hình',
+  'Tần số quét',
+  'Pin',
+  'Trọng lượng',
+  'Bảo hành',
+];
+
+const emptyForm = {
+  ProductName: '',
+  Price: '',
+  DiscountPrice: '',
+  StockQuantity: '0',
+  ExtraNotes: '',
+};
 
 export default function AdminProducts() {
   const [products, setProducts] = useState<Product[]>([]);
   const [form, setForm] = useState(emptyForm);
+  const [specsList, setSpecsList] = useState<SpecItem[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -16,10 +49,12 @@ export default function AdminProducts() {
   const [searchTerm, setSearchTerm] = useState('');
   const [stockFilter, setStockFilter] = useState<'all' | 'instock' | 'lowstock' | 'outofstock'>('all');
 
-  // State quản lý danh sách nhiều ảnh cho sản phẩm
+  // State quản lý danh sách nhiều ảnh theo thứ tự 1...
   const [imageList, setImageList] = useState<string[]>([]);
   const [urlInput, setUrlInput] = useState('');
+  const [showUrlInput, setShowUrlInput] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function load() {
     setLoading(true);
@@ -56,7 +91,7 @@ export default function AdminProducts() {
       const name = (p.ProductName || '').toLowerCase();
       const id = String(p.ProductID);
       const matchSearch = !searchTerm.trim() || name.includes(searchTerm.toLowerCase().trim()) || id.includes(searchTerm.trim());
-      
+
       const stock = Number(p.StockQuantity ?? 0);
       let matchStock = true;
       if (stockFilter === 'instock') matchStock = stock > 5;
@@ -72,6 +107,13 @@ export default function AdminProducts() {
     setForm(emptyForm);
     setImageList([]);
     setUrlInput('');
+    setShowUrlInput(false);
+    setSpecsList([
+      createNewSpec('CPU', ''),
+      createNewSpec('RAM', ''),
+      createNewSpec('Ổ cứng', ''),
+      createNewSpec('Màn hình', ''),
+    ]);
     setError('');
     setOpen(true);
   }
@@ -81,15 +123,72 @@ export default function AdminProducts() {
     setForm({
       ProductName: item.ProductName || '',
       Price: String(item.Price ?? ''),
+      DiscountPrice: item.DiscountPrice != null ? String(item.DiscountPrice) : '',
       StockQuantity: String(item.StockQuantity ?? 0),
-      Description: item.Description || '',
+      ExtraNotes: '',
     });
 
     const rawImgs = item.ImageUrl ? item.ImageUrl.split(',').map((s) => s.trim()).filter(Boolean) : [];
     const uniqueImgs = Array.from(new Set(rawImgs));
-
     setImageList(uniqueImgs);
     setUrlInput('');
+    setShowUrlInput(false);
+
+    // Phân tích và nạp danh sách thông số kỹ thuật (Specs)
+    const parsedSpecs: SpecItem[] = [];
+    const handledKeys = new Set<string>();
+
+    const standardFields: [string, string | null | undefined][] = [
+      ['CPU', item.CPU],
+      ['RAM', item.RAM],
+      ['Ổ cứng', item.Storage],
+      ['Màn hình', item.Display],
+      ['Tần số quét', item.RefreshRate],
+      ['Dòng máy', item.Series],
+    ];
+
+    for (const [key, val] of standardFields) {
+      if (val) {
+        parsedSpecs.push(createNewSpec(key, val));
+        handledKeys.add(key.toLowerCase());
+      }
+    }
+
+    const leftoverLines: string[] = [];
+    if (item.Description) {
+      const lines = item.Description.split('\n');
+      for (const rawLine of lines) {
+        const line = rawLine.replace(/^[•\-\*\+\s]+/, '').trim();
+        if (!line) continue;
+        const colonIndex = line.indexOf(':');
+        if (colonIndex > 0) {
+          const k = line.slice(0, colonIndex).trim();
+          const v = line.slice(colonIndex + 1).trim();
+          const normK = k.toLowerCase();
+          if (!handledKeys.has(normK)) {
+            parsedSpecs.push(createNewSpec(k, v));
+            handledKeys.add(normK);
+          }
+        } else {
+          leftoverLines.push(line);
+        }
+      }
+    }
+
+    if (leftoverLines.length > 0) {
+      setForm((prev) => ({ ...prev, ExtraNotes: leftoverLines.join('\n') }));
+    }
+
+    if (parsedSpecs.length === 0) {
+      parsedSpecs.push(
+        createNewSpec('CPU', ''),
+        createNewSpec('RAM', ''),
+        createNewSpec('Ổ cứng', ''),
+        createNewSpec('Màn hình', ''),
+      );
+    }
+
+    setSpecsList(parsedSpecs);
     setError('');
     setOpen(true);
   }
@@ -110,6 +209,7 @@ export default function AdminProducts() {
     setImageList((current) => current.includes(parsed.toString()) ? current : [...current, parsed.toString()]);
     setError('');
     setUrlInput('');
+    setShowUrlInput(false);
   }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -132,7 +232,7 @@ export default function AdminProducts() {
       }
     } catch (err) {
       console.error('Lỗi upload ảnh:', err);
-      setError(err instanceof Error ? err.message : 'Không thể tải ảnh lên backend.');
+      setError(err instanceof Error ? err.message : 'Không thể tải ảnh lên máy chủ.');
     } finally {
       if (uploadedUrls.length) setImageList((current) => [...current, ...uploadedUrls]);
       setUploadingImages(false);
@@ -144,6 +244,38 @@ export default function AdminProducts() {
     setImageList((current) => current.filter((_, i) => i !== index));
   }
 
+  function handleMoveImage(index: number, direction: -1 | 1) {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= imageList.length) return;
+    setImageList((current) => {
+      const list = [...current];
+      const [item] = list.splice(index, 1);
+      list.splice(targetIndex, 0, item);
+      return list;
+    });
+  }
+
+  // Quản lý từng mục thông số kỹ thuật chi tiết
+  function handleAddSpec(key = '', value = '') {
+    setSpecsList((current) => [...current, createNewSpec(key, value)]);
+  }
+
+  function handleRemoveSpec(id: string) {
+    setSpecsList((current) => current.filter((s) => s.id !== id));
+  }
+
+  function handleUpdateSpecKey(id: string, newKey: string) {
+    setSpecsList((current) =>
+      current.map((s) => (s.id === id ? { ...s, key: newKey } : s))
+    );
+  }
+
+  function handleUpdateSpecValue(id: string, newValue: string) {
+    setSpecsList((current) =>
+      current.map((s) => (s.id === id ? { ...s, value: newValue } : s))
+    );
+  }
+
   async function save(e: FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -151,18 +283,74 @@ export default function AdminProducts() {
 
     const combinedImageUrl = imageList.join(',') || null;
 
-    const payload = {
+    // Lọc các thông số kỹ thuật hợp lệ
+    const validSpecs = specsList.filter((s) => s.key.trim() || s.value.trim());
+
+    let cpu = '';
+    let ram = '';
+    let storage = '';
+    let display = '';
+    let refreshRate = '';
+    let series = '';
+
+    validSpecs.forEach((s) => {
+      const k = s.key.trim().toLowerCase();
+      const v = s.value.trim();
+      if (k.includes('cpu') || k.includes('vi xử lý')) cpu = v;
+      else if (k.includes('ram')) ram = v;
+      else if (k.includes('ổ cứng') || k.includes('ssd') || k.includes('hdd') || k.includes('storage') || k.includes('lưu trữ')) storage = v;
+      else if (k.includes('màn hình') || k.includes('display') || k.includes('màn')) display = v;
+      else if (k.includes('tần số quét') || k.includes('refresh') || k.includes('hz')) refreshRate = v;
+      else if (k.includes('dòng máy') || k.includes('series')) series = v;
+    });
+
+    // Tạo chuỗi mô tả thông số chi tiết chuẩn hóa theo từng gạch đầu dòng
+    const descLines: string[] = [];
+    validSpecs.forEach((s) => {
+      if (s.key.trim() && s.value.trim()) {
+        descLines.push(`• ${s.key.trim()}: ${s.value.trim()}`);
+      } else if (s.value.trim()) {
+        descLines.push(`• ${s.value.trim()}`);
+      }
+    });
+
+    if (form.ExtraNotes?.trim()) {
+      if (descLines.length > 0) descLines.push('');
+      descLines.push(form.ExtraNotes.trim());
+    }
+
+    const finalDescription = descLines.join('\n').trim() || null;
+    const rawPrice = Number(form.Price);
+    const rawDiscount = form.DiscountPrice.trim() ? Number(form.DiscountPrice) : null;
+
+    const payload: Partial<Product> = {
       ProductName: form.ProductName.trim(),
-      Price: Number(form.Price),
-      StockQuantity: Number(form.StockQuantity),
+      Price: rawPrice,
+      DiscountPrice: rawDiscount,
+      StockQuantity: Number(form.StockQuantity || 0),
       ImageUrl: combinedImageUrl,
-      Description: form.Description.trim() || null,
+      Description: finalDescription,
+      CPU: cpu || null,
+      RAM: ram || null,
+      Storage: storage || null,
+      Display: display || null,
+      RefreshRate: refreshRate || null,
+      Series: series || null,
     };
 
     try {
-      if (!payload.ProductName || !Number.isFinite(payload.Price) || payload.Price < 0) {
-        throw new Error('Tên và giá sản phẩm không hợp lệ');
+      if (!payload.ProductName || !Number.isFinite(payload.Price) || Number(payload.Price) < 0) {
+        throw new Error('Tên sản phẩm và Giá bán gốc không hợp lệ.');
       }
+      if (rawDiscount != null) {
+        if (!Number.isFinite(rawDiscount) || rawDiscount < 0) {
+          throw new Error('Giá hiển thị / khuyến mãi không hợp lệ.');
+        }
+        if (rawDiscount > Number(payload.Price)) {
+          throw new Error('Giá hiển thị / khuyến mãi không được lớn hơn Giá bán gốc.');
+        }
+      }
+
       if (editingId === null) {
         await api.createProduct(payload);
       } else {
@@ -171,7 +359,7 @@ export default function AdminProducts() {
       setOpen(false);
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Lưu thất bại');
+      setError(e instanceof Error ? e.message : 'Lưu sản phẩm thất bại.');
     } finally {
       setSaving(false);
     }
@@ -199,7 +387,7 @@ export default function AdminProducts() {
             Quản Lý Sản Phẩm
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            Theo dõi, thiết lập giá, mô tả thông số kỹ thuật và hình ảnh sản phẩm.
+            Thiết lập giá bán gốc, giá hiển thị khuyến mãi, thư viện ảnh thứ tự từ 1... và thông số kỹ thuật chi tiết.
           </p>
         </div>
 
@@ -269,7 +457,6 @@ export default function AdminProducts() {
 
       {/* Filter & Search Bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-900/80 p-4 rounded-2xl border border-slate-800/80 shadow-lg">
-        {/* Search */}
         <div className="relative flex-1">
           <svg className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -309,7 +496,7 @@ export default function AdminProducts() {
                   <th className="px-5 py-4">Mã SP</th>
                   <th className="px-5 py-4">Hình ảnh</th>
                   <th className="px-5 py-4">Tên & Cấu hình</th>
-                  <th className="px-5 py-4">Giá niêm yết</th>
+                  <th className="px-5 py-4">Giá bán / Hiển thị</th>
                   <th className="px-5 py-4">Tồn kho</th>
                   <th className="px-5 py-4 text-right">Thao tác</th>
                 </tr>
@@ -319,6 +506,8 @@ export default function AdminProducts() {
                   const stock = Number(item.StockQuantity ?? 0);
                   const isLow = stock > 0 && stock <= 5;
                   const isOut = stock <= 0;
+                  const images = item.ImageUrl ? item.ImageUrl.split(',').map((s) => s.trim()).filter(Boolean) : [];
+                  const hasDiscount = item.DiscountPrice != null && Number(item.DiscountPrice) > 0 && Number(item.DiscountPrice) < Number(item.Price);
 
                   return (
                     <tr key={item.ProductID} className="hover:bg-slate-800/40 transition">
@@ -326,13 +515,18 @@ export default function AdminProducts() {
                         #{item.ProductID}
                       </td>
                       <td className="px-5 py-4">
-                        {item.ImageUrl ? (
-                          <div className="w-14 h-14 rounded-2xl border border-slate-800 overflow-hidden bg-slate-950 flex items-center justify-center">
+                        {images.length > 0 ? (
+                          <div className="relative w-14 h-14 rounded-2xl border border-slate-800 overflow-hidden bg-slate-950 flex items-center justify-center group">
                             <img
-                              src={getPrimaryProductImage(item.ImageUrl)}
+                              src={resolveApiAssetUrl(images[0])}
                               alt={item.ProductName}
                               className="w-full h-full object-contain p-1"
                             />
+                            {images.length > 1 && (
+                              <span className="absolute bottom-0 right-0 bg-blue-600/90 text-[9px] font-black text-white px-1 rounded-tl-md">
+                                +{images.length - 1}
+                              </span>
+                            )}
                           </div>
                         ) : (
                           <div className="w-14 h-14 flex items-center justify-center bg-slate-950 text-[10px] text-slate-500 rounded-2xl border border-slate-800">
@@ -350,8 +544,26 @@ export default function AdminProducts() {
                           </p>
                         )}
                       </td>
-                      <td className="px-5 py-4 font-bold text-emerald-400 whitespace-nowrap text-sm">
-                        {Number(item.Price).toLocaleString('vi-VN')} ₫
+                      <td className="px-5 py-4 whitespace-nowrap">
+                        {hasDiscount ? (
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-emerald-400 text-sm">
+                                {Number(item.DiscountPrice).toLocaleString('vi-VN')} ₫
+                              </span>
+                              <span className="text-[10px] font-black text-rose-300 bg-rose-500/20 border border-rose-500/30 px-1.5 py-0.2 rounded-full">
+                                -{Math.round(((Number(item.Price) - Number(item.DiscountPrice)) / Number(item.Price)) * 100)}%
+                              </span>
+                            </div>
+                            <span className="line-through text-slate-500 text-xs block mt-0.5">
+                              {Number(item.Price).toLocaleString('vi-VN')} ₫
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="font-bold text-emerald-400 whitespace-nowrap text-sm">
+                            {Number(item.Price).toLocaleString('vi-VN')} ₫
+                          </span>
+                        )}
                       </td>
                       <td className="px-5 py-4 whitespace-nowrap">
                         {isOut ? (
@@ -393,15 +605,16 @@ export default function AdminProducts() {
 
       {/* Modal Thêm / Sửa Sản Phẩm */}
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 sm:p-4 backdrop-blur-md overflow-y-auto">
           <form
             onSubmit={save}
-            className="w-full max-w-2xl space-y-5 rounded-3xl bg-slate-900 border border-slate-800 p-6 sm:p-8 shadow-2xl my-8 text-slate-200"
+            className="w-full max-w-3xl space-y-5 rounded-3xl bg-slate-900 border border-slate-800 p-5 sm:p-8 shadow-2xl my-6 text-slate-200 max-h-[92vh] overflow-y-auto"
           >
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+            {/* Header Modal */}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4 sticky -top-2 bg-slate-900 z-20">
               <div>
                 <span className="text-[11px] font-bold uppercase tracking-wider text-blue-400">
-                  {editingId === null ? 'Tạo mới' : 'Cập nhật'}
+                  {editingId === null ? 'Tạo mới sản phẩm' : 'Cập nhật sản phẩm'}
                 </span>
                 <h2 className="text-xl font-black text-white mt-0.5">
                   {editingId === null ? 'Thêm Sản Phẩm Vào Kho' : `Chỉnh Sửa Sản Phẩm #${editingId}`}
@@ -422,6 +635,7 @@ export default function AdminProducts() {
               </p>
             )}
 
+            {/* Tên sản phẩm */}
             <div>
               <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
                 Tên sản phẩm đầy đủ *
@@ -429,124 +643,350 @@ export default function AdminProducts() {
               <input
                 required
                 type="text"
-                placeholder="VD: Laptop DELL XPS 13 Plus 9320 (i7-1360P/ 16GB/ 512GB/ 3.5K OLED Touch)..."
+                placeholder="VD: Laptop DELL XPS 13 Plus 9320 (i7-1360P / 16GB / 512GB / 3.5K OLED Touch)..."
                 value={form.ProductName}
                 onChange={(e) => setForm({ ...form, ProductName: e.target.value })}
-                className="w-full rounded-2xl bg-slate-950 border border-slate-800 p-3 text-sm text-white focus:outline-none focus:border-blue-500 transition"
+                className="w-full rounded-2xl bg-slate-950 border border-slate-800 p-3 text-sm text-white focus:outline-none focus:border-blue-500 transition placeholder:text-slate-600"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                  Giá bán (VNĐ) *
-                </label>
-                <input
-                  required
-                  type="number"
-                  placeholder="VD: 35990000"
-                  value={form.Price}
-                  onChange={(e) => setForm({ ...form, Price: e.target.value })}
-                  className="w-full rounded-2xl bg-slate-950 border border-slate-800 p-3 text-sm text-white focus:outline-none focus:border-blue-500 transition"
-                />
+            {/* 1. GIÁ BÁN GỐC, GIÁ HIỂN THỊ, TỒN KHO */}
+            <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80 space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">💰 Thiết lập giá & tồn kho</span>
               </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* Giá bán gốc */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
+                    Giá bán gốc (VNĐ) *
+                  </label>
+                  <input
+                    required
+                    type="number"
+                    min="0"
+                    placeholder="VD: 35990000"
+                    value={form.Price}
+                    onChange={(e) => setForm({ ...form, Price: e.target.value })}
+                    className="w-full rounded-xl bg-slate-900 border border-slate-800 p-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition font-mono"
+                  />
+                  <span className="text-[10px] text-slate-400 block mt-1">Giá niêm yết ban đầu</span>
+                </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                  Số lượng tồn kho
-                </label>
-                <input
-                  type="number"
-                  placeholder="VD: 15"
-                  value={form.StockQuantity}
-                  onChange={(e) => setForm({ ...form, StockQuantity: e.target.value })}
-                  className="w-full rounded-2xl bg-slate-950 border border-slate-800 p-3 text-sm text-white focus:outline-none focus:border-blue-500 transition"
-                />
+                {/* Giá hiển thị (Khuyến mãi) */}
+                <div>
+                  <label className="block text-[11px] font-bold text-emerald-400 uppercase tracking-wider mb-1">
+                    Giá hiển thị / Giảm giá (VNĐ)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="VD: 29990000"
+                    value={form.DiscountPrice}
+                    onChange={(e) => setForm({ ...form, DiscountPrice: e.target.value })}
+                    className="w-full rounded-xl bg-slate-900 border border-slate-800 p-2.5 text-sm text-emerald-300 focus:outline-none focus:border-emerald-500 transition font-mono placeholder:text-slate-600"
+                  />
+                  <span className="text-[10px] text-slate-400 block mt-1">
+                    Để trống nếu không có khuyến mãi
+                  </span>
+                </div>
+
+                {/* Số lượng tồn kho */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
+                    Số lượng tồn kho
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="VD: 15"
+                    value={form.StockQuantity}
+                    onChange={(e) => setForm({ ...form, StockQuantity: e.target.value })}
+                    className="w-full rounded-xl bg-slate-900 border border-slate-800 p-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition font-mono"
+                  />
+                  <span className="text-[10px] text-slate-400 block mt-1">Số máy sẵn sàng bán</span>
+                </div>
               </div>
             </div>
 
-            {/* QUẢN LÝ HÌNH ẢNH */}
-            <div className="space-y-3 p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80">
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
-                Thư viện Hình ảnh (Ảnh đầu tiên là ảnh đại diện)
-              </label>
+            {/* 2. HÌNH ẢNH (BẤM + RỒI THÊM ẢNH, THEO THỨ TỰ TỪ 1...) */}
+            <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">
+                      🖼️ Thư viện hình ảnh
+                    </span>
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-bold">
+                      {imageList.length} ảnh
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Ảnh hiển thị theo thứ tự từ 1... (Ảnh 1 là ảnh chính đại diện cho sản phẩm).
+                  </p>
+                </div>
 
-              {/* Dán URL */}
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Dán link ảnh trực tiếp (http:// hoặc https://)..."
-                  value={urlInput}
-                  onChange={(e) => setUrlInput(e.target.value)}
-                  className="flex-1 rounded-xl bg-slate-900 border border-slate-800 px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500 transition"
-                />
+                <div className="flex items-center gap-2">
+                  {/* Nút bấm + Thêm ảnh từ máy */}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingImages}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95 disabled:opacity-50 shadow-md shadow-blue-600/30"
+                  >
+                    <span className="text-sm font-black">+</span>
+                    <span>{uploadingImages ? 'Đang tải...' : 'Thêm ảnh từ máy'}</span>
+                  </button>
+
+                  {/* Nút bấm + Thêm link URL */}
+                  <button
+                    type="button"
+                    onClick={() => setShowUrlInput(!showUrlInput)}
+                    className="inline-flex items-center gap-1 rounded-xl bg-slate-800 hover:bg-slate-700 px-3 py-1.5 text-xs font-bold text-slate-300 transition"
+                  >
+                    <span>+ Link URL</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Input file ẩn */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                multiple
+                onChange={handleFileChange}
+                disabled={uploadingImages}
+                className="hidden"
+              />
+
+              {/* Ô nhập URL trực tiếp nếu người dùng muốn */}
+              {showUrlInput && (
+                <div className="flex gap-2 p-3 rounded-xl bg-slate-900 border border-slate-800 animate-fadeIn">
+                  <input
+                    type="text"
+                    placeholder="Dán link ảnh (http:// hoặc https://)..."
+                    value={urlInput}
+                    onChange={(e) => setUrlInput(e.target.value)}
+                    className="flex-1 rounded-lg bg-slate-950 border border-slate-800 px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddImageUrl}
+                    disabled={!urlInput.trim()}
+                    className="rounded-lg bg-blue-600 hover:bg-blue-500 px-3 py-1.5 text-xs font-bold text-white transition disabled:opacity-50"
+                  >
+                    + Thêm vào danh sách
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowUrlInput(false)}
+                    className="rounded-lg bg-slate-800 px-2.5 py-1.5 text-xs text-slate-400 hover:text-white"
+                  >
+                    Đóng
+                  </button>
+                </div>
+              )}
+
+              {/* Danh sách ảnh theo thứ tự 1... kèm nút + trực tiếp */}
+              <div className="pt-2 flex flex-wrap gap-3 items-center">
+                {imageList.map((img, idx) => (
+                  <div
+                    key={idx}
+                    className="relative group rounded-2xl border-2 border-slate-800 hover:border-slate-700 bg-slate-900 p-2 flex flex-col items-center w-28 sm:w-32 transition shadow-md"
+                  >
+                    {/* Badge thứ tự từ 1... */}
+                    <div className="absolute top-1.5 left-1.5 z-10">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black tracking-tight ${
+                          idx === 0
+                            ? 'bg-blue-600 text-white shadow-md shadow-blue-600/40'
+                            : 'bg-slate-800/90 text-slate-300 border border-slate-700'
+                        }`}
+                      >
+                        {idx === 0 ? '1 (Chính)' : `${idx + 1}`}
+                      </span>
+                    </div>
+
+                    {/* Nút xóa ảnh */}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(idx)}
+                      className="absolute top-1.5 right-1.5 z-10 w-5 h-5 rounded-full bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-black flex items-center justify-center transition shadow"
+                      title="Xóa ảnh này"
+                    >
+                      ✕
+                    </button>
+
+                    {/* Thumbnail ảnh */}
+                    <div className="w-24 h-24 flex items-center justify-center overflow-hidden rounded-xl bg-slate-950 border border-slate-800/80 mt-4 mb-2">
+                      <img
+                        src={resolveApiAssetUrl(img)}
+                        alt={`Ảnh thứ ${idx + 1}`}
+                        className="w-full h-full object-contain p-1"
+                      />
+                    </div>
+
+                    {/* Nút điều chỉnh thứ tự (lên / xuống) */}
+                    <div className="flex items-center justify-between w-full px-1 pt-1 border-t border-slate-800/80 text-[11px]">
+                      <button
+                        type="button"
+                        disabled={idx === 0}
+                        onClick={() => handleMoveImage(idx, -1)}
+                        className="p-1 rounded hover:bg-slate-800 disabled:opacity-20 text-slate-300 font-bold transition"
+                        title="Đẩy lên vị trí trước"
+                      >
+                        ◀
+                      </button>
+                      <span className="text-[10px] font-bold text-slate-400">
+                        Vị trí {idx + 1}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={idx === imageList.length - 1}
+                        onClick={() => handleMoveImage(idx, 1)}
+                        className="p-1 rounded hover:bg-slate-800 disabled:opacity-20 text-slate-300 font-bold transition"
+                        title="Đẩy về vị trí sau"
+                      >
+                        ▶
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Ô dấu + Thêm ảnh to trực tiếp trong danh sách */}
                 <button
                   type="button"
-                  onClick={handleAddImageUrl}
-                  disabled={uploadingImages || !urlInput.trim()}
-                  className="rounded-xl bg-slate-800 hover:bg-slate-700 px-4 py-2 text-xs font-bold text-white transition disabled:opacity-50"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingImages}
+                  className="flex flex-col items-center justify-center w-28 h-36 sm:w-32 rounded-2xl border-2 border-dashed border-blue-500/40 hover:border-blue-400 bg-blue-500/5 hover:bg-blue-500/10 text-blue-400 transition cursor-pointer p-3 text-center group active:scale-95"
+                  title="Bấm để thêm ảnh tiếp theo"
                 >
-                  Thêm URL
+                  <div className="w-10 h-10 rounded-full bg-blue-500/20 group-hover:bg-blue-500/30 flex items-center justify-center text-2xl font-black mb-1 transition text-blue-300">
+                    +
+                  </div>
+                  <span className="text-xs font-bold text-white">Thêm ảnh</span>
+                  <span className="text-[10px] text-blue-400/80 mt-0.5 font-mono">
+                    Ảnh số {imageList.length + 1}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* 3. MÔ TẢ THÔNG TIN CHI TIẾT (BẤM + ĐỂ THÊM TỪNG MỤC) */}
+            <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                  <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">
+                    ⚙️ Thông số kỹ thuật & Chi tiết sản phẩm
+                  </span>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Bấm dấu <strong className="text-blue-400">[+]</strong> để thêm từng mục thông số (CPU, RAM, Ổ cứng, VGA, Màn hình...).
+                  </p>
+                </div>
+
+                {/* Nút + Thêm từng mục */}
+                <button
+                  type="button"
+                  onClick={() => handleAddSpec('', '')}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 px-3 py-1.5 text-xs font-bold text-blue-400 transition active:scale-95 self-start sm:self-auto"
+                >
+                  <span className="text-sm font-black">+</span>
+                  <span>Thêm mục thông số</span>
                 </button>
               </div>
 
-              {/* Chọn File máy tính */}
-              <div>
-                <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-slate-700 bg-slate-900/60 px-4 py-3 text-xs font-bold text-slate-300 hover:border-slate-500 transition w-full justify-center">
-                  <span>{uploadingImages ? '⏳ Đang tải tệp lên server...' : '📁 Tải ảnh từ máy tính (nhiều tệp)'}</span>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    multiple
-                    onChange={handleFileChange}
-                    disabled={uploadingImages}
-                    className="hidden"
-                  />
-                </label>
+              {/* Các nút bấm thêm nhanh mẫu thông số */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <span className="text-[10px] text-slate-500 font-bold uppercase">Gợi ý nhanh:</span>
+                {COMMON_SPEC_SUGGESTIONS.map((spec) => {
+                  const alreadyExists = specsList.some((s) => s.key.toLowerCase() === spec.toLowerCase());
+                  return (
+                    <button
+                      key={spec}
+                      type="button"
+                      onClick={() => handleAddSpec(spec, '')}
+                      className={`text-[11px] px-2.5 py-0.5 rounded-lg border transition font-medium ${
+                        alreadyExists
+                          ? 'border-slate-800 bg-slate-900/40 text-slate-500 hover:text-slate-400'
+                          : 'border-slate-700/80 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:border-slate-600'
+                      }`}
+                    >
+                      + {spec}
+                    </button>
+                  );
+                })}
               </div>
 
-              {/* Danh sách ảnh đã chọn */}
-              {imageList.length > 0 && (
-                <div className="pt-2 border-t border-slate-800 flex flex-wrap gap-2.5">
-                  {imageList.map((img, idx) => (
-                    <div
-                      key={idx}
-                      className="relative group h-16 w-16 rounded-xl border border-slate-700 overflow-hidden bg-slate-950 shadow-md"
-                    >
-                      <img src={resolveApiAssetUrl(img)} alt="" className="h-full w-full object-contain p-1" />
-                      {idx === 0 && (
-                        <span className="absolute bottom-0 inset-x-0 bg-blue-600 text-[8px] text-white text-center font-black py-0.5 tracking-tighter uppercase">
-                          Ảnh chính
-                        </span>
-                      )}
+              {/* Danh sách các dòng thông số (Key - Value) */}
+              <div className="space-y-2 pt-2">
+                {specsList.length === 0 ? (
+                  <div className="text-center py-4 border border-dashed border-slate-800 rounded-xl text-slate-500 text-xs">
+                    Chưa có mục thông số nào. Bấm nút <strong>[+ Thêm mục thông số]</strong> ở trên để bắt đầu thêm.
+                  </div>
+                ) : (
+                  specsList.map((item, idx) => (
+                    <div key={item.id} className="flex items-center gap-2">
+                      <div className="w-1/3 sm:w-1/4">
+                        <input
+                          type="text"
+                          placeholder={`Mục ${idx + 1} (VD: CPU...)`}
+                          value={item.key}
+                          onChange={(e) => handleUpdateSpecKey(item.id, e.target.value)}
+                          className="w-full rounded-xl bg-slate-900 border border-slate-800 px-3 py-2 text-xs text-white font-semibold focus:outline-none focus:border-blue-500 placeholder:text-slate-600"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <input
+                          type="text"
+                          placeholder="Chi tiết cấu hình (VD: Intel Core i7-1360P, 16GB DDR5...)"
+                          value={item.value}
+                          onChange={(e) => handleUpdateSpecValue(item.id, e.target.value)}
+                          className="w-full rounded-xl bg-slate-900 border border-slate-800 px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 placeholder:text-slate-600"
+                        />
+                      </div>
                       <button
                         type="button"
-                        onClick={() => handleRemoveImage(idx)}
-                        className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-600 text-[10px] font-bold text-white shadow hover:bg-rose-500 transition"
-                        title="Xóa ảnh"
+                        onClick={() => handleRemoveSpec(item.id)}
+                        className="w-8 h-8 rounded-xl bg-slate-900 hover:bg-rose-600/20 text-slate-500 hover:text-rose-400 border border-slate-800 hover:border-rose-500/30 flex items-center justify-center transition shrink-0"
+                        title="Xóa mục này"
                       >
                         ✕
                       </button>
                     </div>
-                  ))}
-                </div>
+                  ))
+                )}
+              </div>
+
+              {/* Nút + Thêm mục ở cuối danh sách */}
+              {specsList.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => handleAddSpec('', '')}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-400 hover:text-blue-300 pt-1 transition"
+                >
+                  <span className="text-sm font-black">+</span>
+                  <span>Thêm mục thông số tiếp theo</span>
+                </button>
               )}
+
+              {/* Ghi chú mô tả thêm (tùy chọn) */}
+              <div className="pt-3 border-t border-slate-800/80">
+                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                  Mô tả / Ghi chú bổ sung (tùy chọn)
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Nhập thông tin quà tặng kèm theo, tình trạng máy, chính sách đổi trả hoặc ghi chú khác..."
+                  value={form.ExtraNotes}
+                  onChange={(e) => setForm({ ...form, ExtraNotes: e.target.value })}
+                  className="w-full rounded-xl bg-slate-900 border border-slate-800 p-2.5 text-xs text-white focus:outline-none focus:border-blue-500 transition placeholder:text-slate-600"
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                Mô tả thông số chi tiết
-              </label>
-              <textarea
-                rows={3}
-                placeholder="Nhập cấu hình CPU, RAM, SSD, VGA, Màn hình, Cổng kết nối..."
-                value={form.Description}
-                onChange={(e) => setForm({ ...form, Description: e.target.value })}
-                className="w-full rounded-2xl bg-slate-950 border border-slate-800 p-3 text-sm text-white focus:outline-none focus:border-blue-500 transition"
-              />
-            </div>
-
-            <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
+            {/* Nút Submit / Cancel */}
+            <div className="flex justify-end gap-3 pt-3 border-t border-slate-800 sticky -bottom-2 bg-slate-900 z-20">
               <button
                 type="button"
                 onClick={() => setOpen(false)}
@@ -557,7 +997,7 @@ export default function AdminProducts() {
               <button
                 type="submit"
                 disabled={saving || uploadingImages}
-                className="rounded-2xl bg-blue-600 hover:bg-blue-500 px-6 py-2.5 text-xs font-bold text-white transition disabled:opacity-50 shadow-lg shadow-blue-600/30"
+                className="rounded-2xl bg-blue-600 hover:bg-blue-500 px-6 py-2.5 text-xs font-bold text-white transition disabled:opacity-50 shadow-lg shadow-blue-600/30 active:scale-95"
               >
                 {saving ? 'Đang lưu...' : 'Lưu Thay Đổi'}
               </button>
