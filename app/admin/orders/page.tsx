@@ -48,6 +48,7 @@ export default function AdminOrders() {
   const [error, setError] = useState('');
   const [selected, setSelected] = useState<StoreOrder | null>(null);
   const [draftStatus, setDraftStatus] = useState('Pending');
+  const [cancellationReason, setCancellationReason] = useState('');
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [search, setSearch] = useState('');
@@ -90,6 +91,7 @@ export default function AdminOrders() {
   const openOrder = (order: StoreOrder) => {
     setSelected(order);
     setDraftStatus(normalizedStatus(order.Status));
+    setCancellationReason('');
     setFeedback('');
     setCarrierName(order.CarrierName || '');
     setTrackingNumber(order.TrackingNumber || '');
@@ -119,10 +121,14 @@ export default function AdminOrders() {
 
   const saveStatus = async () => {
     if (!selected) return;
+    if (draftStatus === 'Cancelled' && normalizedStatus(selected.Status) !== 'Cancelled' && !cancellationReason.trim()) {
+      setFeedback('Vui lòng nhập lý do admin chủ động hủy đơn hàng.');
+      return;
+    }
     setSaving(true);
     setFeedback('');
     try {
-      const result = await api.updateOrderStatus(selected.OrderID, draftStatus);
+      const result = await api.updateOrderStatus(selected.OrderID, draftStatus, draftStatus === 'Cancelled' ? cancellationReason.trim() : undefined);
       const updated = result.order || { ...selected, Status: draftStatus };
       setOrders((current) => current.map((order) => order.OrderID === selected.OrderID ? { ...order, ...updated } : order));
       setSelected((current) => current ? { ...current, ...updated } : current);
@@ -514,7 +520,7 @@ export default function AdminOrders() {
               <div className="flex flex-col sm:flex-row gap-3">
                 <select
                   value={draftStatus}
-                  onChange={(e) => setDraftStatus(e.target.value)}
+                  onChange={(e) => { setDraftStatus(e.target.value); setFeedback(''); }}
                   disabled={isDelivered || saving}
                   className="flex-1 rounded-2xl border border-slate-800 bg-slate-900 px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-blue-500 disabled:opacity-50"
                 >
@@ -533,6 +539,24 @@ export default function AdminOrders() {
                   {isDelivered ? 'Đã Giao Thành Công' : saving ? 'Đang Lưu...' : 'Cập Nhật Trạng Thái'}
                 </button>
               </div>
+
+              {draftStatus === 'Cancelled' && normalizedStatus(selected.Status) !== 'Cancelled' && (
+                <div className="mt-3">
+                  <label htmlFor="admin-cancellation-reason" className="mb-1.5 block text-[11px] font-bold text-rose-300">
+                    Lý do admin hủy đơn <span className="text-rose-400">*</span>
+                  </label>
+                  <textarea
+                    id="admin-cancellation-reason"
+                    rows={3}
+                    maxLength={500}
+                    value={cancellationReason}
+                    onChange={(event) => { setCancellationReason(event.target.value); setFeedback(''); }}
+                    placeholder="Nhập lý do hủy đơn để lưu vào lịch sử trạng thái..."
+                    className="w-full resize-y rounded-xl border border-slate-800 bg-slate-900 px-3.5 py-2.5 text-xs text-white outline-none transition placeholder:text-slate-500 focus:border-rose-500"
+                  />
+                  <p className="mt-1 text-right text-[10px] text-slate-500">{cancellationReason.length}/500</p>
+                </div>
+              )}
 
               {isDelivered && (
                 <p className="mt-2 text-[11px] text-emerald-400 font-medium">

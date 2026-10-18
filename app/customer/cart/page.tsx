@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -11,6 +12,7 @@ import {
   loadCart,
   updateCartItem,
   removeFromCart,
+  saveCart,
 } from "@/lib/cart";
 import { api, getPrimaryProductImage, getStoredUser, type Voucher } from "@/lib/api";
 import { getSelectedVoucherId, saveSelectedVoucher, voucherDiscount } from "@/lib/vouchers";
@@ -19,6 +21,16 @@ export default function CartPage() {
   const [cart, setCart] =
     useState<CartItem[]>([]);
 
+  const cartRef = useRef<CartItem[]>([]);
+  const updateVersions = useRef(new Map<number, number>());
+  const pendingUpdates = useRef(new Map<number, Promise<unknown>>());
+
+  const commitCart = (items: CartItem[]) => {
+    cartRef.current = items;
+    setCart(items);
+    saveCart(items);
+  };
+  const [quantityDrafts, setQuantityDrafts] = useState<Record<number, string>>({});
   const [loading, setLoading] =
     useState(true);
 
@@ -37,6 +49,7 @@ export default function CartPage() {
         setLoading(true);
 
         const items = await loadCart();
+        cartRef.current = items;
         setCart(items);
 
         const user = getStoredUser();
@@ -56,24 +69,67 @@ export default function CartPage() {
     load();
   }, []);
 
-  async function update(
-    item: CartItem,
-    quantity: number
-  ) {
+  function handleQuantityInput(item: CartItem, value: string) {
+    const digits = value.replace(/\D/g, "");
+    const nextValue = digits === "" ? "" : String(Math.min(999, Math.max(1, Number(digits) || 1)));
+    setQuantityDrafts((current) => ({ ...current, [item.ProductID]: nextValue }));
+  }
+
+  function commitQuantityInput(item: CartItem) {
+    const draft = quantityDrafts[item.ProductID];
+    if (draft === undefined) return;
+    const parsed = Number.parseInt(draft, 10);
+    const quantity = Math.min(999, Math.max(1, Number.isFinite(parsed) ? parsed : 1));
+    setQuantityDrafts((current) => {
+      const next = { ...current };
+      delete next[item.ProductID];
+      return next;
+    });
+    void update(item, quantity);
+  }
+  async function update(item: CartItem, quantity: number) {
+    if (!Number.isFinite(quantity)) return;
+    quantity = Math.min(999, Math.max(1, Math.trunc(quantity)));
+    if (item.StockQuantity !== undefined) {
+      if (item.StockQuantity <= 0) {
+        setError("Sản phẩm đã hết hàng.");
+        return;
+      }
+      quantity = Math.min(quantity, item.StockQuantity);
+    }
+
+    const productId = item.ProductID;
+    const currentItem = cartRef.current.find((cartItem) => cartItem.ProductID === productId);
+    if (!currentItem) return;
+    const previousQuantity = currentItem.quantity;
+    const version = (updateVersions.current.get(productId) || 0) + 1;
+    updateVersions.current.set(productId, version);
+
+    const optimisticCart = cartRef.current.map((cartItem) =>
+      cartItem.ProductID === productId ? { ...cartItem, quantity } : cartItem
+    );
+    setError("");
+    commitCart(optimisticCart);
+
+    const previousRequest = pendingUpdates.current.get(productId) || Promise.resolve();
+    const request = previousRequest.catch(() => undefined).then(() => updateCartItem(item, quantity));
+    pendingUpdates.current.set(productId, request);
+
     try {
-      setError("");
-
-      const next =
-        await updateCartItem(
-          item,
-          quantity
-        );
-
-      setCart(next);
+      await request;
     } catch (err) {
       console.error(err);
-
-      setError(err instanceof Error ? err.message : "Không thể cập nhật giỏ hàng.");
+      if (updateVersions.current.get(productId) === version) {
+        const rollbackCart = cartRef.current.map((cartItem) =>
+          cartItem.ProductID === productId ? { ...cartItem, quantity: previousQuantity } : cartItem
+        );
+        commitCart(rollbackCart);
+        setError(err instanceof Error ? err.message : "Không thể cập nhật giỏ hàng.");
+      }
+    } finally {
+      if (pendingUpdates.current.get(productId) === request) {
+        pendingUpdates.current.delete(productId);
+      }
     }
   }
 
@@ -83,7 +139,7 @@ export default function CartPage() {
       setDeleting(true);
       setError("");
       const next = await removeFromCart(itemToDelete);
-      setCart(next);
+      commitCart(next);
       setItemToDelete(null);
     } catch (err) {
       console.error(err);
@@ -210,20 +266,31 @@ export default function CartPage() {
                     {Number(item.StockQuantity ?? 0) > 0 && item.quantity > Number(item.StockQuantity) && <p className="mt-1 text-xs font-semibold text-red-600">Số lượng trong giỏ vượt tồn kho, vui lòng giảm xuống.</p>}
                     <div className="mt-3 flex items-center gap-3">
                       <button
-                        onClick={() =>
-                          update(
-                            item,
-                            item.quantity - 1
-                          )
-                        }
-                        className="h-8 w-8 rounded-full border hover:bg-slate-100"
+                        onClick={() => update(item, item.quantity - 1)}
+                        disabled={item.quantity <= 1}
+                        aria-label="Giảm số lượng"
+                        title={item.quantity <= 1 ? "Dùng nút Xóa để bỏ sản phẩm khỏi giỏ hàng" : "Giảm số lượng"}
+                        className="h-8 w-8 rounded-full border hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         −
                       </button>
 
-                      <span className="min-w-6 text-center font-bold">
-                        {item.quantity}
-                      </span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        aria-label={`Số lượng ${item.ProductName}`}
+                        value={quantityDrafts[item.ProductID] ?? String(item.quantity)}
+                        onChange={(event) => handleQuantityInput(item, event.target.value)}
+                        onBlur={() => commitQuantityInput(item)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            event.currentTarget.blur();
+                          }
+                        }}
+                        className="h-8 w-14 rounded-lg border border-slate-200 bg-white text-center font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                      />
 
                       <button
                         onClick={() =>
@@ -232,7 +299,7 @@ export default function CartPage() {
                             item.quantity + 1
                           )
                         }
-                        disabled={item.StockQuantity !== undefined && item.quantity >= item.StockQuantity}
+                        disabled={item.quantity >= 999 || (item.StockQuantity !== undefined && item.quantity >= item.StockQuantity)}
                         className="h-8 w-8 rounded-full border hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         +

@@ -30,6 +30,15 @@ export default function SupportWidget() {
   const [loading, setLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [showTeaser, setShowTeaser] = useState(true);
+  useEffect(() => {
+    const root = document.documentElement;
+    const teaserVisible = !chatOpen && !menuOpen && showTeaser;
+    root.dataset.supportTeaser = teaserVisible ? 'true' : 'false';
+    return () => {
+      delete root.dataset.supportTeaser;
+    };
+  }, [chatOpen, menuOpen, showTeaser]);
+
   const messagesPane = useRef<HTMLDivElement>(null);
   const isUserNearBottomRef = useRef(true);
 

@@ -1,5 +1,14 @@
+const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+const isInvalidProductionApiUrl = Boolean(
+  configuredApiUrl && (
+    /^http:\/\//i.test(configuredApiUrl) ||
+    /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(?:\/|$)/i.test(configuredApiUrl)
+  )
+);
 const API_URL = (
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"
+  process.env.NODE_ENV === "production" && (!configuredApiUrl || isInvalidProductionApiUrl)
+    ? "https://devora.id.vn/api"
+    : configuredApiUrl || "http://localhost:5000/api"
 ).replace(/\/$/, "");
 
 export type Product = {
@@ -156,10 +165,33 @@ export type ProductVariant = {
 export type ProductReview = {
   ReviewID: number;
   ProductID: number;
+  OrderID?: number;
   Rating: number | string;
   Comment?: string | null;
   ReviewDate?: string | null;
+  AdminReply?: string | null;
+  AdminReplyAt?: string | null;
+  AdminReplyUserID?: number | null;
   User?: { FullName?: string | null; Avatar?: string | null } | null;
+  Product?: { ProductID: number; ProductName: string; ImageUrl?: string | null } | null;
+};
+
+export type ProductReviewOrderEligibility = {
+  OrderID: number;
+  quantity: number;
+  reviewedQuantity: number;
+  remainingQuantity: number;
+  reviews: ProductReview[];
+};
+
+export type ProductReviewEligibility = {
+  canReview: boolean;
+  purchasedQuantity: number;
+  reviewedQuantity: number;
+  remainingQuantity: number;
+  orders: ProductReviewOrderEligibility[];
+  reviews: ProductReview[];
+  selectedOrder: ProductReviewOrderEligibility | null;
 };
 
 export type FavoriteRecord = {
@@ -442,10 +474,22 @@ export const api = {
   getProductReviews: (productId: number) =>
     request<ProductReview[]>(`/reviews/product/${productId}`),
 
+  getAdminReviews: () =>
+    request<ProductReview[]>('/reviews/admin'),
+
+  replyToReview: (reviewId: number, reply: string) =>
+    request<{ message: string; review: ProductReview }>(`/reviews/${reviewId}/reply`, {
+      method: 'PATCH',
+      body: JSON.stringify({ reply }),
+    }),
+
+  getProductReviewEligibility: (userId: number, productId: number, orderId?: number) =>
+    request<ProductReviewEligibility>(`/reviews/check-eligibility?userId=${userId}&productId=${productId}${orderId ? `&orderId=${orderId}` : ""}`),
+
   checkOrderReview: (orderId: number, userId: number) =>
     request<{ reviewed: boolean; review?: ProductReview | null }>(`/reviews/check-order?orderId=${orderId}&userId=${userId}`),
 
-  createOrderReview: (payload: { UserID: number; OrderID: number; Rating: number; Comment?: string }) =>
+  createOrderReview: (payload: { UserID: number; OrderID: number; ProductID: number; Rating: number; Comment?: string }) =>
     request<{ message: string; review: ProductReview }>("/reviews/order", {
       method: "POST",
       body: JSON.stringify(payload),
@@ -734,10 +778,10 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
-  updateOrderStatus: (orderId: number, status: string) =>
+  updateOrderStatus: (orderId: number, status: string, note?: string) =>
     request<{ message: string; order: StoreOrder }>(`/orders/${orderId}/status`, {
       method: "PATCH",
-      body: JSON.stringify({ Status: status }),
+      body: JSON.stringify({ Status: status, ...(note ? { Note: note } : {}) }),
     }),
 
   cancelOrder: (orderId: number, userId: number) =>

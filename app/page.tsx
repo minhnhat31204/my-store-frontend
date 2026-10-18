@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   api,
-  getCachedProductsSync,
   getPrimaryProductImage,
   Product,
   Promotion,
@@ -29,27 +28,17 @@ function getBannerImage(promotion: Promotion) {
 }
 
 export default function Home() {
-  const initialProducts = useMemo(() => getCachedProductsSync() || [], []);
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  // Browser cache is unavailable during SSR. Load products in the effect so
+  // the server and first client render show the same loading state.
+  const [products, setProducts] = useState<Product[]>([]);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [trackIndex, setTrackIndex] = useState(1);
   const [withTransition, setWithTransition] = useState(true);
-  const [loading, setLoading] = useState(initialProducts.length === 0);
+  const [loading, setLoading] = useState(true);
   const [bannerLoading, setBannerLoading] = useState(true);
   const [error, setError] = useState("");
   const [keyword, setKeyword] = useState("");
-  const [visibleCount, setVisibleCount] = useState(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const saved = sessionStorage.getItem("home_visible_count");
-        if (saved) {
-          const val = parseInt(saved, 10);
-          if (val && val >= 8) return val;
-        }
-      } catch {}
-    }
-    return 8;
-  });
+  const [visibleCount, setVisibleCount] = useState(8);
 
   const handleSetVisibleCount = (updater: number | ((prev: number) => number)) => {
     setVisibleCount((prev) => {
@@ -73,6 +62,12 @@ export default function Home() {
   const dragOffsetRef = useRef(0);
 
   useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem("home_visible_count");
+      const savedCount = saved ? parseInt(saved, 10) : 0;
+      if (savedCount >= 8) setVisibleCount(savedCount);
+    } catch {}
+
     api.getProducts()
       .then((items) => {
         setProducts(items);

@@ -1,4 +1,4 @@
-import { api, getPrimaryProductImage, getStoredUser } from "@/lib/api";
+import { api, clearStoredToken, getPrimaryProductImage, getStoredUser } from "@/lib/api";
 
 export type CartItem = {
   ID?: number;
@@ -142,6 +142,16 @@ export async function addToCart(
     }
   } catch (error) {
     console.error("Lỗi thêm sản phẩm vào giỏ:", error);
+    if ((error as { code?: string } | null)?.code === "USER_NOT_FOUND" && typeof window !== "undefined") {
+      localStorage.removeItem("user");
+      sessionStorage.removeItem("user");
+      localStorage.removeItem("sessionToken");
+      clearStoredToken();
+      saveCart([]);
+      window.dispatchEvent(new Event("user-updated"));
+      window.location.replace("/login?session=expired");
+      return;
+    }
     throw error;
   }
 }
@@ -154,6 +164,8 @@ export async function updateCartItem(
   item: CartItem,
   quantity: number
 ) {
+  if (!Number.isFinite(quantity) || quantity < 1) return getCart();
+
   const user = getStoredUser();
 
   // Chưa đăng nhập → localStorage
@@ -187,26 +199,8 @@ export async function updateCartItem(
     );
   }
 
-  if (quantity <= 0) {
-    await api.deleteCart(item.ID);
-  } else {
-    await api.updateCart(
-      item.ID,
-      quantity
-    );
-  }
-
-  const data = await api.getCart(
-    user.UserID
-  );
-
-  const items = Array.isArray(data)
-    ? data.map(mapBackendCartItem)
-    : [];
-
-  saveCart(items);
-
-  return items;
+  await api.updateCart(item.ID, quantity);
+  return getCart();
 }
 
 // =========================

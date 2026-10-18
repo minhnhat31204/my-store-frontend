@@ -12,6 +12,7 @@ import {
   getStoredUser,
   Product,
   ProductReview,
+  ProductReviewEligibility,
   ProductVariant,
   resolveApiAssetUrl,
 } from "@/lib/api";
@@ -26,21 +27,32 @@ export default function ProductDetailPage() {
   const params = useParams<{ id: string }>();
   const productId = Number(params.id);
 
-  // Khởi tạo ngay từ bộ nhớ đệm client để khi bấm vào thẻ sản phẩm trang mở bung tức thì không độ trễ
-  const initialCachedList = useMemo(() => getCachedProductsSync() || [], []);
-  const initialCachedProduct = useMemo(
-    () => initialCachedList.find((item) => item.ProductID === productId) || null,
-    [initialCachedList, productId]
-  );
-
-  const [product, setProduct] = useState<Product | null>(initialCachedProduct);
-  const [products, setProducts] = useState<Product[]>(initialCachedList);
+  // Keep the server and first browser render identical; read the browser cache after hydration.
+  const [product, setProduct] = useState<Product | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
   const [variants, setVariants] = useState<ProductVariant[]>([]);
   const [reviews, setReviews] = useState<ProductReview[]>([]);
-  const [loading, setLoading] = useState(!initialCachedProduct);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminReplyOpen, setAdminReplyOpen] = useState<Record<number, boolean>>({});
+  const [adminReplyDrafts, setAdminReplyDrafts] = useState<Record<number, string>>({});
+  const [adminReplyErrors, setAdminReplyErrors] = useState<Record<number, string>>({});
+  const [savingAdminReplyId, setSavingAdminReplyId] = useState<number | null>(null);
+  const [reviewEligibility, setReviewEligibility] = useState<ProductReviewEligibility | null>(null);
+  const [reviewFormOpen, setReviewFormOpen] = useState(false);
+  const [reviewOrderId, setReviewOrderId] = useState<number | null>(null);
+  const [selectedExistingReview, setSelectedExistingReview] = useState<ProductReview | null>(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewError, setReviewError] = useState("");
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [adding, setAdding] = useState(false);
+
+  useEffect(() => {
+    setIsAdmin(String(getStoredUser()?.Role || "").toLowerCase() === "admin");
+  }, []);
 
   // States cho Ảnh & Biến thể được chọn
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -59,13 +71,13 @@ export default function ProductDetailPage() {
     let active = true;
     setSelectedImageIndex(0);
 
-    // Nếu chưa có product trong state, thử đọc lại cache
-    if (!product) {
-      const cached = getCachedProductsSync()?.find((item) => item.ProductID === productId);
-      if (cached) {
-        setProduct(cached);
-        setLoading(false);
-      }
+    // Browser-only cache lookup happens after hydration to avoid SSR/client markup mismatch.
+    const cachedProducts = getCachedProductsSync() || [];
+    const cachedProduct = cachedProducts.find((item) => item.ProductID === productId) || null;
+    if (cachedProducts.length > 0) setProducts(cachedProducts);
+    if (cachedProduct) {
+      setProduct(cachedProduct);
+      setLoading(false);
     }
 
     api.getProducts()
@@ -81,7 +93,7 @@ export default function ProductDetailPage() {
         }
       })
       .catch(() => {
-        if (active && !product) setError("Không thể tải thông tin sản phẩm.");
+        if (active && !cachedProduct) setError("Không thể tải thông tin sản phẩm.");
       })
       .finally(() => active && setLoading(false));
 
@@ -104,6 +116,105 @@ export default function ProductDetailPage() {
 
     return () => { active = false; };
   }, [productId]);
+
+  useEffect(() => {
+    const user = getStoredUser();
+    if (!user || !Number.isInteger(productId) || productId <= 0) return;
+    const query = new URLSearchParams(window.location.search);
+    const requestedOrderId = Number(query.get("orderId")) || undefined;
+    const openReview = query.get("action") === "review";
+    let active = true;
+    api.getProductReviewEligibility(user.UserID, productId, requestedOrderId)
+      .then((eligibility) => {
+        if (!active) return;
+        setReviewEligibility(eligibility);
+        const selectedOrder = requestedOrderId
+          ? eligibility.orders.find((item) => item.OrderID === requestedOrderId)
+          : eligibility.orders.find((item) => item.remainingQuantity > 0);
+        if (selectedOrder) {
+          setReviewOrderId(selectedOrder.OrderID);
+          if (openReview && selectedOrder.reviews.length > 0) {
+            setSelectedExistingReview(selectedOrder.reviews[0]);
+            window.setTimeout(() => document.getElementById("reviews")?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
+          } else if (openReview && selectedOrder.remainingQuantity > 0) {
+            setReviewFormOpen(true);
+            window.setTimeout(() => document.getElementById("review-form")?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
+          }
+        }
+      })
+      .catch(() => active && setReviewEligibility(null));
+    return () => { active = false; };
+  }, [productId]);
+
+  async function submitProductReview(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const user = getStoredUser();
+    if (!user || !reviewOrderId) return;
+    setReviewSubmitting(true);
+    setReviewError("");
+    try {
+      await api.createOrderReview({
+        UserID: user.UserID,
+        OrderID: reviewOrderId,
+        ProductID: productId,
+        Rating: reviewRating,
+        Comment: reviewComment.trim(),
+      });
+      const [updatedReviews, eligibility] = await Promise.all([
+        api.getProductReviews(productId),
+        api.getProductReviewEligibility(user.UserID, productId),
+      ]);
+      setReviews(updatedReviews);
+      setReviewEligibility(eligibility);
+      setReviewComment("");
+      setReviewFormOpen(false);
+      setSelectedExistingReview(eligibility.reviews.find((item) => item.OrderID === reviewOrderId) || null);
+    } catch (err) {
+      setReviewError(err instanceof Error ? err.message : "Không thể gửi đánh giá.");
+    } finally {
+      setReviewSubmitting(false);
+    }
+  }
+
+  async function submitAdminReply(review: ProductReview) {
+    const user = getStoredUser();
+    if (!user || String(user.Role || "").toLowerCase() !== "admin") {
+      setAdminReplyErrors((current) => ({ ...current, [review.ReviewID]: "Chỉ quản trị viên mới có thể phản hồi đánh giá." }));
+      return;
+    }
+
+    const reply = (adminReplyDrafts[review.ReviewID] ?? review.AdminReply ?? "").trim();
+    if (!reply) {
+      setAdminReplyErrors((current) => ({ ...current, [review.ReviewID]: "Vui lòng nhập nội dung phản hồi." }));
+      return;
+    }
+
+    setSavingAdminReplyId(review.ReviewID);
+    setAdminReplyErrors((current) => ({ ...current, [review.ReviewID]: "" }));
+    try {
+      const result = await api.replyToReview(review.ReviewID, reply);
+      setReviews((current) => current.map((item) => item.ReviewID === review.ReviewID ? result.review : item));
+      setAdminReplyDrafts((current) => ({ ...current, [review.ReviewID]: result.review.AdminReply || reply }));
+      setAdminReplyOpen((current) => ({ ...current, [review.ReviewID]: false }));
+    } catch (err) {
+      setAdminReplyErrors((current) => ({
+        ...current,
+        [review.ReviewID]: err instanceof Error ? err.message : "Không thể lưu phản hồi.",
+      }));
+    } finally {
+      setSavingAdminReplyId(null);
+    }
+  }
+
+  function openReviewForm() {
+    const availableOrder = reviewEligibility?.orders.find((item) => item.remainingQuantity > 0);
+    if (!availableOrder) return;
+    setReviewOrderId(availableOrder.OrderID);
+    setSelectedExistingReview(null);
+    setReviewError("");
+    setReviewFormOpen(true);
+    window.setTimeout(() => document.getElementById("review-form")?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+  }
 
   // Tổng hợp danh sách ảnh (tách chuỗi theo dấu phẩy, chuẩn hóa URL domain backend)
   const allImages = useMemo(() => {
@@ -686,8 +797,56 @@ export default function ProductDetailPage() {
                     <h2 className="text-base sm:text-lg font-bold text-slate-900">Đánh giá sản phẩm</h2>
                   </div>
                 </div>
-                {reviews.length > 0 && <p className="text-xs font-bold text-amber-600">★ {averageRating.toFixed(1)} / 5 ({reviews.length} lượt đánh giá)</p>}
+                <div className="flex items-center gap-3">
+                  {reviews.length > 0 && <p className="text-xs font-bold text-amber-600">★ {averageRating.toFixed(1)} / 5 ({reviews.length} lượt đánh giá)</p>}
+                  {reviewEligibility && reviewEligibility.purchasedQuantity > 0 && (
+                    <span className="text-xs font-semibold text-slate-500">
+                      Còn {reviewEligibility.remainingQuantity}/{reviewEligibility.purchasedQuantity} lượt
+                    </span>
+                  )}
+                </div>
               </div>
+              {reviewEligibility?.canReview && (
+                <div className="mt-4 rounded-xl border border-amber-100 bg-amber-50/70 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm text-slate-700">Bạn có thể đánh giá sản phẩm này theo số lượng đã nhận thành công.</p>
+                    {!reviewFormOpen && <button type="button" onClick={openReviewForm} className="rounded-xl bg-amber-500 px-4 py-2 text-sm font-bold text-white hover:bg-amber-600">★ Viết đánh giá</button>}
+                  </div>
+                  {reviewFormOpen && (
+                    <form id="review-form" onSubmit={submitProductReview} className="mt-4 space-y-4">
+                      {reviewError && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{reviewError}</p>}
+                      {reviewEligibility.orders.filter((item) => item.remainingQuantity > 0).length > 1 && (
+                        <label className="block text-sm font-semibold text-slate-700">
+                          Đơn hàng còn lượt đánh giá
+                          <select value={reviewOrderId || ""} onChange={(event) => { setReviewOrderId(Number(event.target.value)); setSelectedExistingReview(null); }} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2">
+                            {reviewEligibility.orders.filter((item) => item.remainingQuantity > 0).map((item) => <option key={item.OrderID} value={item.OrderID}>Đơn #{item.OrderID} · còn {item.remainingQuantity}/{item.quantity} lượt</option>)}
+                          </select>
+                        </label>
+                      )}
+                      <div>
+                        <p className="mb-2 text-sm font-bold text-slate-700">Chất lượng sản phẩm</p>
+                        <div className="flex items-center gap-2">
+                          {[1, 2, 3, 4, 5].map((star) => <button key={star} type="button" onClick={() => setReviewRating(star)} className={`text-3xl ${star <= reviewRating ? "text-amber-400" : "text-slate-300"}`} aria-label={`${star} sao`}>★</button>)}
+                        </div>
+                      </div>
+                      <label className="block text-sm font-semibold text-slate-700">Nhận xét (tùy chọn)
+                        <textarea rows={3} value={reviewComment} onChange={(event) => setReviewComment(event.target.value)} maxLength={4000} className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-normal" placeholder="Chia sẻ trải nghiệm sử dụng sản phẩm…" />
+                      </label>
+                      <div className="flex gap-2">
+                        <button type="submit" disabled={reviewSubmitting || !reviewOrderId} className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-60">{reviewSubmitting ? "Đang gửi…" : "Gửi đánh giá"}</button>
+                        <button type="button" onClick={() => { setReviewFormOpen(false); setReviewError(""); }} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600">Đóng</button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              )}
+              {selectedExistingReview && (
+                <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                  <p className="text-sm font-bold text-emerald-800">Bạn đã đánh giá sản phẩm này trong đơn #{selectedExistingReview.OrderID}</p>
+                  <p className="mt-1 text-amber-500">{"★".repeat(Math.min(5, Math.max(0, Number(selectedExistingReview.Rating) || 0)))}{"☆".repeat(5 - Math.min(5, Math.max(0, Number(selectedExistingReview.Rating) || 0)))}</p>
+                  {selectedExistingReview.Comment && <p className="mt-1 whitespace-pre-line text-sm text-slate-700">{selectedExistingReview.Comment}</p>}
+                </div>
+              )}
               {reviews.length === 0 ? (
                 <p className="mt-4 rounded-xl bg-slate-50 p-4 text-xs text-slate-500 text-center">Sản phẩm chưa có đánh giá nào từ người mua.</p>
               ) : (
@@ -706,6 +865,60 @@ export default function ProductDetailPage() {
                         {"★".repeat(Math.min(5, Math.max(0, Number(review.Rating) || 0)))}{"☆".repeat(5 - Math.min(5, Math.max(0, Number(review.Rating) || 0)))}
                       </p>
                       {review.Comment && <p className="mt-1.5 whitespace-pre-line text-xs leading-relaxed text-slate-600">{review.Comment}</p>}
+                      {review.AdminReply && (
+                        <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50/70 p-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-[11px] font-black text-blue-900">DEVORA phản hồi</p>
+                            {review.AdminReplyAt && !Number.isNaN(Date.parse(review.AdminReplyAt)) && (
+                              <time className="text-[10px] text-blue-500">{new Date(review.AdminReplyAt).toLocaleDateString("vi-VN")}</time>
+                            )}
+                          </div>
+                          <p className="mt-1 whitespace-pre-line text-xs leading-relaxed text-blue-900">{review.AdminReply}</p>
+                        </div>
+                      )}
+                      {isAdmin && (
+                        <div className="mt-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAdminReplyOpen((current) => ({ ...current, [review.ReviewID]: !current[review.ReviewID] }));
+                              setAdminReplyErrors((current) => ({ ...current, [review.ReviewID]: "" }));
+                            }}
+                            className="text-xs font-bold text-blue-700 transition hover:text-blue-900 hover:underline"
+                            aria-expanded={Boolean(adminReplyOpen[review.ReviewID])}
+                          >
+                            {adminReplyOpen[review.ReviewID] ? "Đóng khung phản hồi" : review.AdminReply ? "Chỉnh sửa phản hồi" : "Phản hồi"}
+                          </button>
+                          {adminReplyOpen[review.ReviewID] && (
+                            <div className="mt-2 rounded-xl border border-indigo-100 bg-indigo-50/60 p-3">
+                              <label className="block text-xs font-bold text-indigo-900" htmlFor={`admin-review-reply-${review.ReviewID}`}>
+                                {review.AdminReply ? "Chỉnh sửa phản hồi của cửa hàng" : "Phản hồi đánh giá với quyền Admin"}
+                              </label>
+                              <textarea
+                                id={`admin-review-reply-${review.ReviewID}`}
+                                rows={3}
+                                maxLength={4000}
+                                value={adminReplyDrafts[review.ReviewID] ?? review.AdminReply ?? ""}
+                                onChange={(event) => setAdminReplyDrafts((current) => ({ ...current, [review.ReviewID]: event.target.value }))}
+                                className="mt-2 block w-full rounded-lg border border-indigo-100 bg-white px-3 py-2 text-xs text-slate-700 outline-none focus:border-indigo-400"
+                                placeholder="Nhập phản hồi cho khách hàng…"
+                              />
+                              {adminReplyErrors[review.ReviewID] && <p role="alert" className="mt-2 text-xs text-rose-600">{adminReplyErrors[review.ReviewID]}</p>}
+                              <div className="mt-2 flex justify-end gap-2">
+                                <button type="button" onClick={() => setAdminReplyOpen((current) => ({ ...current, [review.ReviewID]: false }))} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600">Hủy</button>
+                                <button
+                                  type="button"
+                                  onClick={() => void submitAdminReply(review)}
+                                  disabled={savingAdminReplyId === review.ReviewID || !(adminReplyDrafts[review.ReviewID] ?? review.AdminReply ?? "").trim()}
+                                  className="rounded-lg bg-blue-700 px-3 py-2 text-xs font-bold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  {savingAdminReplyId === review.ReviewID ? "Đang lưu…" : review.AdminReply ? "Cập nhật phản hồi" : "Gửi phản hồi"}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>

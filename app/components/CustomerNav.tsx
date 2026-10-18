@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { api, getStoredUser, resolveApiAssetUrl, type User } from "@/lib/api";
+import { api, getCachedProductsSync, getPrimaryProductImage, getStoredUser, resolveApiAssetUrl, type Product, type User } from "@/lib/api";
 import { getCart } from "@/lib/cart";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -15,6 +15,10 @@ function SearchIcon() {
       <path d="m16 16 5 5" />
     </svg>
   );
+}
+
+function normalizeSearchText(value: string) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase().trim();
 }
 
 function CartIcon() {
@@ -151,67 +155,90 @@ export default function CustomerNav({
   useEffect(() => {
     setIsMounted(true);
   }, []);
-  const [cartCount, setCartCount] = useState(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const localCart = getCart();
-        return localCart.reduce((sum, item) => sum + Number(item.quantity || 1), 0);
-      } catch {}
-    }
-    return 0;
-  });
+  // Keep the server render and the first client render identical. Cart data
+  // comes from browser storage/API after mount in the effect below.
+  const [cartCount, setCartCount] = useState(0);
   const [cartBump, setCartBump] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
-  const [user, setUser] = useState<User | null>(() => getStoredUser());
+  const [user, setUser] = useState<User | null>(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [authLoaded, setAuthLoaded] = useState(true);
+  const [authLoaded, setAuthLoaded] = useState(false);
   const isAdmin = String(user?.Role || (user as (User & { role?: string }) | null)?.role || '').toLowerCase() === 'admin';
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState(searchValue);
+  const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [searchProducts, setSearchProducts] = useState<Product[]>([]);
   const [navVisible, setNavVisible] = useState(true);
   const lastScrollY = useRef(0);
   const scrollDelta = useRef(0);
   const scrollDirection = useRef<"up" | "down" | null>(null);
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const accountButtonRef = useRef<HTMLButtonElement>(null);
+  const searchBoxRef = useRef<HTMLDivElement>(null);
+  const searchProductsRequestRef = useRef<Promise<Product[]> | null>(null);
   const router = useRouter();
   const pathname = usePathname();
+  const currentSearch = (onSearchChange ? searchValue : localSearch).trim();
+  const normalizedQuery = normalizeSearchText(currentSearch);
+  const searchSuggestions = normalizedQuery
+    ? searchProducts.filter((product) => normalizeSearchText([
+        product.ProductName,
+        product.CPU,
+        product.RAM,
+        product.Storage,
+        product.Display,
+        product.Series,
+      ].filter(Boolean).join(" ")).includes(normalizedQuery))
+    : [];
 
-  // Xác định tab đang kích hoạt chính xác theo trang gốc người dùng duyệt
-  const getInitialActiveNav = () => {
-    if (typeof window !== "undefined") {
-      if (pathname === "/") return "home";
-      if (pathname === "/customer/products") return "products";
-      if (pathname?.startsWith("/customer/notifications")) return "notifications";
-      if (
-        pathname?.startsWith("/customer/account") ||
-        pathname?.startsWith("/customer/orders") ||
-        pathname?.startsWith("/customer/addresses") ||
-        pathname?.startsWith("/customer/favorites")
-      ) {
-        return "account";
-      }
-      if (pathname === "/login") return "login";
-      if (pathname?.startsWith("/customer/products/")) {
-        const match = pathname.match(/\/customer\/products\/(\d+)/);
-        if (match && match[1]) {
-          try {
-            const specificOrigin = sessionStorage.getItem(`product_origin_${match[1]}`);
-            if (specificOrigin) return specificOrigin;
-          } catch {}
-        }
-        try {
-          const origin = sessionStorage.getItem("active_nav_origin");
-          return origin || "home";
-        } catch {
-          return "home";
-        }
-      }
+  const loadSearchProducts = () => {
+    const cachedProducts = getCachedProductsSync();
+    if (cachedProducts?.length) setSearchProducts(cachedProducts);
+    if (!searchProductsRequestRef.current) {
+      searchProductsRequestRef.current = api.getProducts()
+        .then((items) => {
+          setSearchProducts(items);
+          return items;
+        })
+        .catch(() => cachedProducts || []);
     }
-    return pathname === "/customer/products" ? "products" : "home";
   };
 
-  const [activeNav, setActiveNav] = useState<string>(getInitialActiveNav);
+  const updateSearchValue = (value: string) => {
+    if (onSearchChange) onSearchChange(value);
+    else setLocalSearch(value);
+  };
+
+  const saveSearchHistory = (value: string) => {
+    const term = value.trim();
+    if (!term) return;
+    setSearchHistory((current) => {
+      const next = [term, ...current.filter((item) => normalizeSearchText(item) !== normalizeSearchText(term))].slice(0, 5);
+      try { localStorage.setItem("store_search_history", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const removeSearchHistory = (value: string) => {
+    setSearchHistory((current) => {
+      const next = current.filter((item) => normalizeSearchText(item) !== normalizeSearchText(value));
+      try { localStorage.setItem("store_search_history", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    const closeSearchOnOutsideClick = (event: PointerEvent) => {
+      if (!searchBoxRef.current?.contains(event.target as Node)) setSearchDropdownOpen(false);
+    };
+    document.addEventListener("pointerdown", closeSearchOnOutsideClick);
+    return () => document.removeEventListener("pointerdown", closeSearchOnOutsideClick);
+  }, []);
+
+  // Keep server HTML and the first client render identical. The route and
+  // sessionStorage based active tab are applied in the effect below.
+  const [activeNav, setActiveNav] = useState<string>("");
 
   useEffect(() => {
     if (pathname === "/") {
@@ -307,6 +334,7 @@ export default function CustomerNav({
   useEffect(() => {
     const refreshUser = () => {
       setUser(getStoredUser());
+      setAuthLoaded(true);
     };
 
     refreshUser();
@@ -437,26 +465,44 @@ export default function CustomerNav({
   // Xử lý khi người dùng nhập tìm kiếm hoặc nhấn Enter / bấm icon mũi tên
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const val = event.target.value;
-    if (onSearchChange) {
-      onSearchChange(val);
-    } else {
-      setLocalSearch(val);
-    }
-    window.dispatchEvent(new CustomEvent("store-search", { detail: val }));
+    updateSearchValue(val);
+    setSearchDropdownOpen(true);
   };
 
-  const triggerSearch = () => {
-    const value = onSearchChange ? searchValue : localSearch;
-    if (value.trim()) {
-      router.push(`/customer/products?search=${encodeURIComponent(value.trim())}`);
-    } else {
-      router.push(`/customer/products`);
+  const triggerSearch = (overrideValue?: string) => {
+    const value = overrideValue ?? (onSearchChange ? searchValue : localSearch);
+    const query = value.trim();
+    if (!query) return;
+    saveSearchHistory(value);
+    setSearchDropdownOpen(false);
+    // Chỉ áp dụng bộ lọc khi người dùng chủ động gửi tìm kiếm (Enter/nút mũi tên).
+    window.dispatchEvent(new CustomEvent("store-search", { detail: query }));
+    router.push(`/customer/products?search=${encodeURIComponent(query)}`);
+  };
+
+  const handleSearchFocus = () => {
+    setSearchDropdownOpen(true);
+    loadSearchProducts();
+    try {
+      const stored = JSON.parse(localStorage.getItem("store_search_history") || "[]");
+      if (Array.isArray(stored)) setSearchHistory(stored.filter((item): item is string => typeof item === "string").slice(0, 5));
+    } catch {
+      setSearchHistory([]);
     }
+  };
+
+  const openSuggestedProduct = (product: Product) => {
+    saveSearchHistory(currentSearch);
+    setSearchDropdownOpen(false);
+    router.push(`/customer/products/${product.ProductID}`);
   };
 
   const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
+      event.preventDefault();
       triggerSearch();
+    } else if (event.key === "Escape") {
+      setSearchDropdownOpen(false);
     }
   };
 
@@ -473,7 +519,7 @@ export default function CustomerNav({
             <span className="tracking-tight">DEVORA<span>.VN</span></span>
           </Link>
 
-          <div className="header-search">
+          <div className="header-search" ref={searchBoxRef}>
             <SearchIcon />
             <input
               aria-label="Tìm sản phẩm"
@@ -481,10 +527,14 @@ export default function CustomerNav({
               value={onSearchChange ? searchValue : localSearch}
               onChange={handleSearchChange}
               onKeyDown={handleSearchKeyDown}
+              onFocus={handleSearchFocus}
+              aria-expanded={searchDropdownOpen}
+              aria-controls="header-search-dropdown"
+              aria-autocomplete="list"
             />
             <button
               type="button"
-              onClick={triggerSearch}
+              onClick={() => triggerSearch()}
               className="search-submit-btn"
               title="Tìm kiếm"
               aria-label="Thực hiện tìm kiếm"
@@ -494,6 +544,44 @@ export default function CustomerNav({
                 <path d="m12 5 7 7-7 7" />
               </svg>
             </button>
+            {searchDropdownOpen && (
+              <div id="header-search-dropdown" className="search-dropdown" role="dialog" aria-label={normalizedQuery ? "Gợi ý tìm kiếm sản phẩm" : "Lịch sử tìm kiếm"}>
+                {normalizedQuery ? (
+                  <>
+                    <div className="search-dropdown-heading">Gợi ý sản phẩm <span>{searchSuggestions.length} kết quả</span></div>
+                    {searchSuggestions.length > 0 ? (
+                      <div className="search-dropdown-results" role="listbox" aria-label="Sản phẩm phù hợp">
+                        {searchSuggestions.map((product) => (
+                          <button key={product.ProductID} type="button" role="option" aria-selected="false" className="search-suggestion-item" onClick={() => openSuggestedProduct(product)}>
+                            <img src={getPrimaryProductImage(product.ImageUrl) || "/placeholder.png"} alt="" />
+                            <span className="search-suggestion-copy"><strong>{product.ProductName}</strong><small>{Number(product.DiscountPrice || product.Price || 0).toLocaleString("vi-VN")} ₫</small></span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="search-dropdown-empty">Chưa tìm thấy sản phẩm phù hợp.</p>
+                    )}
+                    {searchSuggestions.length > 5 && <p className="search-dropdown-hint">Cuộn xuống để xem thêm sản phẩm</p>}
+                  </>
+                ) : searchHistory.length > 0 ? (
+                  <>
+                    <div className="search-dropdown-heading">Tìm kiếm gần đây</div>
+                    <div className="search-history-list">
+                      {searchHistory.map((term, index) => (
+                        <div key={`${term}-${index}`} className="search-history-row">
+                          <button type="button" className="search-history-item" onClick={() => { updateSearchValue(term); triggerSearch(term); }}>
+                            <span aria-hidden="true">↻</span><span>{term}</span>
+                          </button>
+                          <button type="button" className="search-history-remove" aria-label={`Xóa lịch sử tìm kiếm ${term}`} title="Xóa lịch sử tìm kiếm" onClick={() => removeSearchHistory(term)}>×</button>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <p className="search-dropdown-empty">Lịch sử tìm kiếm sẽ xuất hiện tại đây.</p>
+                )}
+              </div>
+            )}
           </div>
 
           <nav className="desktop-links">
@@ -753,9 +841,10 @@ export default function CustomerNav({
             try { sessionStorage.setItem("active_nav_origin", "home"); } catch {}
             setActiveNav("home");
           }}
-          className={`nav-bubble-link ${isMounted && activeNav === "home" ? "active" : ""}`}
+          className={`mobile-nav-item ${activeNav === "home" ? "active" : ""}`}
         >
-          <span>Trang chủ</span>
+          <MobileHomeIcon active={activeNav === "home"} />
+          <small>Trang chủ</small>
         </Link>
 
         <Link

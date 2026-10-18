@@ -137,6 +137,13 @@ export default function PageTransitionProvider({ children }: { children: ReactNo
     }
   }, [pathname]);
 
+  // Admin contains a long-lived dashboard shell. Remounting it on every
+  // pathname change resets its state and briefly reveals the storefront's
+  // light transition background between dark admin pages.
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    return <div className="site-content">{children}</div>;
+  }
+
   return (
     <div key={pathname} className="page-transition-wrapper site-content">
       {children}

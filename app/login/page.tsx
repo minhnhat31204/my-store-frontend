@@ -55,6 +55,8 @@ export default function LoginPage() {
       setMessage('Tài khoản của bạn đã được xóa thành công.');
     } else if (params.get('registered') === '1') {
       setMessage('Đăng ký tài khoản thành công! Vui lòng đăng nhập.');
+    } else if (params.get('session') === 'expired') {
+      setMessage('Phiên quản trị đã hết hạn hoặc thiếu mã xác thực. Vui lòng đăng nhập lại.');
     }
 
     const savedPhone = localStorage.getItem('remembered_phone');
@@ -85,6 +87,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const data = await api.login(phone.trim(), password);
+      if (!data.token) throw new Error('Máy chủ không trả mã xác thực. Vui lòng thử lại hoặc kiểm tra kết nối API.');
       const user = data.user ? {
         UserID: data.user.UserID,
         FullName: data.user.FullName,

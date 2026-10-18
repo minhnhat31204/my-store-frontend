@@ -81,6 +81,16 @@ const NAV_GROUPS = [
         ),
       },
       {
+        href: '/admin/reviews',
+        label: 'Đánh giá sản phẩm',
+        badgeKey: null,
+        icon: (
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m12 3 2.7 5.47 6.03.88-4.36 4.25 1.03 6.01L12 16.77l-5.4 2.84 1.03-6.01-4.36-4.25 6.03-.88L12 3z" />
+          </svg>
+        ),
+      },
+      {
         href: '/admin/support',
         label: 'Hỗ trợ khách hàng',
         badgeKey: 'unreadSupport',
@@ -193,12 +203,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     <div className="h-screen overflow-hidden bg-slate-950 text-slate-100 flex flex-col md:flex-row antialiased font-sans">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-72 h-full bg-slate-950/95 border-r border-slate-800/80 p-5 shrink-0 select-none overflow-y-auto z-30">
-        {/* Brand Header with Link to Store */}
-        <Link
-          href="/"
-          title="Bấm để quay về trang chủ mua sắm DEVORA"
-          className="group flex items-center gap-3 px-3 py-3 mb-4 bg-gradient-to-r from-blue-900/20 via-indigo-900/10 to-transparent hover:from-blue-900/30 rounded-2xl border border-blue-500/20 hover:border-blue-500/40 transition shadow-sm"
-        >
+        {/* Brand Header */}
+        <div className="group flex items-center gap-3 px-3 py-3 mb-4 bg-gradient-to-r from-blue-900/20 via-indigo-900/10 to-transparent rounded-2xl border border-blue-500/20 shadow-sm">
           <img src="/devora-icon.png" alt="DEVORA" className="w-11 h-11 rounded-xl object-cover shadow-lg shadow-blue-500/25 ring-2 ring-blue-400/30 group-hover:scale-105 transition-transform shrink-0" />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
@@ -209,26 +215,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               Admin Portal PRO
             </span>
           </div>
-        </Link>
-
-        {/* Big Highlight: Button Về Trang Chủ Mua Sắm */}
-        <Link
-          href="/"
-          className="flex items-center justify-between p-3 mb-5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 text-white transition shadow-lg shadow-blue-600/25 group active:scale-98"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-sm shadow-inner group-hover:scale-110 transition-transform">
-              🛒
-            </div>
-            <div>
-              <p className="text-xs font-black text-white">Về Trang Mua Sắm</p>
-              <p className="text-[10px] text-blue-100 font-medium">Trang chủ devora.id.vn</p>
-            </div>
-          </div>
-          <svg className="w-4 h-4 text-white/80 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-          </svg>
-        </Link>
+        </div>
 
         {/* Navigation Grouped List */}
         <nav className="space-y-6 flex-1">
@@ -335,22 +322,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
       {/* Mobile Top Header */}
       <div className="md:hidden flex items-center justify-between px-4 py-3.5 bg-slate-950/95 backdrop-blur-md border-b border-slate-800 shrink-0 z-40">
-        <Link href="/" className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5">
           <img src="/devora-icon.png" alt="DEVORA" className="w-8 h-8 rounded-lg object-cover shadow-md shrink-0" />
           <div>
             <span className="font-black text-sm tracking-tight text-white block">DEVORA ADMIN</span>
             <span className="text-[9px] font-bold text-blue-400">Portal v2.5</span>
           </div>
-        </Link>
+        </div>
 
         <div className="flex items-center gap-2">
-          <Link
-            href="/"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold shadow-md shadow-blue-600/30"
-          >
-            <span>🛒</span>
-            <span>Về Shop</span>
-          </Link>
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 cursor-pointer"
@@ -401,7 +381,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
-              <span>Về trang chủ mua sắm (Shop)</span>
+              <span>Trở về Trang chủ Shop</span>
             </Link>
             <button
               onClick={handleLogout}
@@ -418,20 +398,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         {/* Top bar for desktop */}
         <header className="sticky top-0 z-20 hidden md:flex items-center justify-between px-8 py-3.5 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800/80 shrink-0">
           <div className="flex items-center gap-3">
-            {/* Direct Back to Home Link */}
-            <Link
-              href="/"
-              title="Quay lại trang chủ bán lẻ https://devora.id.vn/"
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-xs font-bold text-slate-200 border border-slate-700/80 transition group shadow-sm active:scale-95"
-            >
-              <svg className="w-4 h-4 text-blue-400 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              <span>Về Trang Chủ Mua Sắm</span>
-            </Link>
-
-            <span className="text-slate-600">|</span>
-
             <div className="flex items-center gap-2 text-xs font-medium">
               <span className="text-slate-400 font-semibold">Admin</span>
               <span className="text-slate-500">/</span>
@@ -451,15 +417,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               </div>
             )}
 
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 text-xs font-black text-white shadow-lg shadow-blue-600/30 transition transform active:scale-95"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-              <span>🛒 Mua sắm (devora.id.vn)</span>
-            </Link>
           </div>
         </header>
 
@@ -475,9 +432,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             <span>Hệ thống DEVORA Admin Portal v2.5 • Máy chủ hoạt động ổn định</span>
           </div>
           <div className="flex items-center gap-4">
-            <Link href="/" className="text-blue-400 hover:text-blue-300 font-bold">
-              ← Về trang chủ mua sắm
-            </Link>
             <span>© {new Date().getFullYear()} DEVORA.ID.VN. Bản quyền quản trị hệ thống.</span>
           </div>
         </footer>

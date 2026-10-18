@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { api, getPrimaryProductImage, getStoredUser, type StoreOrder, type ProductReview } from "@/lib/api";
+import { api, getPrimaryProductImage, getStoredUser, type StoreOrder } from "@/lib/api";
 
 function statusLabel(status?: string | null) {
   const value = (status || "Pending").toLowerCase();
@@ -60,14 +60,6 @@ export default function OrderDetailPage() {
   const [refundSubmitting, setRefundSubmitting] = useState(false);
   const [refundError, setRefundError] = useState("");
 
-  // Review modal state
-  const [reviewed, setReviewed] = useState(false);
-  const [existingReview, setExistingReview] = useState<ProductReview | null>(null);
-  const [reviewModalOpen, setReviewModalOpen] = useState(false);
-  const [reviewRating, setReviewRating] = useState(5);
-  const [reviewComment, setReviewComment] = useState("");
-  const [reviewSubmitting, setReviewSubmitting] = useState(false);
-  const [reviewError, setReviewError] = useState("");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -77,9 +69,6 @@ export default function OrderDetailPage() {
       }
       if (params.get("payment") === "cancel" || params.get("status") === "cancel" || params.get("cancel") === "true") {
         setIsPaymentCancelled(true);
-      }
-      if (params.get("action") === "review") {
-        setReviewModalOpen(true);
       }
     }
   }, []);
@@ -117,20 +106,28 @@ export default function OrderDetailPage() {
     void loadOrder();
   }, [orderId]);
 
-  // Check review status if order is delivered
+  // Notification review links pass through the order so the app can resolve a product,
+  // then open that product's review section directly.
   useEffect(() => {
+    if (!order || typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("action") !== "review" || !["completed", "delivered", "đã giao", "giao thành công", "đã giao thành công"].includes(String(order.Status || "").toLowerCase())) return;
     const user = getStoredUser();
-    if (!user || !order) return;
-    const isDelivered = ["completed", "delivered", "đã giao"].includes((order.Status || "").toLowerCase());
-    if (isDelivered) {
-      api.checkOrderReview(order.OrderID, user.UserID)
-        .then((res) => {
-          setReviewed(res.reviewed);
-          if (res.review) setExistingReview(res.review);
-        })
-        .catch(() => {});
-    }
-  }, [order]);
+    const productIds = [...new Set((order.OrderItems || []).map((item) => Number(item.ProductID)).filter((id) => id > 0))];
+    if (!user || productIds.length === 0) return;
+    let active = true;
+    void Promise.all(productIds.map(async (productId) => ({
+      productId,
+      eligibility: await api.getProductReviewEligibility(user.UserID, productId, order.OrderID).catch(() => null),
+    }))).then((results) => {
+      if (!active) return;
+      const target = results.find((result) => (result.eligibility?.selectedOrder?.remainingQuantity || 0) > 0)
+        || results.find((result) => (result.eligibility?.selectedOrder?.reviews.length || 0) > 0)
+        || results[0];
+      if (target) router.replace(`/customer/products/${target.productId}?action=review&orderId=${order.OrderID}#reviews`);
+    });
+    return () => { active = false; };
+  }, [order, router]);
 
   useEffect(() => {
     const user = getStoredUser();
@@ -206,31 +203,6 @@ export default function OrderDetailPage() {
     }
   }
 
-  async function handleReviewSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const user = getStoredUser();
-    if (!user || !order) return;
-
-    setReviewSubmitting(true);
-    setReviewError("");
-    try {
-      const res = await api.createOrderReview({
-        UserID: user.UserID,
-        OrderID: order.OrderID,
-        Rating: reviewRating,
-        Comment: reviewComment.trim(),
-      });
-      setReviewed(true);
-      setExistingReview(res.review);
-      setReviewModalOpen(false);
-      alert("Cảm ơn bạn đã gửi đánh giá cho đơn hàng!");
-    } catch (err) {
-      setReviewError(err instanceof Error ? err.message : "Không thể gửi đánh giá.");
-    } finally {
-      setReviewSubmitting(false);
-    }
-  }
-
   const items = order?.OrderItems || [];
   const itemSubtotal = items.reduce((sum, item) => sum + Number(item.UnitPrice || 0) * Number(item.Quantity || 0), 0);
   const discount = Number(order?.DiscountAmount || 0);
@@ -238,10 +210,11 @@ export default function OrderDetailPage() {
 
   const isPaid = order?.Payments?.[0]?.Status === "PAID";
   const orderStatus = (order?.Status || "").toLowerCase();
-  const canSimpleCancel = orderStatus === "pending" && !isPaid;
+  const isCod = order?.PaymentMethod?.trim().toUpperCase() === "COD";
+  const canSimpleCancel = !isPaid && (orderStatus === "pending" || (isCod && ["confirmed", "processing", "preparing", "ready"].includes(orderStatus)));
   const canRefundCancel = isPaid && !["shipping", "shipped", "delivering", "delivered", "completed", "cancelled", "canceled", "refundpending", "pending refund"].includes(orderStatus);
   const isRefundPending = ["refundpending", "pending refund"].includes(orderStatus) || order?.RefundStatus === "pending";
-  const isDelivered = ["completed", "delivered", "đã giao"].includes(orderStatus);
+  const isDelivered = ["completed", "complete", "delivered", "đã giao", "giao thành công", "đã giao thành công"].includes(orderStatus);
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
@@ -366,24 +339,11 @@ export default function OrderDetailPage() {
                   </button>
                 )}
 
-                {/* Nút đánh giá đơn hàng (khi đã giao) */}
+                {/* Đánh giá theo từng sản phẩm đã giao */}
                 {isDelivered && (
-                  reviewed ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-xl bg-amber-50 border border-amber-200 px-3.5 py-2 text-xs font-bold text-amber-800">
-                      ★ Đã đánh giá
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setReviewError("");
-                        setReviewModalOpen(true);
-                      }}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 px-4 py-2 text-sm font-bold text-white hover:bg-amber-600 shadow-sm transition cursor-pointer"
-                    >
-                      ★ Đánh giá đơn hàng
-                    </button>
-                  )
+                  <div className="flex flex-wrap gap-2">
+                    {items.map((item) => <Link key={item.OrderItemID || item.ProductID} href={`/customer/products/${item.ProductID}?action=review&orderId=${order.OrderID}#reviews`} className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 px-4 py-2 text-sm font-bold text-white hover:bg-amber-600 shadow-sm transition">★ Đánh giá {item.Product?.ProductName || "sản phẩm"}</Link>)}
+                  </div>
                 )}
               </div>
             </div>
@@ -648,85 +608,6 @@ export default function OrderDetailPage() {
         </div>
       )}
 
-      {/* POPUP ĐÁNH GIÁ ĐƠN HÀNG */}
-      {reviewModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="text-lg font-black text-slate-900">Đánh giá đơn hàng #{orderId}</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Bạn đã nhận được sản phẩm? Hãy chia sẻ trải nghiệm của bạn nhé!</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setReviewModalOpen(false)}
-                className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-              >
-                ✕
-              </button>
-            </div>
-
-            {reviewError && (
-              <div className="rounded-xl bg-red-50 p-3 text-xs font-semibold text-red-700">
-                {reviewError}
-              </div>
-            )}
-
-            <form onSubmit={handleReviewSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-2">Chất lượng sản phẩm & dịch vụ</label>
-                <div className="flex items-center gap-2">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => setReviewRating(star)}
-                      className="text-3xl transition hover:scale-110 focus:outline-none cursor-pointer"
-                    >
-                      <span className={star <= reviewRating ? "text-amber-400" : "text-slate-300"}>★</span>
-                    </button>
-                  ))}
-                  <span className="ml-2 text-sm font-bold text-amber-600">
-                    {reviewRating === 5 && "Rất hài lòng (5/5)"}
-                    {reviewRating === 4 && "Hài lòng (4/5)"}
-                    {reviewRating === 3 && "Bình thường (3/5)"}
-                    {reviewRating === 2 && "Không hài lòng (2/5)"}
-                    {reviewRating === 1 && "Tệ (1/5)"}
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Nhận xét chi tiết (tùy chọn)</label>
-                <textarea
-                  rows={3}
-                  value={reviewComment}
-                  onChange={(e) => setReviewComment(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-blue-600"
-                  placeholder="Chia sẻ thêm cảm nhận của bạn về chất lượng đóng gói, tốc độ giao hàng, sản phẩm..."
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setReviewModalOpen(false)}
-                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  disabled={reviewSubmitting}
-                  className="rounded-xl bg-blue-700 px-5 py-2.5 text-xs font-bold text-white hover:bg-blue-600 disabled:opacity-60 transition"
-                >
-                  {reviewSubmitting ? "Đang gửi..." : "Gửi đánh giá"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </main>
   );
 }
