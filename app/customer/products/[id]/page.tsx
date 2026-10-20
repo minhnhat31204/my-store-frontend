@@ -424,15 +424,11 @@ export default function ProductDetailPage() {
               try {
                 sessionStorage.setItem("is_pop_nav", "1");
               } catch {}
-              const returnUrl = sessionStorage.getItem(`product_return_url_${productId}`);
-              if (returnUrl) {
-                router.push(returnUrl);
-                return;
-              }
               if (window.history.length > 1) {
                 router.back();
               } else {
-                router.push("/");
+                const returnUrl = sessionStorage.getItem(`product_return_url_${productId}`);
+                router.push(returnUrl || "/");
               }
             }
           }}
@@ -953,9 +949,8 @@ export default function ProductDetailPage() {
                         onClick={() => {
                           try {
                             const origin = sessionStorage.getItem(`product_origin_${productId}`) || "home";
-                            const returnUrl = sessionStorage.getItem(`product_return_url_${productId}`) || "/";
                             sessionStorage.setItem(`product_origin_${item.ProductID}`, origin);
-                            sessionStorage.setItem(`product_return_url_${item.ProductID}`, returnUrl);
+                            sessionStorage.setItem(`product_return_url_${item.ProductID}`, `/customer/products/${productId}`);
                             sessionStorage.setItem("active_nav_origin", origin);
                           } catch {}
                         }}
