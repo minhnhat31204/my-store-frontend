@@ -35,7 +35,7 @@ export function getCachedProductsSync(): Product[] | null {
   if (memoryProductsCache && memoryProductsCache.length > 0) return memoryProductsCache;
   if (typeof window !== "undefined") {
     try {
-      const raw = sessionStorage.getItem("cache_products_list");
+      const raw = localStorage.getItem("cache_products_list") || sessionStorage.getItem("cache_products_list");
       if (raw) {
         memoryProductsCache = JSON.parse(raw);
         return memoryProductsCache;
@@ -49,7 +49,9 @@ export function setCachedProductsSync(products: Product[]) {
   memoryProductsCache = products;
   if (typeof window !== "undefined") {
     try {
-      sessionStorage.setItem("cache_products_list", JSON.stringify(products));
+      const serialized = JSON.stringify(products);
+      localStorage.setItem("cache_products_list", serialized);
+      sessionStorage.setItem("cache_products_list", serialized);
     } catch {}
   }
 }
@@ -58,7 +60,7 @@ export function getCachedCategoriesSync(): StoreCategory[] | null {
   if (memoryCategoriesCache && memoryCategoriesCache.length > 0) return memoryCategoriesCache;
   if (typeof window !== "undefined") {
     try {
-      const raw = sessionStorage.getItem("cache_categories_list");
+      const raw = localStorage.getItem("cache_categories_list") || sessionStorage.getItem("cache_categories_list");
       if (raw) {
         memoryCategoriesCache = JSON.parse(raw);
         return memoryCategoriesCache;
@@ -72,7 +74,9 @@ export function setCachedCategoriesSync(categories: StoreCategory[]) {
   memoryCategoriesCache = categories;
   if (typeof window !== "undefined") {
     try {
-      sessionStorage.setItem("cache_categories_list", JSON.stringify(categories));
+      const serialized = JSON.stringify(categories);
+      localStorage.setItem("cache_categories_list", serialized);
+      sessionStorage.setItem("cache_categories_list", serialized);
     } catch {}
   }
 }

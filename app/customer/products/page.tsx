@@ -42,6 +42,15 @@ export default function ProductsPage() {
   const [addingId, setAddingId] = useState<number | null>(null);
 
   useEffect(() => {
+    if (products.length === 0) {
+      const cached = getCachedProductsSync();
+      if (cached && cached.length > 0) setProducts(cached);
+    }
+    if (categories.length === 0) {
+      const cachedCats = getCachedCategoriesSync();
+      if (cachedCats && cachedCats.length > 0) setCategories(cachedCats);
+    }
+
     api
       .getProducts()
       .then(setProducts)

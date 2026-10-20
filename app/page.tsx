@@ -68,6 +68,14 @@ export default function Home() {
       if (savedCount >= 8) setVisibleCount(savedCount);
     } catch {}
 
+    if (products.length === 0) {
+      const cached = getCachedProductsSync();
+      if (cached && cached.length > 0) {
+        setProducts(cached);
+        setLoading(false);
+      }
+    }
+
     api.getProducts()
       .then((items) => {
         setProducts(items);
@@ -370,10 +378,10 @@ export default function Home() {
             <Link href="/customer/products">Xem tất cả →</Link>
           </div>
 
-          {loading && <p>Đang tải sản phẩm...</p>}
-          {error && <p className="error-message">{error}</p>}
+          {loading && products.length === 0 && <p className="text-center py-8 text-slate-500 font-medium">Đang tải sản phẩm...</p>}
+          {error && products.length === 0 && <p className="error-message">{error}</p>}
 
-          {!loading && !error && (
+          {products.length > 0 && (
             <>
               <div className="product-grid">
                 {visibleProducts.map((product, idx) => (
