@@ -3,7 +3,7 @@
 import { ReactNode, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { getStoredUser, api, User } from '@/lib/api';
+import { getStoredUser, api, User, clearAllAuthSession } from '@/lib/api';
 import { useAdminGuard } from '@/lib/useAdminGuard';
 
 interface AdminLayoutProps {
@@ -179,13 +179,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('sessionToken');
-    localStorage.removeItem('auth_token');
-    sessionStorage.removeItem('user');
-    sessionStorage.removeItem('auth_token');
-    window.dispatchEvent(new Event('user-updated'));
-    router.push('/login');
+    clearAllAuthSession();
+    router.push('/login?logout=1');
   };
 
   const getActiveLabel = () => {

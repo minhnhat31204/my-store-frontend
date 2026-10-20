@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { api, getCachedProductsSync, getPrimaryProductImage, getStoredUser, resolveApiAssetUrl, type Product, type User } from "@/lib/api";
+import { api, clearAllAuthSession, getCachedProductsSync, getPrimaryProductImage, getStoredUser, resolveApiAssetUrl, type Product, type User } from "@/lib/api";
 import { getCart } from "@/lib/cart";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -445,16 +445,11 @@ export default function CustomerNav({
   }, [accountMenuOpen]);
 
   const performLogout = () => {
-    localStorage.removeItem("user");
-    localStorage.removeItem("sessionToken");
-    localStorage.removeItem("auth_token");
-    sessionStorage.removeItem("user");
-    sessionStorage.removeItem("auth_token");
+    clearAllAuthSession();
     setUser(null);
     setAccountMenuOpen(false);
     setShowLogoutConfirm(false);
-    window.dispatchEvent(new Event("user-updated"));
-    window.location.href = "/login";
+    window.location.href = "/login?logout=1";
   };
 
   const handleLogoutClick = () => {

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api, getStoredUser, resolveApiAssetUrl, type User } from '@/lib/api';
+import { api, clearAllAuthSession, getStoredUser, resolveApiAssetUrl, type User } from '@/lib/api';
 
 // --- ICONS ---
 function CameraIcon({ className = "w-5 h-5" }: { className?: string }) {
@@ -596,14 +596,9 @@ export default function AccountPage() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('sessionToken');
-    localStorage.removeItem('auth_token');
-    sessionStorage.removeItem('user');
-    sessionStorage.removeItem('auth_token');
+    clearAllAuthSession();
     setUser(null);
-    window.dispatchEvent(new Event('user-updated'));
-    window.location.href = '/login';
+    window.location.href = '/login?logout=1';
   };
 
   const currentAvatarSrc = avatarPreview || (user?.Avatar ? resolveApiAssetUrl(user.Avatar) : '');

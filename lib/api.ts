@@ -908,3 +908,19 @@ export function getStoredUser(): User | null {
     return null;
   }
 }
+
+export function clearAllAuthSession() {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem("user");
+    localStorage.removeItem("sessionToken");
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("remembered_phone");
+    sessionStorage.removeItem("user");
+    sessionStorage.removeItem("auth_token");
+    sessionStorage.setItem("just_logged_out", "1");
+  } catch {}
+  clearStoredToken();
+  window.dispatchEvent(new Event("user-updated"));
+}
+

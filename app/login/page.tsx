@@ -51,6 +51,21 @@ export default function LoginPage() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
+    const isLogout = params.get('logout') === '1' || sessionStorage.getItem('just_logged_out') === '1';
+
+    if (isLogout) {
+      localStorage.removeItem('remembered_phone');
+      sessionStorage.removeItem('just_logged_out');
+      setPhone('');
+      setPassword('');
+      setRememberMe(false);
+      setMessage('Bạn đã đăng xuất thành công.');
+      try {
+        window.history.replaceState({}, '', '/login');
+      } catch {}
+      return;
+    }
+
     if (params.get('deleted') === '1') {
       setMessage('Tài khoản của bạn đã được xóa thành công.');
     } else if (params.get('registered') === '1') {
@@ -236,10 +251,10 @@ export default function LoginPage() {
           {error && <div role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-center text-sm text-red-700">{error}</div>}
           {message && <div role="status" className="mb-4 rounded-xl bg-blue-50 p-3 text-center text-sm text-blue-800">{message}</div>}
 
-          {step === 'login' && <form onSubmit={handleLogin} className="space-y-4">
+          {step === 'login' && <form onSubmit={handleLogin} className="space-y-4" autoComplete="off">
             <div>
               <label htmlFor="login-phone" className="mb-1 block text-sm font-semibold">Số điện thoại</label>
-              <input id="login-phone" type="tel" inputMode="tel" autoComplete="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0901234567" className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500" />
+              <input id="login-phone" type="tel" inputMode="tel" autoComplete="off" required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0901234567" className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500" />
             </div>
             <div>
               <div className="mb-1 flex items-center justify-between">
@@ -249,7 +264,7 @@ export default function LoginPage() {
                 <input
                   id="login-password"
                   type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
