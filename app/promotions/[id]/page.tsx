@@ -38,12 +38,10 @@ export default function PromotionDetailPage() {
         setPromotion(promoRes.promotion);
         setAllProducts(fullProducts);
 
-        if (promoRes.products && promoRes.products.length > 0) {
+        if (promoRes.products && Array.isArray(promoRes.products)) {
           setProducts(promoRes.products);
         } else {
-          // Nếu banner chưa gắn ID sản phẩm cụ thể, hiển thị các sản phẩm đang có giảm giá
-          const discounted = fullProducts.filter((p) => Number(p.DiscountPrice || 0) > 0 && Number(p.DiscountPrice) < Number(p.Price));
-          setProducts(discounted.length > 0 ? discounted : fullProducts.slice(0, 8));
+          setProducts([]);
         }
       })
       .catch((err) => {
@@ -173,8 +171,18 @@ export default function PromotionDetailPage() {
         </div>
 
         {products.length === 0 ? (
-          <div className="rounded-3xl border border-slate-800 bg-slate-900/40 p-12 text-center text-slate-500">
-            Chưa có sản phẩm nào trong danh mục khuyến mãi này.
+          <div className="rounded-3xl border border-slate-800 bg-slate-900/40 p-12 text-center text-slate-400 space-y-3">
+            <p className="text-4xl">🏷️</p>
+            <p className="text-base font-bold text-white">Chưa có sản phẩm nào trong chương trình khuyến mãi này</p>
+            <p className="text-xs text-slate-400 max-w-md mx-auto">Chỉ các sản phẩm được thiết lập riêng cho banner này mới hiển thị ở đây.</p>
+            <div className="pt-2">
+              <Link
+                href="/customer/products"
+                className="inline-block rounded-xl bg-orange-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-orange-500 shadow-md transition"
+              >
+                Khám phá toàn bộ sản phẩm →
+              </Link>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">

@@ -547,13 +547,13 @@ export const api = {
   getPromotionById: (id: number) =>
     request<{ promotion: Promotion; products: Product[] }>(`/promotions/${id}`),
 
-  createPromotion: (payload: Partial<Promotion>) =>
+  createPromotion: (payload: Partial<Promotion> & { productDiscounts?: Record<string | number, number | string | null> }) =>
     request<Promotion>("/promotions", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
 
-  updatePromotion: (id: number, payload: Partial<Promotion>) =>
+  updatePromotion: (id: number, payload: Partial<Promotion> & { productDiscounts?: Record<string | number, number | string | null> }) =>
     request<{ message: string; promotion?: Promotion }>(`/promotions/${id}`, {
       method: "PUT",
       body: JSON.stringify(payload),
