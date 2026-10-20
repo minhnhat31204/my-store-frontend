@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   api,
+  getCachedProductsSync,
   getPrimaryProductImage,
   Product,
   Promotion,
@@ -28,13 +29,13 @@ function getBannerImage(promotion: Promotion) {
 }
 
 export default function Home() {
-  // Browser cache is unavailable during SSR. Load products in the effect so
-  // the server and first client render show the same loading state.
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>(() => {
+    return getCachedProductsSync() || [];
+  });
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [trackIndex, setTrackIndex] = useState(1);
   const [withTransition, setWithTransition] = useState(true);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [bannerLoading, setBannerLoading] = useState(true);
   const [error, setError] = useState("");
   const [keyword, setKeyword] = useState("");
