@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { api, User } from '@/lib/api';
+import Pagination from '@/app/admin/components/Pagination';
 
 export default function AdminUsers() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
   const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'customer'>('all');
   const [updatingId, setUpdatingId] = useState<number | null>(null);
 
@@ -43,6 +45,9 @@ export default function AdminUsers() {
       return matchSearch && matchRole;
     });
   }, [users, searchTerm, roleFilter]);
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / 20));
+  const currentPage = Math.min(page, totalPages);
+  const visibleUsers = filteredUsers.slice((currentPage - 1) * 20, currentPage * 20);
 
   const adminCount = useMemo(() => users.filter((u) => (u.Role || '').toLowerCase() === 'admin').length, [users]);
   const customerCount = useMemo(() => users.length - adminCount, [users, adminCount]);
@@ -109,7 +114,7 @@ export default function AdminUsers() {
             type="text"
             placeholder="Tìm theo ID, họ tên, email hoặc số điện thoại..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
             className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
           />
         </div>
@@ -123,7 +128,7 @@ export default function AdminUsers() {
           ].map((tab) => (
             <button
               key={tab.key}
-              onClick={() => setRoleFilter(tab.key as typeof roleFilter)}
+              onClick={() => { setRoleFilter(tab.key as typeof roleFilter); setPage(1); }}
               className={`px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
                 roleFilter === tab.key
                   ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
@@ -167,7 +172,7 @@ export default function AdminUsers() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/80">
-                {filteredUsers.map((user) => {
+                {visibleUsers.map((user) => {
                   const isAdmin = (user.Role || '').toLowerCase() === 'admin';
                   const isUpdating = updatingId === user.UserID;
 
@@ -230,6 +235,8 @@ export default function AdminUsers() {
           </div>
         </div>
       )}
+
+      <Pagination currentPage={currentPage} totalItems={filteredUsers.length} onPageChange={setPage} />
     </div>
   );
 }

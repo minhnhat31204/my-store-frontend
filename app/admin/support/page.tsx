@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { api, getStoredUser, type SupportConversation, type SupportMessage } from '@/lib/api';
 import { useAdminGuard } from '@/lib/useAdminGuard';
+import Pagination from '@/app/admin/components/Pagination';
 
 export default function AdminSupportPage() {
   useAdminGuard();
@@ -13,6 +14,7 @@ export default function AdminSupportPage() {
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
   const messagesPane = useRef<HTMLDivElement>(null);
 
   const refreshConversations = useCallback(async () => {
@@ -87,6 +89,9 @@ export default function AdminSupportPage() {
       (c.LastMessage || '').toLowerCase().includes(query)
     );
   });
+  const totalPages = Math.max(1, Math.ceil(filteredConversations.length / 20));
+  const currentPage = Math.min(page, totalPages);
+  const visibleConversations = filteredConversations.slice((currentPage - 1) * 20, currentPage * 20);
 
   const activeConversation = conversations.find((row) => row.ConversationID === selectedId);
 
@@ -129,7 +134,7 @@ export default function AdminSupportPage() {
               type="text"
               placeholder="Tìm theo tên hoặc email..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
             />
           </div>
@@ -140,7 +145,7 @@ export default function AdminSupportPage() {
                 {search ? 'Không có kết quả phù hợp.' : 'Chưa có tin nhắn hỗ trợ nào.'}
               </p>
             )}
-            {filteredConversations.map((conversation) => {
+            {visibleConversations.map((conversation) => {
               const isSelected = selectedId === conversation.ConversationID;
               return (
                 <button
@@ -182,6 +187,9 @@ export default function AdminSupportPage() {
                 </button>
               );
             })}
+          </div>
+          <div className="shrink-0 border-t border-slate-800 p-2">
+            <Pagination currentPage={currentPage} totalItems={filteredConversations.length} onPageChange={setPage} />
           </div>
         </aside>
 

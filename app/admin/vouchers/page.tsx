@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { api, type Voucher } from '@/lib/api';
+import Pagination from '@/app/admin/components/Pagination';
 
 type FormState = {
   Code: string;
@@ -34,6 +35,7 @@ export default function AdminVouchersPage() {
 
   // Search & Filter
   const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'paused' | 'expired'>('all');
 
   // Modal create/edit
@@ -128,6 +130,9 @@ export default function AdminVouchersPage() {
       return true;
     });
   }, [vouchers, searchTerm, statusFilter]);
+  const totalPages = Math.max(1, Math.ceil(filteredVouchers.length / 20));
+  const currentPage = Math.min(page, totalPages);
+  const visibleVouchers = filteredVouchers.slice((currentPage - 1) * 20, currentPage * 20);
 
   function handleOpenCreate() {
     setEditingId(null);
@@ -311,7 +316,7 @@ export default function AdminVouchersPage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <button
-          onClick={() => setStatusFilter('all')}
+          onClick={() => { setStatusFilter('all'); setPage(1); }}
           className={`p-4 rounded-2xl border text-left transition ${
             statusFilter === 'all'
               ? 'bg-blue-600/10 border-blue-500/50 shadow-lg shadow-blue-950/40'
@@ -323,7 +328,7 @@ export default function AdminVouchersPage() {
         </button>
 
         <button
-          onClick={() => setStatusFilter('active')}
+          onClick={() => { setStatusFilter('active'); setPage(1); }}
           className={`p-4 rounded-2xl border text-left transition ${
             statusFilter === 'active'
               ? 'bg-emerald-600/10 border-emerald-500/50 shadow-lg shadow-emerald-950/40'
@@ -335,7 +340,7 @@ export default function AdminVouchersPage() {
         </button>
 
         <button
-          onClick={() => setStatusFilter('paused')}
+          onClick={() => { setStatusFilter('paused'); setPage(1); }}
           className={`p-4 rounded-2xl border text-left transition ${
             statusFilter === 'paused'
               ? 'bg-amber-600/10 border-amber-500/50 shadow-lg shadow-amber-950/40'
@@ -347,7 +352,7 @@ export default function AdminVouchersPage() {
         </button>
 
         <button
-          onClick={() => setStatusFilter('expired')}
+          onClick={() => { setStatusFilter('expired'); setPage(1); }}
           className={`p-4 rounded-2xl border text-left transition ${
             statusFilter === 'expired'
               ? 'bg-rose-600/10 border-rose-500/50 shadow-lg shadow-rose-950/40'
@@ -369,7 +374,7 @@ export default function AdminVouchersPage() {
             type="text"
             placeholder="Tìm theo mã voucher (VD: GAMING500K) hoặc tên chương trình..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
             className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
           />
         </div>
@@ -400,7 +405,7 @@ export default function AdminVouchersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/80">
-                {filteredVouchers.map((v) => {
+                {visibleVouchers.map((v) => {
                   let isExpired = false;
                   if (v.ExpiryDate) {
                     const exp = new Date(v.ExpiryDate);
@@ -504,6 +509,8 @@ export default function AdminVouchersPage() {
           </div>
         </div>
       )}
+
+      <Pagination currentPage={currentPage} totalItems={filteredVouchers.length} onPageChange={setPage} />
 
       {/* Modal Create / Edit Voucher */}
       {openModal && (

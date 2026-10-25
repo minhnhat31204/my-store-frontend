@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { api, getPrimaryProductImage, type ProductReview } from '@/lib/api';
+import Pagination from '@/app/admin/components/Pagination';
 
 function dateTime(value?: string | null) {
   if (!value) return '—';
@@ -13,6 +14,7 @@ export default function AdminReviewsPage() {
   const [reviews, setReviews] = useState<ProductReview[]>([]);
   const [replies, setReplies] = useState<Record<number, string>>({});
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [savingId, setSavingId] = useState<number | null>(null);
@@ -58,6 +60,9 @@ export default function AdminReviewsPage() {
     }
     return [...grouped.entries()].sort((a, b) => a[1].name.localeCompare(b[1].name, 'vi'));
   }, [reviews, search]);
+  const totalPages = Math.max(1, Math.ceil(groups.length / 20));
+  const currentPage = Math.min(page, totalPages);
+  const visibleGroups = groups.slice((currentPage - 1) * 20, currentPage * 20);
 
   async function saveReply(review: ProductReview) {
     const reply = (replies[review.ReviewID] || '').trim();
@@ -96,7 +101,7 @@ export default function AdminReviewsPage() {
 
       <label className="block">
         <span className="sr-only">Tìm sản phẩm hoặc đánh giá</span>
-        <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm theo tên sản phẩm, khách hàng hoặc nội dung đánh giá…" className="w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-blue-500" />
+        <input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Tìm theo tên sản phẩm, khách hàng hoặc nội dung đánh giá…" className="w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-blue-500" />
       </label>
 
       {error && <p role="alert" className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm font-semibold text-rose-300">{error}</p>}
@@ -106,7 +111,7 @@ export default function AdminReviewsPage() {
         <div className="rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 p-14 text-center text-slate-400">{reviews.length ? 'Không tìm thấy đánh giá phù hợp.' : 'Chưa có đánh giá sản phẩm nào.'}</div>
       ) : (
         <div className="space-y-5">
-          {groups.map(([productId, group]) => (
+          {visibleGroups.map(([productId, group]) => (
             <section key={productId} className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/80 shadow-xl">
               <header className="flex items-center gap-4 border-b border-slate-800 bg-slate-950/60 p-4 sm:p-5">
                 {group.image ? <img src={getPrimaryProductImage(group.image)} alt="" className="h-14 w-14 rounded-xl border border-slate-800 bg-white object-contain p-1" /> : <div className="grid h-14 w-14 place-items-center rounded-xl border border-slate-800 bg-slate-900 text-xl text-slate-500">▧</div>}
@@ -144,6 +149,8 @@ export default function AdminReviewsPage() {
           ))}
         </div>
       )}
+
+      <Pagination currentPage={currentPage} totalItems={groups.length} onPageChange={setPage} />
     </div>
   );
 }

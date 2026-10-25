@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api, getPrimaryProductImage, type StoreOrder } from '@/lib/api';
+import Pagination from '@/app/admin/components/Pagination';
 
 function money(value?: number | string | null) {
   return `${Number(value || 0).toLocaleString('vi-VN')} ₫`;
@@ -15,6 +16,7 @@ function dateTime(value?: string | null) {
 
 export default function AdminRefundsPage() {
   const [requests, setRequests] = useState<StoreOrder[]>([]);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<StoreOrder | null>(null);
@@ -22,6 +24,9 @@ export default function AdminRefundsPage() {
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectNote, setRejectNote] = useState('');
+  const totalPages = Math.max(1, Math.ceil(requests.length / 20));
+  const currentPage = Math.min(page, totalPages);
+  const visibleRequests = requests.slice((currentPage - 1) * 20, currentPage * 20);
 
   const loadRequests = async () => {
     setLoading(true);
@@ -134,7 +139,7 @@ export default function AdminRefundsPage() {
         </div>
       ) : (
         <div className="grid gap-4">
-          {requests.map((order) => {
+          {visibleRequests.map((order) => {
             const isProcessing = processingId === order.OrderID;
             return (
               <div
@@ -233,6 +238,8 @@ export default function AdminRefundsPage() {
           })}
         </div>
       )}
+
+      <Pagination currentPage={currentPage} totalItems={requests.length} onPageChange={setPage} />
 
       {/* Modal từ chối */}
       {rejectModalOpen && selectedOrder && (

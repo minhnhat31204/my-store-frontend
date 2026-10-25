@@ -1,7 +1,8 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { api, getPrimaryProductImage, Product, ProductVariant, resolveApiAssetUrl } from '@/lib/api';
+import { api, getPrimaryProductImage, Product, ProductVariant, resolveApiAssetUrl, StoreCategory } from '@/lib/api';
+import Pagination from '@/app/admin/components/Pagination';
 
 interface SpecItem {
   id: string;
@@ -50,6 +51,7 @@ const COMMON_SPEC_SUGGESTIONS = [
 
 const emptyForm = {
   ProductName: '',
+  CategoryID: '',
   Price: '',
   DiscountPrice: '',
   StockQuantity: '0',
@@ -58,6 +60,7 @@ const emptyForm = {
 
 export default function AdminProducts() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<StoreCategory[]>([]);
   const [form, setForm] = useState(emptyForm);
   const [specsList, setSpecsList] = useState<SpecItem[]>([]);
   const [variantsList, setVariantsList] = useState<VariantItem[]>([]);
@@ -68,6 +71,7 @@ export default function AdminProducts() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
   const [stockFilter, setStockFilter] = useState<'all' | 'instock' | 'lowstock' | 'outofstock'>('all');
 
   // State quản lý danh sách nhiều ảnh theo thứ tự 1...
@@ -92,6 +96,7 @@ export default function AdminProducts() {
 
   useEffect(() => {
     void load();
+    api.getCategories().then((data) => setCategories(Array.isArray(data) ? data : [])).catch(() => setCategories([]));
   }, []);
 
   const stats = useMemo(() => {
@@ -122,6 +127,9 @@ export default function AdminProducts() {
       return matchSearch && matchStock;
     });
   }, [products, searchTerm, stockFilter]);
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / 20));
+  const currentPage = Math.min(page, totalPages);
+  const visibleProducts = filteredProducts.slice((currentPage - 1) * 20, currentPage * 20);
 
   function openCreate() {
     setEditingId(null);
@@ -145,6 +153,7 @@ export default function AdminProducts() {
     setEditingId(item.ProductID);
     setForm({
       ProductName: item.ProductName || '',
+      CategoryID: item.CategoryID != null ? String(item.CategoryID) : '',
       Price: String(item.Price ?? ''),
       DiscountPrice: item.DiscountPrice != null ? String(item.DiscountPrice) : '',
       StockQuantity: String(item.StockQuantity ?? 0),
@@ -389,6 +398,7 @@ export default function AdminProducts() {
 
     const payload: Partial<Product> = {
       ProductName: form.ProductName.trim(),
+      CategoryID: form.CategoryID ? Number(form.CategoryID) : null,
       Price: rawPrice,
       DiscountPrice: rawDiscount,
       StockQuantity: Number(form.StockQuantity || 0),
@@ -507,7 +517,7 @@ export default function AdminProducts() {
       {/* Stock Summary Statistics Badges */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <button
-          onClick={() => setStockFilter('all')}
+          onClick={() => { setStockFilter('all'); setPage(1); }}
           className={`p-4 rounded-2xl border text-left transition ${
             stockFilter === 'all'
               ? 'bg-blue-600/10 border-blue-500/50 shadow-lg shadow-blue-950/40'
@@ -519,7 +529,7 @@ export default function AdminProducts() {
         </button>
 
         <button
-          onClick={() => setStockFilter('instock')}
+          onClick={() => { setStockFilter('instock'); setPage(1); }}
           className={`p-4 rounded-2xl border text-left transition ${
             stockFilter === 'instock'
               ? 'bg-emerald-600/10 border-emerald-500/50 shadow-lg shadow-emerald-950/40'
@@ -531,7 +541,7 @@ export default function AdminProducts() {
         </button>
 
         <button
-          onClick={() => setStockFilter('lowstock')}
+          onClick={() => { setStockFilter('lowstock'); setPage(1); }}
           className={`p-4 rounded-2xl border text-left transition ${
             stockFilter === 'lowstock'
               ? 'bg-amber-600/10 border-amber-500/50 shadow-lg shadow-amber-950/40'
@@ -543,7 +553,7 @@ export default function AdminProducts() {
         </button>
 
         <button
-          onClick={() => setStockFilter('outofstock')}
+          onClick={() => { setStockFilter('outofstock'); setPage(1); }}
           className={`p-4 rounded-2xl border text-left transition ${
             stockFilter === 'outofstock'
               ? 'bg-rose-600/10 border-rose-500/50 shadow-lg shadow-rose-950/40'
@@ -565,7 +575,7 @@ export default function AdminProducts() {
             type="text"
             placeholder="Tìm kiếm theo mã sản phẩm hoặc tên máy..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
             className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
           />
         </div>
@@ -602,7 +612,7 @@ export default function AdminProducts() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/80">
-                {filteredProducts.map((item) => {
+                {visibleProducts.map((item) => {
                   const stock = Number(item.StockQuantity ?? 0);
                   const isLow = stock > 0 && stock <= 5;
                   const isOut = stock <= 0;
@@ -637,6 +647,9 @@ export default function AdminProducts() {
                       <td className="px-5 py-4">
                         <p className="font-bold text-white text-sm max-w-xs sm:max-w-md line-clamp-2">
                           {item.ProductName}
+                        </p>
+                        <p className="mt-1 text-[11px] font-semibold text-cyan-300">
+                          {categories.find((category) => category.CategoryID === Number(item.CategoryID))?.CategoryName || 'Chưa phân loại'}
                         </p>
                         {item.Description && (
                           <p className="text-xs text-slate-400 max-w-xs sm:max-w-md truncate mt-1">
@@ -703,6 +716,8 @@ export default function AdminProducts() {
         </div>
       )}
 
+      <Pagination currentPage={currentPage} totalItems={filteredProducts.length} onPageChange={setPage} />
+
       {/* Modal Thêm / Sửa Sản Phẩm (Bố cục flexbox chống lỗi cuộn dính header) */}
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-6 backdrop-blur-md">
@@ -750,6 +765,20 @@ export default function AdminProducts() {
                   onChange={(e) => setForm({ ...form, ProductName: e.target.value })}
                   className="w-full rounded-2xl bg-slate-950 border border-slate-800 p-3 text-sm text-white focus:outline-none focus:border-blue-500 transition placeholder:text-slate-600"
                 />
+              </div>
+
+              <div>
+                <label htmlFor="product-category" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-300">Danh mục</label>
+                <select
+                  id="product-category"
+                  value={form.CategoryID}
+                  onChange={(e) => setForm({ ...form, CategoryID: e.target.value })}
+                  className="w-full rounded-2xl border border-slate-800 bg-slate-950 p-3 text-sm text-white outline-none transition focus:border-blue-500"
+                >
+                  <option value="">Chưa phân loại</option>
+                  {categories.map((category) => <option key={category.CategoryID} value={category.CategoryID}>{category.CategoryName}</option>)}
+                </select>
+                {categories.length === 0 && <p className="mt-1.5 text-[11px] text-amber-300">Chưa có danh mục. Tạo danh mục trong mục “Quản lý danh mục”.</p>}
               </div>
 
               {/* 1. GIÁ BÁN GỐC, GIÁ HIỂN THỊ, TỒN KHO */}

@@ -29,13 +29,12 @@ function getBannerImage(promotion: Promotion) {
 }
 
 export default function Home() {
-  const [products, setProducts] = useState<Product[]>(() => {
-    return getCachedProductsSync() || [];
-  });
+  // Keep the server and first client render identical; browser cache is read after hydration.
+  const [products, setProducts] = useState<Product[]>([]);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [trackIndex, setTrackIndex] = useState(1);
   const [withTransition, setWithTransition] = useState(true);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [bannerLoading, setBannerLoading] = useState(true);
   const [error, setError] = useState("");
   const [keyword, setKeyword] = useState("");
@@ -69,12 +68,10 @@ export default function Home() {
       if (savedCount >= 8) setVisibleCount(savedCount);
     } catch {}
 
-    if (products.length === 0) {
-      const cached = getCachedProductsSync();
-      if (cached && cached.length > 0) {
-        setProducts(cached);
-        setLoading(false);
-      }
+    const cachedProducts = getCachedProductsSync() || [];
+    if (cachedProducts.length > 0) {
+      setProducts(cachedProducts);
+      setLoading(false);
     }
 
     api.getProducts()
@@ -83,7 +80,7 @@ export default function Home() {
         setError("");
       })
       .catch((e) => {
-        if (products.length === 0) {
+        if (cachedProducts.length === 0) {
           setError(e instanceof Error ? e.message : "Không thể tải sản phẩm");
         }
       })

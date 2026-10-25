@@ -407,6 +407,21 @@ export const api = {
     return data;
   },
 
+  createCategory: (payload: { CategoryName: string; ImageUrl?: string | null }) =>
+    request<StoreCategory>("/categories", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  updateCategory: (id: number, payload: { CategoryName: string; ImageUrl?: string | null }) =>
+    request<{ message: string; category: StoreCategory }>(`/categories/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  deleteCategory: (id: number) =>
+    request<{ message: string }>(`/categories/${id}`, { method: "DELETE" }),
+
   getVouchers: () => request<Voucher[]>("/vouchers"),
 
   getVoucherById: (id: number) => request<Voucher>(`/vouchers/${id}`),

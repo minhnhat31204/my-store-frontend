@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { api, getPrimaryProductImage, type StoreOrder } from '@/lib/api';
+import Pagination from '@/app/admin/components/Pagination';
 
 const STATUS_OPTIONS = [
   { value: 'Pending', label: 'Chờ xác nhận', style: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
@@ -52,6 +53,7 @@ export default function AdminOrders() {
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('all');
   const [monthFilter, setMonthFilter] = useState('');
   const [statusHistory, setStatusHistory] = useState<Awaited<ReturnType<typeof api.getOrderStatusHistory>>>([]);
@@ -87,6 +89,9 @@ export default function AdminOrders() {
       return matchesQuery && matchesStatus && (!monthFilter || orderMonth === monthFilter);
     });
   }, [orders, search, statusFilter, monthFilter]);
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / 20));
+  const currentPage = Math.min(page, totalPages);
+  const visibleOrders = filteredOrders.slice((currentPage - 1) * 20, currentPage * 20);
 
   const openOrder = (order: StoreOrder) => {
     setSelected(order);
@@ -165,7 +170,7 @@ export default function AdminOrders() {
         {/* Status Tab Chips */}
         <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
           <button
-            onClick={() => setStatusFilter('all')}
+            onClick={() => { setStatusFilter('all'); setPage(1); }}
             className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition whitespace-nowrap flex items-center gap-2 ${
               statusFilter === 'all'
                 ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
@@ -181,7 +186,7 @@ export default function AdminOrders() {
           {STATUS_OPTIONS.map((opt) => (
             <button
               key={opt.value}
-              onClick={() => setStatusFilter(opt.value)}
+              onClick={() => { setStatusFilter(opt.value); setPage(1); }}
               className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition whitespace-nowrap flex items-center gap-2 ${
                 statusFilter === opt.value
                   ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
@@ -205,7 +210,7 @@ export default function AdminOrders() {
             <input
               type="text"
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => { setSearch(event.target.value); setPage(1); }}
               placeholder="Tìm theo mã đơn (#123), người nhận, số điện thoại, email..."
               className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
             />
@@ -214,7 +219,7 @@ export default function AdminOrders() {
           <input
             type="month"
             value={monthFilter}
-            onChange={(event) => setMonthFilter(event.target.value)}
+            onChange={(event) => { setMonthFilter(event.target.value); setPage(1); }}
             className="rounded-2xl border border-slate-800 bg-slate-950 px-3.5 py-2.5 text-xs font-semibold text-white outline-none focus:border-blue-500 cursor-pointer"
           />
         </div>
@@ -251,7 +256,7 @@ export default function AdminOrders() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/80">
-                {filteredOrders.map((order) => {
+                {visibleOrders.map((order) => {
                   const status = statusInfo(order.Status);
                   return (
                     <tr key={order.OrderID} className="hover:bg-slate-800/40 transition">
@@ -294,7 +299,7 @@ export default function AdminOrders() {
 
           {/* Mobile Card View */}
           <div className="divide-y divide-slate-800 sm:hidden">
-            {filteredOrders.map((order) => {
+            {visibleOrders.map((order) => {
               const status = statusInfo(order.Status);
               return (
                 <div key={order.OrderID} className="p-4 space-y-3">
@@ -330,6 +335,8 @@ export default function AdminOrders() {
           </div>
         </div>
       )}
+
+      <Pagination currentPage={currentPage} totalItems={filteredOrders.length} onPageChange={setPage} />
 
       {/* Modal / Drawer Chi tiết Đơn hàng */}
       {selected && (

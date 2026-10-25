@@ -71,6 +71,16 @@ const NAV_GROUPS = [
     title: 'Kho hàng & Dịch vụ',
     items: [
       {
+        href: '/admin/categories',
+        label: 'Quản lý danh mục',
+        badgeKey: null,
+        icon: (
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 5h7v6H4zM15 5h5v6h-5zM4 15h7v4H4zM15 15h5v4h-5z" />
+          </svg>
+        ),
+      },
+      {
         href: '/admin/products',
         label: 'Kho sản phẩm',
         badgeKey: 'lowStock',
@@ -389,7 +399,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       )}
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto bg-slate-950">
+      <div id="admin-main-scroll" className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto bg-slate-950">
         {/* Top bar for desktop */}
         <header className="sticky top-0 z-20 hidden md:flex items-center justify-between px-8 py-3.5 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800/80 shrink-0">
           <div className="flex items-center gap-3">

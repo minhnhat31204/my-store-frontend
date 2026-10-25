@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { api, getPrimaryProductImage, Product, Promotion, setCachedProductsSync } from '@/lib/api';
+import Pagination from '@/app/admin/components/Pagination';
 
 export default function AdminBannersPage() {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [page, setPage] = useState(1);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -24,6 +26,7 @@ export default function AdminBannersPage() {
   const [selectedProductIds, setSelectedProductIds] = useState<number[]>([]);
   const [productDiscountPrices, setProductDiscountPrices] = useState<Record<number, number | string>>({});
   const [productSearch, setProductSearch] = useState('');
+  const [productPickerPage, setProductPickerPage] = useState(1);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [isActive, setIsActive] = useState(true);
@@ -261,6 +264,12 @@ export default function AdminBannersPage() {
     if (!kw) return products;
     return products.filter((p) => p.ProductName.toLowerCase().includes(kw));
   }, [products, productSearch]);
+  const pickerTotalPages = Math.max(1, Math.ceil(filteredProductsToChoose.length / 20));
+  const pickerCurrentPage = Math.min(productPickerPage, pickerTotalPages);
+  const visibleProductsToChoose = filteredProductsToChoose.slice((pickerCurrentPage - 1) * 20, pickerCurrentPage * 20);
+  const promoTotalPages = Math.max(1, Math.ceil(promotions.length / 20));
+  const promoCurrentPage = Math.min(page, promoTotalPages);
+  const visiblePromotions = promotions.slice((promoCurrentPage - 1) * 20, promoCurrentPage * 20);
 
   const selectedProductsList = useMemo(() => {
     return selectedProductIds
@@ -315,7 +324,7 @@ export default function AdminBannersPage() {
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {promotions.map((p) => {
+          {visiblePromotions.map((p) => {
             const img = p.ImageUrl || p.BannerImageUrl || '/banner-placeholder.jpg';
             let promoProductCount = 0;
             if (p.ProductIDs) {
@@ -388,6 +397,8 @@ export default function AdminBannersPage() {
           })}
         </div>
       )}
+
+      <Pagination currentPage={promoCurrentPage} totalItems={promotions.length} onPageChange={setPage} />
 
       {/* Modal tạo / sửa Banner */}
       {modalOpen && (
@@ -587,13 +598,13 @@ export default function AdminBannersPage() {
                   <input
                     type="text"
                     value={productSearch}
-                    onChange={(e) => setProductSearch(e.target.value)}
+                    onChange={(e) => { setProductSearch(e.target.value); setProductPickerPage(1); }}
                     placeholder="🔍 Nhập tên sản phẩm để tìm nhanh và thêm..."
                     className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-200 outline-none focus:border-orange-500"
                   />
 
-                  <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/90 divide-y divide-slate-800/40">
-                    {filteredProductsToChoose.map((p) => {
+                  <div id="banner-product-picker-list" className="max-h-48 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/90 divide-y divide-slate-800/40">
+                    {visibleProductsToChoose.map((p) => {
                       const isSelected = selectedProductIds.includes(p.ProductID);
                       return (
                         <div
@@ -632,6 +643,7 @@ export default function AdminBannersPage() {
                       );
                     })}
                   </div>
+                  <Pagination currentPage={pickerCurrentPage} totalItems={filteredProductsToChoose.length} onPageChange={setProductPickerPage} scrollTargetId="banner-product-picker-list" />
                 </div>
               </div>
 
