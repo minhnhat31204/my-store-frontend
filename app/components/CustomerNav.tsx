@@ -349,6 +349,51 @@ export default function CustomerNav({
   }, []);
 
   useEffect(() => {
+    let active = true;
+    let requestInFlight = false;
+
+    const syncUserFromServer = async () => {
+      if (document.visibilityState !== "visible" || requestInFlight) return;
+      const cachedUser = getStoredUser();
+      if (!cachedUser?.UserID) return;
+
+      requestInFlight = true;
+      try {
+        const result = await api.getCurrentUser();
+        if (!active || Number(result.user.UserID) !== Number(cachedUser.UserID)) return;
+
+        const latestCachedUser = getStoredUser();
+        if (!latestCachedUser || Number(latestCachedUser.UserID) !== Number(result.user.UserID)) return;
+        if (JSON.stringify(result.user) === JSON.stringify(latestCachedUser)) return;
+
+        localStorage.setItem("user", JSON.stringify(result.user));
+        setUser(result.user);
+        setAuthLoaded(true);
+        window.dispatchEvent(new Event("user-updated"));
+      } catch {
+        // Keep the cached profile if the API is temporarily unavailable.
+      } finally {
+        requestInFlight = false;
+      }
+    };
+
+    syncUserFromServer();
+    const interval = window.setInterval(syncUserFromServer, 5000);
+    const syncWhenVisible = () => {
+      if (document.visibilityState === "visible") syncUserFromServer();
+    };
+    window.addEventListener("focus", syncWhenVisible);
+    document.addEventListener("visibilitychange", syncWhenVisible);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", syncWhenVisible);
+      document.removeEventListener("visibilitychange", syncWhenVisible);
+    };
+  }, []);
+
+  useEffect(() => {
     const fetchCartCount = async () => {
       try {
         const storedUser = getStoredUser();

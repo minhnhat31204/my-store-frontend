@@ -648,6 +648,9 @@ export const api = {
       body: JSON.stringify({ userId, email, otp }),
     }),
 
+  getCurrentUser: () =>
+    request<{ user: User }>("/auth/me"),
+
   // =========================
   // USERS (ADMIN)
   // =========================
@@ -669,7 +672,6 @@ export const api = {
       bio?: string;
       gender?: string;
       birthday?: string;
-      phone?: string;
       address?: string;
       avatar?: File | Blob;
     }
@@ -680,7 +682,6 @@ export const api = {
     if (payload.bio !== undefined) body.set('bio', payload.bio);
     if (payload.gender !== undefined) body.set('gender', payload.gender);
     if (payload.birthday !== undefined) body.set('birthday', payload.birthday);
-    if (payload.phone !== undefined) body.set('phone', payload.phone);
     if (payload.address !== undefined) body.set('address', payload.address);
     if (payload.avatar) {
       if (payload.avatar instanceof File) {

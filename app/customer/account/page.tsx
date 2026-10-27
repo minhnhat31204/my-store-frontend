@@ -358,7 +358,6 @@ export default function AccountPage() {
   const [bio, setBio] = useState('');
   const [gender, setGender] = useState('Nam');
   const [birthday, setBirthday] = useState('');
-  const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   
   // Avatar & Cropper States
@@ -402,18 +401,26 @@ export default function AccountPage() {
 
   // Load User Data
   useEffect(() => {
-    const stored = getStoredUser();
-    setUser(stored);
-    if (stored) {
+    const refreshUser = () => {
+      const stored = getStoredUser();
+      setUser(stored);
+      if (!stored) return;
       setProfileName(stored.FullName || '');
       setUsername(stored.Username || '');
       setBio(stored.Bio || '');
       setGender(stored.Gender || 'Nam');
       setBirthday(stored.Birthday ? String(stored.Birthday).slice(0, 10) : '');
-      setPhone(stored.Phone || '');
       setAddress(stored.Address || '');
       setRecoveryEmail(stored.RecoveryEmail || '');
-    }
+    };
+
+    refreshUser();
+    window.addEventListener('user-updated', refreshUser);
+    window.addEventListener('storage', refreshUser);
+    return () => {
+      window.removeEventListener('user-updated', refreshUser);
+      window.removeEventListener('storage', refreshUser);
+    };
   }, []);
 
   // Cleanup object URLs on unmount
@@ -475,7 +482,6 @@ export default function AccountPage() {
         bio: bio.trim() || undefined,
         gender,
         birthday: birthday || undefined,
-        phone: phone.trim() || undefined,
         address: address.trim() || undefined,
         avatar: avatarBlob || undefined,
       });
@@ -721,7 +727,7 @@ export default function AccountPage() {
                 className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition"
               >
                 <CameraIcon className="w-3.5 h-3.5" />
-                <span>Chỉnh sửa ảnh tròn</span>
+                <span>Chỉnh sửa ảnh đại diện</span>
               </button>
             </div>
 
@@ -986,40 +992,15 @@ export default function AccountPage() {
                     </p>
                   </div>
 
-                  <form onSubmit={handleSaveProfile} className="mt-6 space-y-5">
-                    <div>
-                      <label htmlFor="phone-input" className="block text-xs font-bold text-slate-700">
-                        Số điện thoại
-                      </label>
-                      <input
-                        id="phone-input"
-                        type="tel"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        placeholder="0912345678"
-                        className="mt-1.5 w-full sm:w-80 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
-                      />
+                  <div className="mt-6 space-y-4">
+                    <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                      <p className="text-xs font-bold text-slate-500">Số điện thoại tài khoản</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-800">{user.Phone || 'Chưa có số điện thoại'}</p>
                     </div>
-
-                    {profileError && (
-                      <p role="alert" className="rounded-xl bg-red-50 p-3 text-xs font-bold text-red-700">
-                        {profileError}
-                      </p>
-                    )}
-                    {profileMessage && (
-                      <p role="status" className="rounded-xl bg-emerald-50 p-3 text-xs font-bold text-emerald-700">
-                        {profileMessage}
-                      </p>
-                    )}
-
-                    <button
-                      type="submit"
-                      disabled={profileLoading}
-                      className="rounded-xl bg-blue-600 px-6 py-3 text-xs font-black text-white shadow-md transition hover:bg-blue-700 active:scale-95 disabled:opacity-50"
-                    >
-                      {profileLoading ? 'Đang lưu…' : 'Cập nhật số điện thoại'}
-                    </button>
-                  </form>
+                    <p className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800">
+                      Số điện thoại được cố định sau khi tạo tài khoản và dùng làm thông tin đăng nhập.
+                    </p>
+                  </div>
                 </section>
               )}
 
