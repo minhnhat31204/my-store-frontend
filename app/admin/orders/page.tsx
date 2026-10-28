@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, getPrimaryProductImage, type StoreOrder } from '@/lib/api';
 import Pagination from '@/app/admin/components/Pagination';
+import { useAdminData } from '@/lib/useAdminData';
+import { exportToExcel } from '@/lib/exportExcel';
+import { printOrderInvoice } from '@/lib/printUtils';
 
 const STATUS_OPTIONS = [
   { value: 'Pending', label: 'Chờ xác nhận', style: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
@@ -11,6 +14,19 @@ const STATUS_OPTIONS = [
   { value: 'Shipping', label: 'Đang giao hàng', style: 'bg-purple-500/10 text-purple-400 border-purple-500/20' },
   { value: 'Delivered', label: 'Giao thành công', style: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
   { value: 'Cancelled', label: 'Đã hủy', style: 'bg-rose-500/10 text-rose-400 border-rose-500/20' },
+  { value: 'Returned', label: 'Đã trả hàng (Hoàn tiền)', style: 'bg-teal-500/10 text-teal-300 border-teal-500/20' },
+  { value: 'RefundPending', label: 'Yêu cầu hoàn tiền', style: 'bg-pink-500/10 text-pink-400 border-pink-500/20' },
+];
+
+// Danh sách các trạng thái Admin được phép chủ động chọn thủ công
+// (Lưu ý: RefundPending và Returned do quy trình Hoàn tiền tự động kích hoạt)
+const ADMIN_SELECTABLE_STATUSES = [
+  { value: 'Pending', label: 'Chờ xác nhận' },
+  { value: 'Confirmed', label: 'Đã xác nhận' },
+  { value: 'Processing', label: 'Đang chuẩn bị hàng' },
+  { value: 'Shipping', label: 'Đang giao hàng' },
+  { value: 'Delivered', label: 'Giao thành công' },
+  { value: 'Cancelled', label: 'Đã hủy' },
 ];
 
 function normalizedStatus(status?: string | null) {
@@ -19,6 +35,8 @@ function normalizedStatus(status?: string | null) {
   if (['completed', 'complete'].includes(value)) return 'Delivered';
   if (['canceled', 'cancel'].includes(value)) return 'Cancelled';
   if (['preparing', 'ready'].includes(value)) return 'Processing';
+  if (['returned', 'da tra hang', 'tra hang'].includes(value)) return 'Returned';
+  if (['refundpending', 'pending refund', 'cho hoan tien'].includes(value)) return 'RefundPending';
   return STATUS_OPTIONS.find((item) => item.value.toLowerCase() === value)?.value || 'Pending';
 }
 
@@ -44,9 +62,11 @@ function monthKey(value?: string | null) {
 }
 
 export default function AdminOrders() {
-  const [orders, setOrders] = useState<StoreOrder[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { data: ordersData, loading, error, reload } = useAdminData<StoreOrder[]>(
+    'admin:orders',
+    () => api.getOrders(),
+  );
+  const orders = ordersData ?? [];
   const [selected, setSelected] = useState<StoreOrder | null>(null);
   const [draftStatus, setDraftStatus] = useState('Pending');
   const [cancellationReason, setCancellationReason] = useState('');
@@ -60,13 +80,33 @@ export default function AdminOrders() {
   const [carrierName, setCarrierName] = useState('');
   const [trackingNumber, setTrackingNumber] = useState('');
   const [estimatedDelivery, setEstimatedDelivery] = useState('');
+  const [confirmDeliveredModal, setConfirmDeliveredModal] = useState(false);
 
-  useEffect(() => {
-    api.getOrders()
-      .then((data) => setOrders(Array.isArray(data) ? data : []))
-      .catch((e) => setError(e instanceof Error ? e.message : 'Không tải được danh sách đơn hàng'))
-      .finally(() => setLoading(false));
-  }, []);
+
+
+  const handleExportExcel = () => {
+    exportToExcel<StoreOrder>({
+      filename: 'Danh_Sach_Don_Hang',
+      sheetName: 'DonHang',
+      data: filteredOrders,
+      columns: [
+        { header: 'STT', transform: (_, idx) => idx + 1, width: 8 },
+        { header: 'Mã đơn', transform: (o) => '#' + o.OrderID, width: 12 },
+        { header: 'Ngày đặt', transform: (o) => dateTime(o.OrderDate), width: 18 },
+        { header: 'Tài khoản đặt', transform: (o) => o.User?.FullName || o.User?.Email || '', width: 20 },
+        { header: 'Người nhận hàng', key: 'RecipientName', width: 20 },
+        { header: 'SĐT người nhận', key: 'RecipientPhone', width: 16 },
+        { header: 'Địa chỉ giao hàng', key: 'ShippingAddress', width: 35 },
+        { header: 'Phương thức thanh toán', key: 'PaymentMethod', width: 22 },
+        { header: 'Trạng thái đơn hàng', transform: (o) => statusInfo(o.Status).label, width: 20 },
+        { header: 'Mã voucher áp dụng', key: 'VoucherCode', width: 18 },
+        { header: 'Tổng tiền hàng', transform: (o) => Number(o.TotalAmount || 0), width: 16 },
+        { header: 'Mã vận đơn', key: 'TrackingNumber', width: 16 },
+        { header: 'Đơn vị vận chuyển', key: 'CarrierName', width: 18 },
+        { header: 'Sản phẩm đã mua', transform: (o) => (o.OrderItems || []).map(i => i.Product?.ProductName + ' (x' + i.Quantity + ')').join('; '), width: 40 },
+      ],
+    });
+  };
 
   const countsByStatus = useMemo(() => {
     const map: Record<string, number> = { all: orders.length };
@@ -82,8 +122,25 @@ export default function AdminOrders() {
     const query = search.trim().toLowerCase();
     return orders.filter((order) => {
       const matchesQuery = !query || [
-        String(order.OrderID), order.RecipientName, order.RecipientPhone, order.User?.FullName, order.User?.Email,
-      ].some((value) => value?.toLowerCase().includes(query));
+        String(order.OrderID),
+        `#${order.OrderID}`,
+        order.RecipientName,
+        order.RecipientPhone,
+        order.User?.FullName,
+        order.User?.Email,
+        order.User?.Phone,
+        order.TrackingNumber,
+        order.CarrierName,
+        order.VoucherCode,
+        ...(order.OrderItems || []).flatMap((item) => [
+          String(item.ProductID),
+          `sp${item.ProductID}`,
+          `#sp${item.ProductID}`,
+          `#${item.ProductID}`,
+          item.Product?.ProductName,
+          item.Product?.Series,
+        ]),
+      ].some((value) => value && value.toString().toLowerCase().includes(query));
       const matchesStatus = statusFilter === 'all' || normalizedStatus(order.Status) === statusFilter;
       const orderMonth = monthKey(order.OrderDate);
       return matchesQuery && matchesStatus && (!monthFilter || orderMonth === monthFilter);
@@ -114,11 +171,29 @@ export default function AdminOrders() {
         TrackingNumber: trackingNumber.trim() || null,
         EstimatedDelivery: estimatedDelivery || null,
       });
-      setOrders((current) => current.map((order) => order.OrderID === selected.OrderID ? { ...order, ...result.order } : order));
+      void reload(true);
       setSelected((current) => current ? { ...current, ...result.order } : current);
       setFeedback('Đã lưu thông tin vận chuyển thành công.');
     } catch (e) {
       setFeedback(e instanceof Error ? e.message : 'Không thể lưu thông tin vận chuyển.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const executeSaveStatus = async () => {
+    if (!selected) return;
+    setSaving(true);
+    setFeedback('');
+    try {
+      const result = await api.updateOrderStatus(selected.OrderID, draftStatus, draftStatus === 'Cancelled' ? cancellationReason.trim() : undefined);
+      const updated = result.order || { ...selected, Status: draftStatus };
+      void reload(true);
+      setSelected((current) => current ? { ...current, ...updated } : current);
+      setFeedback('Đã cập nhật tiến độ đơn hàng thành công.');
+      setConfirmDeliveredModal(false);
+    } catch (e) {
+      setFeedback(e instanceof Error ? e.message : 'Không thể cập nhật tiến độ đơn hàng.');
     } finally {
       setSaving(false);
     }
@@ -130,19 +205,12 @@ export default function AdminOrders() {
       setFeedback('Vui lòng nhập lý do admin chủ động hủy đơn hàng.');
       return;
     }
-    setSaving(true);
-    setFeedback('');
-    try {
-      const result = await api.updateOrderStatus(selected.OrderID, draftStatus, draftStatus === 'Cancelled' ? cancellationReason.trim() : undefined);
-      const updated = result.order || { ...selected, Status: draftStatus };
-      setOrders((current) => current.map((order) => order.OrderID === selected.OrderID ? { ...order, ...updated } : order));
-      setSelected((current) => current ? { ...current, ...updated } : current);
-      setFeedback('Đã cập nhật tiến độ đơn hàng thành công.');
-    } catch (e) {
-      setFeedback(e instanceof Error ? e.message : 'Không thể cập nhật tiến độ đơn hàng.');
-    } finally {
-      setSaving(false);
+    // Nếu chuyển sang "Giao thành công" (Delivered) -> Hiện popup xác nhận chắc chắn
+    if (draftStatus === 'Delivered' && normalizedStatus(selected.Status) !== 'Delivered') {
+      setConfirmDeliveredModal(true);
+      return;
     }
+    await executeSaveStatus();
   };
 
   const selectedStatus = statusInfo(selected?.Status);
@@ -162,6 +230,26 @@ export default function AdminOrders() {
           <p className="text-sm text-slate-400 mt-1">
             Tổng cộng {orders.length} đơn hàng trong hệ thống cơ sở dữ liệu.
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExportExcel}
+            className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-500/30 px-4 py-2.5 text-xs font-bold text-emerald-300 transition active:scale-95 cursor-pointer shadow-sm"
+          >
+            <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span>Xuất Excel ({filteredOrders.length})</span>
+          </button>
+          <button
+            onClick={() => void reload(true)}
+            className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-700/80 px-4 py-2.5 text-xs font-bold text-slate-300 transition active:scale-95 cursor-pointer"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>Làm Mới</span>
+          </button>
         </div>
       </div>
 
@@ -211,9 +299,19 @@ export default function AdminOrders() {
               type="text"
               value={search}
               onChange={(event) => { setSearch(event.target.value); setPage(1); }}
-              placeholder="Tìm theo mã đơn (#123), người nhận, số điện thoại, email..."
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+              placeholder="Tìm theo mã đơn (#101), mã SP (#12, SP12), tên sản phẩm, tên khách hàng, SĐT, mã vận đơn..."
+              className="w-full pl-10 pr-10 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
             />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs font-bold p-1 cursor-pointer"
+                title="Xóa tìm kiếm"
+              >
+                ✕
+              </button>
+            )}
           </div>
 
           <input
@@ -222,6 +320,21 @@ export default function AdminOrders() {
             onChange={(event) => { setMonthFilter(event.target.value); setPage(1); }}
             className="rounded-2xl border border-slate-800 bg-slate-950 px-3.5 py-2.5 text-xs font-semibold text-white outline-none focus:border-blue-500 cursor-pointer"
           />
+        </div>
+
+        {/* Quick Search Chips */}
+        <div className="flex items-center gap-2 text-[11px] text-slate-400 flex-wrap pt-2 border-t border-slate-800/60">
+          <span className="font-semibold text-slate-500">Tìm kiếm theo:</span>
+          <span className="px-2 py-0.5 rounded-md bg-slate-950 text-slate-300 border border-slate-800">📦 Mã SP (#12, SP12)</span>
+          <span className="px-2 py-0.5 rounded-md bg-slate-950 text-slate-300 border border-slate-800">💻 Tên sản phẩm</span>
+          <span className="px-2 py-0.5 rounded-md bg-slate-950 text-slate-300 border border-slate-800">🧾 Mã đơn (#ID)</span>
+          <span className="px-2 py-0.5 rounded-md bg-slate-950 text-slate-300 border border-slate-800">👤 Khách hàng / SĐT / Email</span>
+          <span className="px-2 py-0.5 rounded-md bg-slate-950 text-slate-300 border border-slate-800">🚚 Mã vận đơn</span>
+          {search && (
+            <span className="ml-auto text-blue-400 font-bold">
+              Tìm thấy {filteredOrders.length} đơn hàng
+            </span>
+          )}
         </div>
       </div>
 
@@ -247,6 +360,7 @@ export default function AdminOrders() {
             <table className="w-full min-w-[760px] text-left text-sm text-slate-300">
               <thead className="bg-slate-950/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
                 <tr>
+                  <th className="px-5 py-4 w-16 text-center">STT</th>
                   <th className="px-5 py-4">Mã đơn</th>
                   <th className="px-5 py-4">Khách hàng / Người nhận</th>
                   <th className="px-5 py-4">Thời gian đặt</th>
@@ -256,10 +370,14 @@ export default function AdminOrders() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/80">
-                {visibleOrders.map((order) => {
+                {visibleOrders.map((order, index) => {
+                  const stt = (currentPage - 1) * 20 + index + 1;
                   const status = statusInfo(order.Status);
                   return (
                     <tr key={order.OrderID} className="hover:bg-slate-800/40 transition">
+                      <td className="px-5 py-4 text-center font-bold text-slate-400 text-xs">
+                        {stt}
+                      </td>
                       <td className="px-5 py-4 font-mono font-bold text-slate-200 text-xs">
                         #{order.OrderID}
                       </td>
@@ -270,6 +388,20 @@ export default function AdminOrders() {
                         <div className="text-xs text-slate-400 mt-0.5">
                           {order.RecipientPhone || order.User?.Phone || order.User?.Email || '—'}
                         </div>
+                        {order.OrderItems && order.OrderItems.length > 0 && (
+                          <div className="mt-1.5 flex flex-wrap gap-1">
+                            {order.OrderItems.slice(0, 2).map((item) => (
+                              <span key={item.ProductID} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-950 text-[10px] text-slate-300 border border-slate-800">
+                                <span className="font-mono font-bold text-blue-400">#SP{item.ProductID}</span>
+                                <span className="truncate max-w-[140px]">{item.Product?.ProductName || 'Sản phẩm'}</span>
+                                <span className="text-slate-500">x{item.Quantity}</span>
+                              </span>
+                            ))}
+                            {order.OrderItems.length > 2 && (
+                              <span className="text-[10px] text-slate-500 self-center">+{order.OrderItems.length - 2} sản phẩm</span>
+                            )}
+                          </div>
+                        )}
                       </td>
                       <td className="px-5 py-4 text-xs text-slate-400 whitespace-nowrap">
                         {dateTime(order.OrderDate)}
@@ -283,12 +415,24 @@ export default function AdminOrders() {
                         </span>
                       </td>
                       <td className="px-5 py-4 text-right whitespace-nowrap">
-                        <button
-                          onClick={() => openOrder(order)}
-                          className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-md shadow-blue-600/20 active:scale-95"
-                        >
-                          Xem chi tiết
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => printOrderInvoice(order)}
+                            className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-blue-400 border border-slate-700 transition cursor-pointer active:scale-95"
+                            title="In hóa đơn"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => openOrder(order)}
+                            className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-md shadow-blue-600/20 active:scale-95 cursor-pointer"
+                          >
+                            Xem chi tiết
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -353,9 +497,22 @@ export default function AdminOrders() {
                 <span className="text-[11px] font-bold uppercase tracking-wider text-blue-400">
                   Thông Tin Đơn Hàng
                 </span>
-                <h2 className="text-xl font-black text-white mt-0.5">
-                  Đơn Hàng #{selected.OrderID}
-                </h2>
+                <div className="flex items-center gap-3 mt-0.5">
+                  <h2 className="text-xl font-black text-white">
+                    Đơn Hàng #{selected.OrderID}
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => printOrderInvoice(selected)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-600/20 hover:bg-blue-600 border border-blue-500/40 text-blue-300 hover:text-white text-xs font-bold transition shadow-sm cursor-pointer active:scale-95"
+                    title="In hóa đơn bán hàng chuẩn A4"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    <span>In Hóa Đơn</span>
+                  </button>
+                </div>
                 <p className="text-xs text-slate-400 mt-0.5">
                   Thời gian ghi nhận: {dateTime(selected.OrderDate)}
                 </p>
@@ -531,7 +688,7 @@ export default function AdminOrders() {
                   disabled={isDelivered || saving}
                   className="flex-1 rounded-2xl border border-slate-800 bg-slate-900 px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-blue-500 disabled:opacity-50"
                 >
-                  {STATUS_OPTIONS.map((status) => (
+                  {ADMIN_SELECTABLE_STATUSES.map((status) => (
                     <option key={status.value} value={status.value}>
                       {status.label}
                     </option>
@@ -575,6 +732,58 @@ export default function AdminOrders() {
                   {feedback}
                 </p>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal xác nhận chuyển sang Giao thành công (Delivered) */}
+      {confirmDeliveredModal && selected && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-fadeIn">
+          <div className="w-full max-w-md space-y-5 rounded-3xl bg-slate-900 border border-slate-800 p-6 sm:p-7 shadow-2xl text-slate-200">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 inline-block mb-1">
+                  Xác nhận giao hàng
+                </span>
+                <h3 className="text-lg font-black text-white">Xác nhận đơn đã giao thành công?</h3>
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-slate-950/80 border border-slate-800 p-4 space-y-2 text-xs">
+              <p className="text-slate-300">
+                Đơn hàng: <strong className="text-white font-mono font-bold">#DH{selected.OrderID}</strong>
+              </p>
+              <p className="text-slate-300">
+                Người nhận: <strong className="text-white">{selected.RecipientName || selected.User?.FullName}</strong>
+              </p>
+              <p className="text-amber-300/90 font-medium pt-1 border-t border-slate-800/80">
+                ⚠️ Lưu ý: Khi chuyển sang "Giao thành công", đơn hàng sẽ được ghi nhận hoàn tất vào doanh thu và khách hàng có thể đánh giá sản phẩm.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setConfirmDeliveredModal(false)}
+                disabled={saving}
+                className="rounded-2xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-slate-700 transition"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={() => void executeSaveStatus()}
+                disabled={saving}
+                className="rounded-2xl bg-emerald-600 hover:bg-emerald-500 px-5 py-2.5 text-xs font-bold text-white transition shadow-lg shadow-emerald-950/50"
+              >
+                {saving ? 'Đang cập nhật...' : 'Xác nhận Đã Giao'}
+              </button>
             </div>
           </div>
         </div>

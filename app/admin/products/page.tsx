@@ -1,8 +1,11 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, useMemo, useRef, useState } from 'react';
 import { api, getPrimaryProductImage, Product, ProductVariant, resolveApiAssetUrl, StoreCategory } from '@/lib/api';
+import { useAdminData } from '@/lib/useAdminData';
+import { exportToExcel } from '@/lib/exportExcel';
 import Pagination from '@/app/admin/components/Pagination';
+import ConfirmDeleteModal from '@/app/admin/components/ConfirmDeleteModal';
 
 interface SpecItem {
   id: string;
@@ -59,15 +62,24 @@ const emptyForm = {
 };
 
 export default function AdminProducts() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<StoreCategory[]>([]);
+  type ProdCatData = { products: Product[]; categories: StoreCategory[] };
+  const { data: prodCatData, loading, error: fetchError, reload } = useAdminData<ProdCatData>(
+    'admin:products',
+    async () => {
+      const [prods, cats] = await Promise.all([api.getProducts(), api.getCategories()]);
+      return { products: Array.isArray(prods) ? prods : [], categories: Array.isArray(cats) ? cats : [] };
+    },
+  );
+  const products = prodCatData?.products ?? [];
+  const categories = prodCatData?.categories ?? [];
   const [form, setForm] = useState(emptyForm);
   const [specsList, setSpecsList] = useState<SpecItem[]>([]);
   const [variantsList, setVariantsList] = useState<VariantItem[]>([]);
   const [deletedVariantIds, setDeletedVariantIds] = useState<number[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -81,23 +93,31 @@ export default function AdminProducts() {
   const [uploadingImages, setUploadingImages] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  async function load() {
-    setLoading(true);
-    setError('');
-    try {
-      const data = await api.getProducts();
-      setProducts(Array.isArray(data) ? data : []);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Không tải được danh sách sản phẩm');
-    } finally {
-      setLoading(false);
-    }
-  }
 
-  useEffect(() => {
-    void load();
-    api.getCategories().then((data) => setCategories(Array.isArray(data) ? data : [])).catch(() => setCategories([]));
-  }, []);
+
+  const handleExportExcel = () => {
+    const catMap = new Map(categories.map(c => [c.CategoryID, c.CategoryName]));
+    exportToExcel<Product>({
+      filename: 'Kho_San_Pham',
+      sheetName: 'SanPham',
+      data: filteredProducts,
+      columns: [
+        { header: 'STT', transform: (_, idx) => idx + 1, width: 8 },
+        { header: 'Mã SP', transform: (p) => '#SP' + p.ProductID, width: 12 },
+        { header: 'Tên sản phẩm', key: 'ProductName', width: 32 },
+        { header: 'Danh mục', transform: (p) => p.CategoryID ? (catMap.get(p.CategoryID) || 'Khác') : 'Chưa phân loại', width: 20 },
+        { header: 'Giá gốc (₫)', transform: (p) => Number(p.Price || 0), width: 16 },
+        { header: 'Giá khuyến mãi (₫)', transform: (p) => p.DiscountPrice ? Number(p.DiscountPrice) : '', width: 18 },
+        { header: 'Tồn kho', transform: (p) => Number(p.StockQuantity || 0), width: 12 },
+        { header: 'CPU', key: 'CPU', width: 18 },
+        { header: 'RAM', key: 'RAM', width: 14 },
+        { header: 'Ổ cứng', key: 'Storage', width: 16 },
+        { header: 'Màn hình', key: 'Display', width: 18 },
+        { header: 'Tần số quét', key: 'RefreshRate', width: 14 },
+        { header: 'Dòng máy', key: 'Series', width: 18 },
+      ],
+    });
+  };
 
   const stats = useMemo(() => {
     let instock = 0;
@@ -113,10 +133,29 @@ export default function AdminProducts() {
   }, [products]);
 
   const filteredProducts = useMemo(() => {
+    const query = searchTerm.toLowerCase().trim();
     return products.filter((p) => {
       const name = (p.ProductName || '').toLowerCase();
       const id = String(p.ProductID);
-      const matchSearch = !searchTerm.trim() || name.includes(searchTerm.toLowerCase().trim()) || id.includes(searchTerm.trim());
+      const cat = categories.find((c) => c.CategoryID === p.CategoryID)?.CategoryName?.toLowerCase() || '';
+      const series = (p.Series || '').toLowerCase();
+      const cpu = (p.CPU || '').toLowerCase();
+      const ram = (p.RAM || '').toLowerCase();
+      const storage = (p.Storage || '').toLowerCase();
+
+      const matchSearch =
+        !query ||
+        name.includes(query) ||
+        id === query ||
+        id.includes(query) ||
+        `sp${id}`.includes(query) ||
+        `#${id}`.includes(query) ||
+        `#sp${id}`.includes(query) ||
+        cat.includes(query) ||
+        series.includes(query) ||
+        cpu.includes(query) ||
+        ram.includes(query) ||
+        storage.includes(query);
 
       const stock = Number(p.StockQuantity ?? 0);
       let matchStock = true;
@@ -126,7 +165,7 @@ export default function AdminProducts() {
 
       return matchSearch && matchStock;
     });
-  }, [products, searchTerm, stockFilter]);
+  }, [products, categories, searchTerm, stockFilter]);
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / 20));
   const currentPage = Math.min(page, totalPages);
   const visibleProducts = filteredProducts.slice((currentPage - 1) * 20, currentPage * 20);
@@ -467,7 +506,7 @@ export default function AdminProducts() {
       }
 
       setOpen(false);
-      await load();
+      await reload(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Lưu sản phẩm thất bại.');
     } finally {
@@ -475,13 +514,17 @@ export default function AdminProducts() {
     }
   }
 
-  async function remove(id: number) {
-    if (!window.confirm('Bạn có chắc muốn xóa sản phẩm này khỏi hệ thống?')) return;
+  async function handleConfirmDelete() {
+    if (!deletingProduct) return;
+    setIsDeleting(true);
     try {
-      await api.deleteProduct(id);
-      setProducts((current) => current.filter((item) => item.ProductID !== id));
+      await api.deleteProduct(deletingProduct.ProductID);
+      void reload(true);
+      setDeletingProduct(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Xóa thất bại');
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -503,8 +546,30 @@ export default function AdminProducts() {
 
         <div className="flex items-center gap-3">
           <button
+            type="button"
+            onClick={handleExportExcel}
+            className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-500/30 px-4 py-2.5 text-xs font-bold text-emerald-300 transition active:scale-95 cursor-pointer shadow-sm"
+          >
+            <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span>Xuất Excel ({filteredProducts.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => void reload(true)}
+            className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-700/80 px-4 py-2.5 text-xs font-bold text-slate-300 transition active:scale-95 cursor-pointer"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>Làm Mới</span>
+          </button>
+
+          <button
             onClick={openCreate}
-            className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-500 px-5 py-2.5 text-sm font-bold text-white transition shadow-lg shadow-blue-600/30 active:scale-95"
+            className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-500 px-5 py-2.5 text-sm font-bold text-white transition shadow-lg shadow-blue-600/30 active:scale-95 cursor-pointer"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -566,18 +631,42 @@ export default function AdminProducts() {
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-900/80 p-4 rounded-2xl border border-slate-800/80 shadow-lg">
+      <div className="space-y-3 bg-slate-900/80 p-4 rounded-2xl border border-slate-800/80 shadow-lg">
         <div className="relative flex-1">
           <svg className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input
             type="text"
-            placeholder="Tìm kiếm theo mã sản phẩm hoặc tên máy..."
+            placeholder="Tìm theo mã SP (#12, SP12), tên máy, danh mục, CPU, RAM, dòng máy..."
             value={searchTerm}
             onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+            className="w-full pl-10 pr-10 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs font-bold p-1 cursor-pointer"
+              title="Xóa tìm kiếm"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* Search Helper Chips */}
+        <div className="flex items-center gap-2 text-[11px] text-slate-400 flex-wrap pt-2 border-t border-slate-800/60">
+          <span className="font-semibold text-slate-500">Tìm kiếm theo:</span>
+          <span className="px-2 py-0.5 rounded-md bg-slate-950 text-slate-300 border border-slate-800">🏷️ Mã SP (#12, SP12)</span>
+          <span className="px-2 py-0.5 rounded-md bg-slate-950 text-slate-300 border border-slate-800">💻 Tên sản phẩm</span>
+          <span className="px-2 py-0.5 rounded-md bg-slate-950 text-slate-300 border border-slate-800">📂 Danh mục</span>
+          <span className="px-2 py-0.5 rounded-md bg-slate-950 text-slate-300 border border-slate-800">⚙️ Cấu hình CPU / RAM / Ổ cứng</span>
+          {searchTerm && (
+            <span className="ml-auto text-blue-400 font-bold">
+              Tìm thấy {filteredProducts.length} sản phẩm
+            </span>
+          )}
         </div>
       </div>
 
@@ -603,6 +692,7 @@ export default function AdminProducts() {
             <table className="w-full text-left text-sm text-slate-300">
               <thead className="bg-slate-950/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
                 <tr>
+                  <th className="px-5 py-4 w-16 text-center">STT</th>
                   <th className="px-5 py-4">Mã SP</th>
                   <th className="px-5 py-4">Hình ảnh</th>
                   <th className="px-5 py-4">Tên & Cấu hình</th>
@@ -612,7 +702,8 @@ export default function AdminProducts() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/80">
-                {visibleProducts.map((item) => {
+                {visibleProducts.map((item, index) => {
+                  const stt = (currentPage - 1) * 20 + index + 1;
                   const stock = Number(item.StockQuantity ?? 0);
                   const isLow = stock > 0 && stock <= 5;
                   const isOut = stock <= 0;
@@ -621,8 +712,13 @@ export default function AdminProducts() {
 
                   return (
                     <tr key={item.ProductID} className="hover:bg-slate-800/40 transition">
-                      <td className="px-5 py-4 font-mono font-bold text-slate-400 text-xs">
-                        #{item.ProductID}
+                      <td className="px-5 py-4 text-center font-bold text-slate-400 text-xs">
+                        {stt}
+                      </td>
+                      <td className="px-5 py-4 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2 py-1 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono font-bold text-xs">
+                          #SP{item.ProductID}
+                        </span>
                       </td>
                       <td className="px-5 py-4">
                         {images.length > 0 ? (
@@ -701,7 +797,7 @@ export default function AdminProducts() {
                           Chỉnh sửa
                         </button>
                         <button
-                          onClick={() => void remove(item.ProductID)}
+                          onClick={() => setDeletingProduct(item)}
                           className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-bold transition active:scale-95"
                         >
                           Xóa

@@ -176,7 +176,7 @@ export type ProductReview = {
   AdminReply?: string | null;
   AdminReplyAt?: string | null;
   AdminReplyUserID?: number | null;
-  User?: { FullName?: string | null; Avatar?: string | null } | null;
+  User?: { FullName?: string | null; Avatar?: string | null; Email?: string | null; Phone?: string | null } | null;
   Product?: { ProductID: number; ProductName: string; ImageUrl?: string | null } | null;
 };
 

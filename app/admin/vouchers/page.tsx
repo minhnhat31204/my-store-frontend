@@ -1,7 +1,9 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import React, { FormEvent, useMemo, useState } from 'react';
 import { api, type Voucher } from '@/lib/api';
+import { useAdminData } from '@/lib/useAdminData';
+import { exportToExcel } from '@/lib/exportExcel';
 import Pagination from '@/app/admin/components/Pagination';
 
 type FormState = {
@@ -27,10 +29,13 @@ function formatMoney(amount: number) {
 }
 
 export default function AdminVouchersPage() {
-  const [vouchers, setVouchers] = useState<Voucher[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: vouchersData, loading, error: voucherFetchError, reload } = useAdminData<Voucher[]>(
+    'admin:vouchers',
+    () => api.getVouchers(),
+  );
+  const vouchers = vouchersData ?? [];
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(voucherFetchError || '');
   const [successMsg, setSuccessMsg] = useState('');
 
   // Search & Filter
@@ -48,22 +53,6 @@ export default function AdminVouchersPage() {
   const [deletingVoucher, setDeletingVoucher] = useState<Voucher | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  async function loadVouchers() {
-    setLoading(true);
-    setError('');
-    try {
-      const data = await api.getVouchers();
-      setVouchers(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tải được danh sách mã giảm giá.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    void loadVouchers();
-  }, []);
 
   // Stats calculation
   const stats = useMemo(() => {
@@ -141,6 +130,24 @@ export default function AdminVouchersPage() {
     setOpenModal(true);
   }
 
+  const handleExportExcel = () => {
+    exportToExcel<Voucher>({
+      filename: 'Danh_Sach_Voucher',
+      sheetName: 'Vouchers',
+      data: filteredVouchers,
+      columns: [
+        { header: 'STT', transform: (_, idx) => idx + 1, width: 8 },
+        { header: 'Mã ID', key: 'VoucherID', width: 10 },
+        { header: 'Mã Voucher (Code)', key: 'Code', width: 18 },
+        { header: 'Tên chương trình', key: 'Name', width: 26 },
+        { header: 'Tỷ lệ giảm (%)', transform: (v) => Number(v.DiscountPercentage) + '%', width: 16 },
+        { header: 'Giảm tối đa (₫)', transform: (v) => v.MaxDiscountAmount ? Number(v.MaxDiscountAmount) : 'Không giới hạn', width: 20 },
+        { header: 'Ngày hết hạn', transform: (v) => v.ExpiryDate ? new Date(v.ExpiryDate).toLocaleDateString('vi-VN') : 'Vô thời hạn', width: 18 },
+        { header: 'Trạng thái', transform: (v) => v.IsActive === false ? 'Tạm ngưng' : 'Hoạt động', width: 16 },
+      ],
+    });
+  };
+
   function handleOpenEdit(voucher: Voucher) {
     setEditingId(voucher.VoucherID);
     setForm({
@@ -159,87 +166,45 @@ export default function AdminVouchersPage() {
     try {
       const newStatus = !voucher.IsActive;
       await api.updateVoucher(voucher.VoucherID, { IsActive: newStatus });
-      setVouchers((prev) =>
-        prev.map((item) =>
-          item.VoucherID === voucher.VoucherID ? { ...item, IsActive: newStatus } : item
-        )
-      );
-      setSuccessMsg(`Đã ${newStatus ? 'kích hoạt' : 'tạm ngưng'} mã ${voucher.Code}.`);
-      setTimeout(() => setSuccessMsg(''), 3000);
+      void reload(true);
+      const statusLabel = newStatus ? 'kích hoạt' : 'tạm ngưng';
+      setSuccessMsg(`Đã ${statusLabel} mã "${voucher.Code}".`);
+      setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thể cập nhật trạng thái.');
+      setError(err instanceof Error ? err.message : 'Không thể xóa mã giảm giá.');
       setTimeout(() => setError(''), 4000);
+    } finally {
+      setDeleting(false);
     }
   }
 
-  async function handleSubmitForm(e: FormEvent) {
-    e.preventDefault();
-    setFormError('');
-
-    const code = form.Code.trim().toUpperCase();
-    const name = form.Name.trim();
-    const discountPct = Number(form.DiscountPercentage);
-    const maxAmount = form.MaxDiscountAmount.trim() ? Number(form.MaxDiscountAmount) : null;
-
-    if (!code) {
-      setFormError('Vui lòng nhập mã giảm giá.');
+  async function handleSubmitForm(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const Code = form.Code.trim().toUpperCase();
+    const Name = form.Name.trim();
+    const DiscountPercentage = Number(form.DiscountPercentage);
+    const MaxDiscountAmount = form.MaxDiscountAmount ? Number(form.MaxDiscountAmount) : undefined;
+    const ExpiryDate = form.ExpiryDate || undefined;
+    if (!Code) { setFormError('Vui lòng nhập mã voucher.'); return; }
+    if (!DiscountPercentage || DiscountPercentage <= 0 || DiscountPercentage > 100) {
+      setFormError('Tỷ lệ giảm phải từ 1 đến 100%.');
       return;
     }
-    if (!name) {
-      setFormError('Vui lòng nhập tên chương trình giảm giá.');
-      return;
-    }
-    if (!Number.isFinite(discountPct) || discountPct <= 0 || discountPct > 100) {
-      setFormError('Phần trăm giảm giá phải là số từ 1 đến 100.');
-      return;
-    }
-    if (maxAmount !== null && (!Number.isFinite(maxAmount) || maxAmount < 0)) {
-      setFormError('Số tiền giảm tối đa không hợp lệ.');
-      return;
-    }
-
     setSaving(true);
+    setFormError('');
     try {
       if (editingId) {
-        // Update
-        const res = await api.updateVoucher(editingId, {
-          Code: code,
-          Name: name,
-          DiscountPercentage: discountPct,
-          MaxDiscountAmount: maxAmount,
-          ExpiryDate: form.ExpiryDate || null,
-          IsActive: form.IsActive,
-        });
-        const updatedVoucher = res.voucher || {
-          VoucherID: editingId,
-          Code: code,
-          Name: name,
-          DiscountPercentage: discountPct,
-          MaxDiscountAmount: maxAmount,
-          ExpiryDate: form.ExpiryDate || null,
-          IsActive: form.IsActive,
-        };
-        setVouchers((prev) =>
-          prev.map((item) => (item.VoucherID === editingId ? { ...item, ...updatedVoucher } : item))
-        );
-        setSuccessMsg(`Cập nhật mã "${code}" thành công.`);
+        await api.updateVoucher(editingId, { Code, Name, DiscountPercentage, MaxDiscountAmount, ExpiryDate, IsActive: form.IsActive });
+        setSuccessMsg('Đã cập nhật voucher "' + Code + '".');
       } else {
-        // Create
-        const created = await api.createVoucher({
-          Code: code,
-          Name: name,
-          DiscountPercentage: discountPct,
-          MaxDiscountAmount: maxAmount,
-          ExpiryDate: form.ExpiryDate || null,
-          IsActive: form.IsActive,
-        });
-        setVouchers((prev) => [created, ...prev]);
-        setSuccessMsg(`Tạo mới mã giảm giá "${code}" thành công.`);
+        await api.createVoucher({ Code, Name, DiscountPercentage, MaxDiscountAmount, ExpiryDate, IsActive: form.IsActive });
+        setSuccessMsg('Đã tạo voucher "' + Code + '".');
       }
+      void reload(true);
       setOpenModal(false);
       setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Lỗi khi lưu mã giảm giá.');
+      setFormError(err instanceof Error ? err.message : 'Không thể lưu voucher.');
     } finally {
       setSaving(false);
     }
@@ -250,8 +215,7 @@ export default function AdminVouchersPage() {
     setDeleting(true);
     try {
       await api.deleteVoucher(deletingVoucher.VoucherID);
-      setVouchers((prev) => prev.filter((item) => item.VoucherID !== deletingVoucher.VoucherID));
-      setSuccessMsg(`Đã xóa mã giảm giá "${deletingVoucher.Code}".`);
+      void reload(true);
       setDeletingVoucher(null);
       setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err) {
@@ -280,7 +244,14 @@ export default function AdminVouchersPage() {
 
         <div className="flex items-center gap-3">
           <button
-            onClick={() => void loadVouchers()}
+            onClick={handleExportExcel}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-500/30 rounded-2xl text-xs font-bold text-emerald-300 transition active:scale-95 cursor-pointer"
+          >
+            <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            <span>Xuất Excel</span>
+          </button>
+          <button
+            onClick={() => void reload(true)}
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-950 hover:bg-slate-800 border border-slate-700/80 rounded-2xl text-xs font-bold text-slate-300 transition active:scale-95"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -365,18 +336,39 @@ export default function AdminVouchersPage() {
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800/80 shadow-lg">
+      <div className="space-y-3 bg-slate-900/80 p-4 rounded-2xl border border-slate-800/80 shadow-lg">
         <div className="relative">
           <svg className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input
             type="text"
-            placeholder="Tìm theo mã voucher (VD: GAMING500K) hoặc tên chương trình..."
+            placeholder="Tìm theo mã voucher (VD: DEVORA500K), tên chương trình hoặc mã ID..."
             value={searchTerm}
             onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+            className="w-full pl-10 pr-10 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs font-bold p-1 cursor-pointer"
+              title="Xóa tìm kiếm"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-2 text-[11px] text-slate-400 flex-wrap pt-1 border-t border-slate-800/60">
+          <span className="font-semibold text-slate-500">Tìm kiếm theo:</span>
+          <span className="px-2 py-0.5 rounded-md bg-slate-950 text-slate-300 border border-slate-800">🎟️ Mã code (Code)</span>
+          <span className="px-2 py-0.5 rounded-md bg-slate-950 text-slate-300 border border-slate-800">📝 Tên chương trình</span>
+          <span className="px-2 py-0.5 rounded-md bg-slate-950 text-slate-300 border border-slate-800">🆔 Mã ID</span>
+          {searchTerm && (
+            <span className="ml-auto text-blue-400 font-bold">
+              Tìm thấy {filteredVouchers.length} mã voucher
+            </span>
+          )}
         </div>
       </div>
 
@@ -396,6 +388,7 @@ export default function AdminVouchersPage() {
             <table className="w-full text-left text-sm text-slate-300">
               <thead className="bg-slate-950/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
                 <tr>
+                  <th className="px-5 py-4 w-16 text-center">STT</th>
                   <th className="px-5 py-4">Mã Voucher</th>
                   <th className="px-5 py-4">Chương trình & Mức giảm</th>
                   <th className="px-5 py-4">Giảm tối đa</th>
@@ -405,7 +398,8 @@ export default function AdminVouchersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/80">
-                {visibleVouchers.map((v) => {
+                {visibleVouchers.map((v, index) => {
+                  const stt = (currentPage - 1) * 20 + index + 1;
                   let isExpired = false;
                   if (v.ExpiryDate) {
                     const exp = new Date(v.ExpiryDate);
@@ -419,6 +413,9 @@ export default function AdminVouchersPage() {
 
                   return (
                     <tr key={v.VoucherID} className="hover:bg-slate-800/40 transition">
+                      <td className="px-5 py-4 text-center font-bold text-slate-400 text-xs w-16">
+                        {stt}
+                      </td>
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-sm font-black text-white bg-slate-950 px-3 py-1 rounded-xl border border-slate-800 shadow-inner">

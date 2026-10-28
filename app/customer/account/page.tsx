@@ -401,20 +401,32 @@ export default function AccountPage() {
 
   // Load User Data
   useEffect(() => {
+    const applyUserData = (data: any) => {
+      if (!data) return;
+      setUser(data);
+      setProfileName(data.FullName || '');
+      setUsername(data.Username || '');
+      setBio(data.Bio || '');
+      setGender(data.Gender || 'Nam');
+      setBirthday(data.Birthday ? String(data.Birthday).slice(0, 10) : '');
+      setAddress(data.Address || '');
+      setRecoveryEmail(data.RecoveryEmail || data.Email || '');
+    };
+
     const refreshUser = () => {
       const stored = getStoredUser();
-      setUser(stored);
-      if (!stored) return;
-      setProfileName(stored.FullName || '');
-      setUsername(stored.Username || '');
-      setBio(stored.Bio || '');
-      setGender(stored.Gender || 'Nam');
-      setBirthday(stored.Birthday ? String(stored.Birthday).slice(0, 10) : '');
-      setAddress(stored.Address || '');
-      setRecoveryEmail(stored.RecoveryEmail || '');
+      applyUserData(stored);
     };
 
     refreshUser();
+
+    // Tự động đồng bộ thông tin mới nhất từ máy chủ (đặc biệt là email vừa xác minh)
+    api.getCurrentUser().then((res) => {
+      if (res?.user) {
+        localStorage.setItem('user', JSON.stringify(res.user));
+        applyUserData(res.user);
+      }
+    }).catch(() => {});
     window.addEventListener('user-updated', refreshUser);
     window.addEventListener('storage', refreshUser);
     return () => {
@@ -527,7 +539,13 @@ export default function AccountPage() {
     setEmailMessage('');
     try {
       const result = await api.verifyEmailOtp(user.UserID, recoveryEmail.trim(), emailOtp);
-      const updatedUser = { ...user, RecoveryEmail: result.user.RecoveryEmail, RecoveryEmailVerified: true };
+      const updatedEmail = result.user?.Email || result.user?.RecoveryEmail || recoveryEmail.trim();
+      const updatedUser = { 
+        ...user, 
+        Email: updatedEmail,
+        RecoveryEmail: result.user?.RecoveryEmail || recoveryEmail.trim(), 
+        RecoveryEmailVerified: true 
+      };
       setUser(updatedUser);
       localStorage.setItem('user', JSON.stringify(updatedUser));
       window.dispatchEvent(new Event('user-updated'));
@@ -892,6 +910,60 @@ export default function AccountPage() {
                           className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2.5 pl-9 pr-4 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
                         />
                       </div>
+                    </div>
+
+                    {/* Email liên hệ */}
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-bold text-slate-700">
+                          Email liên hệ
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('email')}
+                          className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline transition cursor-pointer"
+                        >
+                          {(user.Email && !user.Email.includes('@phone.')) || user.RecoveryEmail ? 'Thay đổi email' : '+ Liên kết email ngay'}
+                        </button>
+                      </div>
+                      <div className="mt-1.5 flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-2.5">
+                        {(() => {
+                          const isInternal = user.Email?.includes('@phone.');
+                          const contactEmail = (!isInternal && user.Email) ? user.Email : (user.RecoveryEmail || null);
+                          if (contactEmail) {
+                            return (
+                              <>
+                                <span className="text-sm font-semibold text-slate-800">{contactEmail}</span>
+                                {user.RecoveryEmailVerified ? (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-700">
+                                    <CheckCircleIcon className="w-3.5 h-3.5" />
+                                    Đã xác minh
+                                  </span>
+                                ) : (
+                                  <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-700">
+                                    Chưa xác minh
+                                  </span>
+                                )}
+                              </>
+                            );
+                          }
+                          return (
+                            <>
+                              <span className="text-sm italic text-slate-400">Chưa liên kết email bảo mật</span>
+                              <button
+                                type="button"
+                                onClick={() => setActiveTab('email')}
+                                className="rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-600 hover:bg-blue-100 transition cursor-pointer"
+                              >
+                                Liên kết ngay
+                              </button>
+                            </>
+                          );
+                        })()}
+                      </div>
+                      <p className="mt-1 text-[11px] text-slate-400">
+                        Email dùng để nhận thông báo đơn hàng và hỗ trợ lấy lại mật khẩu tài khoản.
+                      </p>
                     </div>
 
                     {/* Tiểu sử */}

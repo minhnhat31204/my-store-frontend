@@ -2,7 +2,9 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { api, type Product, type StoreOrder } from '@/lib/api';
+import { api, type Product, type StoreOrder, type User } from '@/lib/api';
+import { useAdminData } from '@/lib/useAdminData';
+import { exportDashboardRevenueReport } from '@/lib/exportRevenueReport';
 
 function isDelivered(status?: string | null) {
   return ['delivered', 'completed', 'complete'].includes((status || '').trim().toLowerCase());
@@ -30,28 +32,28 @@ function dateTime(value?: string | null) {
 }
 
 export default function AdminDashboard() {
-  const [productCount, setProductCount] = useState(0);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [orders, setOrders] = useState<StoreOrder[]>([]);
-  const [userCount, setUserCount] = useState(0);
-  const [selectedMonth, setSelectedMonth] = useState(currentMonthValue);
-  const [loading, setLoading] = useState(true);
+  type DashboardData = { products: Product[]; orders: StoreOrder[]; users: User[] };
+  const { data: dashboardData, loading, reload } = useAdminData<DashboardData>(
+    'admin:dashboard',
+    async () => {
+      const [prods, ords, usrs] = await Promise.all([
+        api.getProducts().catch(() => []),
+        api.getOrders().catch(() => []),
+        api.getUsers().catch(() => []),
+      ]);
+      return {
+        products: Array.isArray(prods) ? prods : [],
+        orders: Array.isArray(ords) ? ords : [],
+        users: Array.isArray(usrs) ? usrs : [],
+      };
+    }
+  );
 
-  useEffect(() => {
-    Promise.allSettled([
-      api.getProducts().then((data) => {
-        const rows = Array.isArray(data) ? data : [];
-        setProductCount(rows.length);
-        setProducts(rows);
-      }),
-      api.getOrders().then((data) => {
-        setOrders(Array.isArray(data) ? data : []);
-      }),
-      api.getUsers().then((data) => {
-        setUserCount(Array.isArray(data) ? data.length : 0);
-      }),
-    ]).finally(() => setLoading(false));
-  }, []);
+  const products = dashboardData?.products ?? [];
+  const orders = dashboardData?.orders ?? [];
+  const productCount = products.length;
+  const userCount = dashboardData?.users?.length ?? 0;
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthValue);
 
   const deliveredOrders = useMemo(() => orders.filter((order) => isDelivered(order.Status)), [orders]);
   const pendingOrders = useMemo(() => orders.filter((order) => (order.Status || 'pending').toLowerCase() === 'pending'), [orders]);
@@ -83,17 +85,15 @@ export default function AdminDashboard() {
   const lowStockProducts = useMemo(() => products.filter((product) => Number(product.StockQuantity ?? 0) <= 5).sort((a, b) => Number(a.StockQuantity ?? 0) - Number(b.StockQuantity ?? 0)), [products]);
   const recentOrders = useMemo(() => [...orders].sort((a, b) => new Date(b.OrderDate || 0).getTime() - new Date(a.OrderDate || 0).getTime()).slice(0, 5), [orders]);
 
-  function exportRevenueCsv() {
-    const rows = deliveredOrders.filter((order) => order.OrderDate?.startsWith(String(year))).map((order) => [order.OrderID, order.OrderDate || '', order.RecipientName || order.User?.FullName || '', order.TotalAmount]);
-    const escape = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
-    const csv = ['Mã đơn,Ngày đặt,Khách hàng,Doanh thu', ...rows.map((row) => row.map(escape).join(','))].join('\r\n');
-    const blob = new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `doanh-thu-devora-${year}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+  function exportRevenueExcel() {
+    exportDashboardRevenueReport({
+      year,
+      selectedMonth,
+      deliveredOrders,
+      allOrders: orders,
+      products,
+      userCount,
+    });
   }
 
   return (
@@ -130,7 +130,7 @@ export default function AdminDashboard() {
             </label>
 
             <button
-              onClick={exportRevenueCsv}
+              onClick={exportRevenueExcel}
               className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2.5 text-xs font-bold text-white transition shadow-lg shadow-emerald-950/50"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

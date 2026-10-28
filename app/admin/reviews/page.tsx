@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { api, getPrimaryProductImage, type ProductReview } from '@/lib/api';
+import { useAdminData } from '@/lib/useAdminData';
+import { exportToExcel } from '@/lib/exportExcel';
 import Pagination from '@/app/admin/components/Pagination';
 
 function dateTime(value?: string | null) {
@@ -11,41 +13,45 @@ function dateTime(value?: string | null) {
 }
 
 export default function AdminReviewsPage() {
-  const [reviews, setReviews] = useState<ProductReview[]>([]);
+  const { data: reviewsData, loading, error, reload: reloadReviews } = useAdminData<ProductReview[]>(
+    'admin:reviews',
+    () => api.getAdminReviews(),
+  );
+  const reviews = reviewsData ?? [];
   const [replies, setReplies] = useState<Record<number, string>>({});
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [savingId, setSavingId] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<Record<number, string>>({});
 
-  const loadReviews = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const data = await api.getAdminReviews();
-      const rows = Array.isArray(data) ? data : [];
-      setReviews(rows);
-      setReplies(Object.fromEntries(rows.map((review) => [review.ReviewID, review.AdminReply || ''])));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thể tải danh sách đánh giá.');
-    } finally {
-      setLoading(false);
+  // Sync replies state when reviews data changes (from cache or fetch)
+  useEffect(() => {
+    if (reviews.length > 0) {
+      setReplies(Object.fromEntries(reviews.map((review) => [review.ReviewID, review.AdminReply || ''])));
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reviewsData]);
 
-  useEffect(() => { void loadReviews(); }, []);
+
+
+  // Sync replies khi reviews thay đổi
+
 
   const groups = useMemo(() => {
     const query = search.trim().toLocaleLowerCase('vi');
     const filtered = reviews.filter((review) => !query || [
+      String(review.ProductID),
+      `sp${review.ProductID}`,
+      `#${review.ProductID}`,
+      `#sp${review.ProductID}`,
       review.Product?.ProductName,
       review.User?.FullName,
+      review.User?.Email,
+      review.User?.Phone,
       review.Comment,
       review.AdminReply,
       String(review.OrderID || ''),
-      String(review.ProductID),
+      `#${review.OrderID}`,
     ].some((value) => String(value || '').toLocaleLowerCase('vi').includes(query)));
     const grouped = new Map<number, { name: string; image?: string | null; reviews: ProductReview[] }>();
     for (const review of filtered) {
@@ -74,7 +80,7 @@ export default function AdminReviewsPage() {
     setFeedback((current) => ({ ...current, [review.ReviewID]: '' }));
     try {
       const result = await api.replyToReview(review.ReviewID, reply);
-      setReviews((current) => current.map((item) => item.ReviewID === review.ReviewID ? result.review : item));
+      void reloadReviews(true);
       setReplies((current) => ({ ...current, [review.ReviewID]: result.review.AdminReply || reply }));
       setFeedback((current) => ({ ...current, [review.ReviewID]: result.message || 'Đã lưu phản hồi.' }));
     } catch (err) {
@@ -94,15 +100,43 @@ export default function AdminReviewsPage() {
           <h1 className="text-2xl font-black tracking-tight text-white sm:text-3xl">Đánh giá sản phẩm</h1>
           <p className="mt-1 text-sm text-slate-400">{reviews.length} đánh giá · {totalReplies} phản hồi · {groups.length} sản phẩm</p>
         </div>
-        <button type="button" onClick={() => void loadReviews()} disabled={loading} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-xs font-bold text-slate-200 transition hover:bg-slate-800 disabled:opacity-50">
+        <button type="button" onClick={() => void reloadReviews(true)} disabled={loading} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-xs font-bold text-slate-200 transition hover:bg-slate-800 disabled:opacity-50">
           {loading ? 'Đang tải…' : 'Làm mới'}
         </button>
       </section>
 
-      <label className="block">
-        <span className="sr-only">Tìm sản phẩm hoặc đánh giá</span>
-        <input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Tìm theo tên sản phẩm, khách hàng hoặc nội dung đánh giá…" className="w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-blue-500" />
-      </label>
+      <div className="space-y-3 bg-slate-900/80 p-4 rounded-2xl border border-slate-800/80 shadow-lg">
+        <div className="relative">
+          <input
+            value={search}
+            onChange={(event) => { setSearch(event.target.value); setPage(1); }}
+            placeholder="Tìm theo mã SP (#12, SP12), tên sản phẩm, tên khách hàng, email, sđt, nội dung đánh giá…"
+            className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2.5 pr-10 text-xs text-white outline-none placeholder:text-slate-500 focus:border-blue-500 transition"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs font-bold p-1 cursor-pointer"
+              title="Xóa tìm kiếm"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-2 text-[11px] text-slate-400 flex-wrap pt-1 border-t border-slate-800/60">
+          <span className="font-semibold text-slate-500">Tìm kiếm theo:</span>
+          <span className="px-2 py-0.5 rounded-md bg-slate-950 text-slate-300 border border-slate-800">🏷️ Mã SP (#12, SP12)</span>
+          <span className="px-2 py-0.5 rounded-md bg-slate-950 text-slate-300 border border-slate-800">💻 Tên sản phẩm</span>
+          <span className="px-2 py-0.5 rounded-md bg-slate-950 text-slate-300 border border-slate-800">👤 Khách hàng / Email / SĐT</span>
+          <span className="px-2 py-0.5 rounded-md bg-slate-950 text-slate-300 border border-slate-800">💬 Nội dung đánh giá</span>
+          {search && (
+            <span className="ml-auto text-blue-400 font-bold">
+              Tìm thấy {groups.length} nhóm sản phẩm
+            </span>
+          )}
+        </div>
+      </div>
 
       {error && <p role="alert" className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm font-semibold text-rose-300">{error}</p>}
       {loading ? (
@@ -111,13 +145,21 @@ export default function AdminReviewsPage() {
         <div className="rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 p-14 text-center text-slate-400">{reviews.length ? 'Không tìm thấy đánh giá phù hợp.' : 'Chưa có đánh giá sản phẩm nào.'}</div>
       ) : (
         <div className="space-y-5">
-          {visibleGroups.map(([productId, group]) => (
+          {visibleGroups.map(([productId, group], index) => {
+            const stt = (page - 1) * 20 + index + 1;
+            return (
             <section key={productId} className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/80 shadow-xl">
               <header className="flex items-center gap-4 border-b border-slate-800 bg-slate-950/60 p-4 sm:p-5">
                 {group.image ? <img src={getPrimaryProductImage(group.image)} alt="" className="h-14 w-14 rounded-xl border border-slate-800 bg-white object-contain p-1" /> : <div className="grid h-14 w-14 place-items-center rounded-xl border border-slate-800 bg-slate-900 text-xl text-slate-500">▧</div>}
                 <div className="min-w-0 flex-1">
-                  <h2 className="truncate text-base font-black text-white">{group.name}</h2>
-                  <p className="mt-1 text-xs text-slate-400">Mã sản phẩm #{productId} · {group.reviews.length} đánh giá</p>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 text-xs font-bold border border-slate-700">STT: {stt}</span>
+                    <h2 className="truncate text-base font-black text-white">{group.name}</h2>
+                  </div>
+                  <p className="mt-1 flex items-center gap-2 text-xs text-slate-400">
+                    <span className="font-mono font-bold text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20">#SP{productId}</span>
+                    <span>· {group.reviews.length} đánh giá</span>
+                  </p>
                 </div>
               </header>
               <div className="divide-y divide-slate-800">
@@ -146,7 +188,8 @@ export default function AdminReviewsPage() {
                 ))}
               </div>
             </section>
-          ))}
+          );
+        })}
         </div>
       )}
 

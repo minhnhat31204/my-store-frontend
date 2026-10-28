@@ -1,18 +1,27 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
 import { api, type Product, type StoreCategory } from '@/lib/api';
+import { useAdminData } from '@/lib/useAdminData';
+import { exportToExcel } from '@/lib/exportExcel';
 import Pagination from '@/app/admin/components/Pagination';
 
 type CategoryForm = { CategoryName: string; ImageUrl: string };
 const emptyForm: CategoryForm = { CategoryName: '', ImageUrl: '' };
 
 export default function AdminCategoriesPage() {
-  const [categories, setCategories] = useState<StoreCategory[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  type CatAndProd = { categories: StoreCategory[]; products: Product[] };
+  const { data: catData, loading, error: catError, reload: reloadCat } = useAdminData<CatAndProd>(
+    'admin:categories',
+    async () => {
+      const [categoryRows, productRows] = await Promise.all([api.getCategories(), api.getProducts()]);
+      return { categories: Array.isArray(categoryRows) ? categoryRows : [], products: Array.isArray(productRows) ? productRows : [] };
+    },
+  );
+  const categories = catData?.categories ?? [];
+  const products = catData?.products ?? [];
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [error, setError] = useState('');
@@ -23,21 +32,6 @@ export default function AdminCategoriesPage() {
   const [form, setForm] = useState<CategoryForm>(emptyForm);
   const [formError, setFormError] = useState('');
 
-  async function loadData(showLoading = true) {
-    if (showLoading) setLoading(true);
-    setError('');
-    try {
-      const [categoryRows, productRows] = await Promise.all([api.getCategories(), api.getProducts()]);
-      setCategories(Array.isArray(categoryRows) ? categoryRows : []);
-      setProducts(Array.isArray(productRows) ? productRows : []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thể tải danh sách danh mục.');
-    } finally {
-      if (showLoading) setLoading(false);
-    }
-  }
-
-  useEffect(() => { void loadData(); }, []);
 
   const productCounts = useMemo(() => {
     const counts = new Map<number, number>();
@@ -51,12 +45,41 @@ export default function AdminCategoriesPage() {
   const filteredCategories = useMemo(() => {
     const query = search.trim().toLocaleLowerCase('vi');
     return [...categories]
-      .filter((category) => !query || category.CategoryName.toLocaleLowerCase('vi').includes(query) || String(category.CategoryID).includes(query))
+      .filter((category) => {
+        if (!query) return true;
+        const nameMatch = category.CategoryName.toLocaleLowerCase('vi').includes(query);
+        const idMatch = String(category.CategoryID).includes(query) || `#${category.CategoryID}`.includes(query);
+        const productMatch = products.some((p) =>
+          p.CategoryID === category.CategoryID && (
+            (p.ProductName || '').toLocaleLowerCase('vi').includes(query) ||
+            String(p.ProductID).includes(query) ||
+            `sp${p.ProductID}`.toLocaleLowerCase('vi').includes(query) ||
+            `#${p.ProductID}`.includes(query)
+          )
+        );
+        return nameMatch || idMatch || productMatch;
+      })
       .sort((a, b) => a.CategoryName.localeCompare(b.CategoryName, 'vi'));
-  }, [categories, search]);
+  }, [categories, products, search]);
   const totalPages = Math.max(1, Math.ceil(filteredCategories.length / 20));
   const currentPage = Math.min(page, totalPages);
   const visibleCategories = filteredCategories.slice((currentPage - 1) * 20, currentPage * 20);
+
+
+  const handleExportExcel = () => {
+    exportToExcel<StoreCategory>({
+      filename: 'Danh_Sach_Danh_Muc',
+      sheetName: 'DanhMuc',
+      data: filteredCategories,
+      columns: [
+        { header: 'STT', transform: (_, idx) => idx + 1, width: 8 },
+        { header: 'Mã danh mục', transform: (c) => '#DM' + c.CategoryID, width: 14 },
+        { header: 'Tên danh mục', key: 'CategoryName', width: 28 },
+        { header: 'Số lượng sản phẩm', transform: (c) => productCounts.get(c.CategoryID) || 0, width: 20 },
+        { header: 'Đường dẫn ảnh', key: 'ImageUrl', width: 35 },
+      ],
+    });
+  };
 
   function openCreate() {
     setEditingCategory(null);
@@ -86,17 +109,14 @@ export default function AdminCategoriesPage() {
     setError('');
     try {
       if (editingCategory) {
-        const result = await api.updateCategory(editingCategory.CategoryID, { CategoryName, ImageUrl });
-        setCategories((current) => current.map((item) => item.CategoryID === editingCategory.CategoryID ? result.category : item));
-        setSuccess(`Đã cập nhật danh mục “${CategoryName}”.`);
+        await api.updateCategory(editingCategory.CategoryID, { CategoryName, ImageUrl });
+        setSuccess(`Đã cập nhật danh mục "${CategoryName}".`);
       } else {
-        const created = await api.createCategory({ CategoryName, ImageUrl });
-        setCategories((current) => [...current, created]);
-        setSuccess(`Đã tạo danh mục “${CategoryName}”.`);
+        await api.createCategory({ CategoryName, ImageUrl });
+        setSuccess(`Đã tạo danh mục "${CategoryName}".`);
       }
-      await api.getCategories();
+      void reloadCat(true);
       setModalOpen(false);
-      setEditingCategory(null);
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Không thể lưu danh mục.');
     } finally {
@@ -108,13 +128,12 @@ export default function AdminCategoriesPage() {
     if (!categoryToDelete) return;
     setDeletingId(categoryToDelete.CategoryID);
     setError('');
-    setSuccess('');
+    const name = categoryToDelete.CategoryName;
     try {
       await api.deleteCategory(categoryToDelete.CategoryID);
-      setCategories((current) => current.filter((item) => item.CategoryID !== categoryToDelete.CategoryID));
+      void reloadCat(true);
       setCategoryToDelete(null);
-      setSuccess(`Đã xóa danh mục “${categoryToDelete.CategoryName}”.`);
-      await api.getCategories();
+      setSuccess(`Đã xóa danh mục "${name}".`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không thể xóa danh mục.');
       setCategoryToDelete(null);
@@ -131,7 +150,13 @@ export default function AdminCategoriesPage() {
           <h1 className="text-2xl font-black tracking-tight text-white sm:text-3xl">Quản lý danh mục</h1>
           <p className="mt-1 text-sm text-slate-400">Tạo và tổ chức danh mục để cửa hàng có thể mở rộng thêm các ngành hàng.</p>
         </div>
-        <button type="button" onClick={openCreate} className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-500">＋ Thêm danh mục</button>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={handleExportExcel} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-500/30 px-4 py-2.5 text-xs font-bold text-emerald-300 transition active:scale-95 cursor-pointer">
+            <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            <span>Xuất Excel</span>
+          </button>
+          <button type="button" onClick={openCreate} className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-500">＋ Thêm danh mục</button>
+        </div>
       </section>
 
       <section className="grid gap-3 sm:grid-cols-3">
@@ -140,12 +165,46 @@ export default function AdminCategoriesPage() {
         <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4"><p className="text-xs font-semibold text-slate-400">Chưa có danh mục</p><p className="mt-1 text-2xl font-black text-white">{products.filter((product) => !Number(product.CategoryID)).length}</p></div>
       </section>
 
-      <section className="flex flex-col gap-3 rounded-2xl border border-slate-800 bg-slate-900/80 p-4 sm:flex-row sm:items-center">
-        <label className="min-w-0 flex-1">
-          <span className="sr-only">Tìm danh mục</span>
-          <input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Tìm theo tên hoặc mã danh mục…" className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-blue-500" />
-        </label>
-        <button type="button" onClick={() => void loadData()} disabled={loading} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm font-semibold text-slate-200 transition hover:bg-slate-800 disabled:opacity-50">{loading ? 'Đang tải…' : 'Làm mới'}</button>
+      <section className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative min-w-0 flex-1">
+            <input
+              value={search}
+              onChange={(event) => { setSearch(event.target.value); setPage(1); }}
+              placeholder="Tìm theo tên danh mục, mã DM (#1), hoặc mã SP (#12, SP12), tên sản phẩm thuộc danh mục..."
+              className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2.5 pr-10 text-xs text-white outline-none placeholder:text-slate-500 focus:border-blue-500 transition"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs font-bold p-1 cursor-pointer"
+                title="Xóa tìm kiếm"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => void reloadCat(true)}
+            disabled={loading}
+            className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-xs font-semibold text-slate-200 transition hover:bg-slate-800 disabled:opacity-50 cursor-pointer"
+          >
+            {loading ? 'Đang tải…' : 'Làm mới'}
+          </button>
+        </div>
+        <div className="flex items-center gap-2 text-[11px] text-slate-400 flex-wrap pt-1 border-t border-slate-800/60">
+          <span className="font-semibold text-slate-500">Tìm kiếm theo:</span>
+          <span className="px-2 py-0.5 rounded-md bg-slate-950 text-slate-300 border border-slate-800">📂 Tên danh mục</span>
+          <span className="px-2 py-0.5 rounded-md bg-slate-950 text-slate-300 border border-slate-800">🏷️ Mã SP (#12, SP12) thuộc DM</span>
+          <span className="px-2 py-0.5 rounded-md bg-slate-950 text-slate-300 border border-slate-800">💻 Tên sản phẩm thuộc DM</span>
+          {search && (
+            <span className="ml-auto text-blue-400 font-bold">
+              Tìm thấy {filteredCategories.length} danh mục
+            </span>
+          )}
+        </div>
       </section>
 
       {error && <p role="alert" className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm font-semibold text-rose-300">{error}</p>}
@@ -157,15 +216,19 @@ export default function AdminCategoriesPage() {
         <div className="rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 p-14 text-center text-slate-400">{categories.length ? 'Không tìm thấy danh mục phù hợp.' : 'Chưa có danh mục. Hãy tạo danh mục đầu tiên.'}</div>
       ) : (
         <div className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/80 shadow-xl">
-          <div className="hidden grid-cols-[minmax(0,1fr)_160px_180px] gap-4 border-b border-slate-800 bg-slate-950/60 px-5 py-3 text-[11px] font-black uppercase tracking-wider text-slate-500 sm:grid"><span>Danh mục</span><span>Sản phẩm</span><span className="text-right">Thao tác</span></div>
+          <div className="hidden grid-cols-[60px_minmax(0,1fr)_160px_180px] gap-4 border-b border-slate-800 bg-slate-950/60 px-5 py-3 text-[11px] font-black uppercase tracking-wider text-slate-500 sm:grid"><span className="text-center">STT</span><span>Danh mục</span><span>Sản phẩm</span><span className="text-right">Thao tác</span></div>
           <div className="divide-y divide-slate-800">
-            {visibleCategories.map((category) => {
+            {visibleCategories.map((category, index) => {
+              const stt = (currentPage - 1) * 20 + index + 1;
               const count = productCounts.get(category.CategoryID) || 0;
               return (
-                <article key={category.CategoryID} className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_160px_180px] sm:items-center sm:gap-4 sm:px-5">
+                <article key={category.CategoryID} className="grid gap-3 p-4 sm:grid-cols-[60px_minmax(0,1fr)_160px_180px] sm:items-center sm:gap-4 sm:px-5">
+                  <div className="hidden sm:block text-center font-bold text-slate-400 text-xs">{stt}</div>
                   <div className="flex min-w-0 items-center gap-3">
                     {category.ImageUrl ? <img src={category.ImageUrl} alt="" className="h-12 w-12 shrink-0 rounded-xl border border-slate-700 bg-white object-contain p-1" /> : <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-slate-700 bg-slate-950 text-xl text-slate-500">▦</div>}
-                    <div className="min-w-0"><h2 className="truncate font-bold text-white">{category.CategoryName}</h2><p className="mt-1 text-xs text-slate-500">Mã danh mục #{category.CategoryID}</p></div>
+                    <div className="min-w-0"><h2 className="truncate font-bold text-white">{category.CategoryName}</h2><p className="mt-1 flex items-center gap-2 text-xs text-slate-500">
+                      <span className="font-mono font-bold text-cyan-400 bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/20 text-[10px]">#DM{category.CategoryID}</span>
+                    </p></div>
                   </div>
                   <p className="text-sm text-slate-300"><span className="sm:hidden">Sản phẩm: </span><strong>{count}</strong> sản phẩm</p>
                   <div className="flex gap-2 sm:justify-end">

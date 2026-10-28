@@ -1,19 +1,31 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { api, getPrimaryProductImage, Product, Promotion, setCachedProductsSync } from '@/lib/api';
+import { useAdminData } from '@/lib/useAdminData';
+import { exportToExcel } from '@/lib/exportExcel';
 import Pagination from '@/app/admin/components/Pagination';
+import ConfirmDeleteModal from '@/app/admin/components/ConfirmDeleteModal';
 
 export default function AdminBannersPage() {
-  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  type BannerData = { promotions: Promotion[]; products: Product[] };
+  const { data: bannerCacheData, loading, error, reload } = useAdminData<BannerData>(
+    'admin:banners',
+    async () => {
+      const [promosRes, prodsRes] = await Promise.all([api.getPromotions(), api.getProducts().catch(() => [])]);
+      return { promotions: promosRes, products: prodsRes };
+    },
+  );
+  const promotions = bannerCacheData?.promotions ?? [];
+  const products = bannerCacheData?.products ?? [];
   const [page, setPage] = useState(1);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [bannerSearch, setBannerSearch] = useState('');
 
   // Form modal
   const [modalOpen, setModalOpen] = useState(false);
+  const [deletingBanner, setDeletingBanner] = useState<Promotion | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [editingPromo, setEditingPromo] = useState<Promotion | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -32,26 +44,24 @@ export default function AdminBannersPage() {
   const [isActive, setIsActive] = useState(true);
   const [uploadingImage, setUploadingImage] = useState(false);
 
-  const loadData = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const [promosRes, prodsRes] = await Promise.all([
-        api.getPromotions(),
-        api.getProducts().catch(() => []),
-      ]);
-      setPromotions(promosRes);
-      setProducts(prodsRes);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Lỗi khi tải danh sách banner.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  useEffect(() => {
-    void loadData();
-  }, []);
+
+  const handleExportExcel = () => {
+    exportToExcel<Promotion>({
+      filename: 'Danh_Sach_Banner_Khuyen_Mai',
+      sheetName: 'Banner',
+      data: filteredPromotions,
+      columns: [
+        { header: 'STT', transform: (_, idx) => idx + 1, width: 8 },
+        { header: 'Mã banner', key: 'PromotionID', width: 12 },
+        { header: 'Tiêu đề chiến dịch', key: 'Title', width: 30 },
+        { header: 'Mô tả', key: 'Description', width: 40 },
+        { header: 'Giảm giá (%)', transform: (b) => b.DiscountPercent ? b.DiscountPercent + '%' : '', width: 14 },
+        { header: 'Link điều hướng', key: 'LinkUrl', width: 28 },
+        { header: 'Đường dẫn ảnh banner', key: 'ImageUrl', width: 35 },
+      ],
+    });
+  };
 
   const openCreateModal = () => {
     setEditingPromo(null);
@@ -228,7 +238,7 @@ export default function AdminBannersPage() {
 
       // Cập nhật lại cache sản phẩm
       const freshProducts = await api.getProducts();
-      setProducts(freshProducts);
+      void reload(true);
       setCachedProductsSync(freshProducts);
 
       setFeedback({
@@ -236,7 +246,7 @@ export default function AdminBannersPage() {
         message: 'Đã lưu banner và đồng bộ giá khuyến mãi cho các sản phẩm thành công!',
       });
       setModalOpen(false);
-      await loadData();
+      await reload(true);
     } catch (err) {
       setFeedback({
         type: 'error',
@@ -247,29 +257,74 @@ export default function AdminBannersPage() {
     }
   };
 
-  const handleDelete = async (id?: number) => {
-    if (!id || !window.confirm(`Bạn có chắc muốn xóa banner #${id} này không?`)) return;
+  const handleConfirmDelete = async () => {
+    if (!deletingBanner?.PromotionID) return;
+    setIsDeleting(true);
     try {
-      await api.deletePromotion(id);
-      setFeedback({ type: 'success', message: `Đã xóa banner #${id} thành công.` });
-      await loadData();
+      await api.deletePromotion(deletingBanner.PromotionID);
+      setFeedback({ type: 'success', message: `Đã xóa banner #${deletingBanner.PromotionID} thành công.` });
+      setDeletingBanner(null);
+      await reload(true);
     } catch (err) {
       setFeedback({ type: 'error', message: err instanceof Error ? err.message : 'Không xóa được banner.' });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
-  // Lọc sản phẩm theo từ khóa tìm kiếm
+  // Lọc sản phẩm theo mã SP hoặc tên máy
   const filteredProductsToChoose = useMemo(() => {
     const kw = productSearch.trim().toLowerCase();
     if (!kw) return products;
-    return products.filter((p) => p.ProductName.toLowerCase().includes(kw));
+    return products.filter((p) =>
+      p.ProductName.toLowerCase().includes(kw) ||
+      String(p.ProductID).includes(kw) ||
+      `sp${p.ProductID}`.includes(kw) ||
+      `#${p.ProductID}`.includes(kw)
+    );
   }, [products, productSearch]);
   const pickerTotalPages = Math.max(1, Math.ceil(filteredProductsToChoose.length / 20));
   const pickerCurrentPage = Math.min(productPickerPage, pickerTotalPages);
   const visibleProductsToChoose = filteredProductsToChoose.slice((pickerCurrentPage - 1) * 20, pickerCurrentPage * 20);
-  const promoTotalPages = Math.max(1, Math.ceil(promotions.length / 20));
+
+  // Lọc banner theo tiêu đề, mã banner hoặc sản phẩm bên trong
+  const filteredPromotions = useMemo(() => {
+    const query = bannerSearch.trim().toLowerCase();
+    if (!query) return promotions;
+    return promotions.filter((p) => {
+      const titleMatch = (p.Title || '').toLowerCase().includes(query);
+      const descMatch = (p.Description || '').toLowerCase().includes(query);
+      const idMatch = String(p.PromotionID || '').includes(query) || `#${p.PromotionID}`.includes(query);
+
+      let pIds: number[] = [];
+      if (p.ProductIDs) {
+        try {
+          pIds = Array.isArray(p.ProductIDs)
+            ? p.ProductIDs.map(Number)
+            : typeof p.ProductIDs === 'string' && p.ProductIDs.startsWith('[')
+            ? JSON.parse(p.ProductIDs).map(Number)
+            : String(p.ProductIDs).split(',').map((x) => Number(x.trim())).filter(Boolean);
+        } catch {}
+      }
+
+      const hasProductMatch = pIds.some((id) => {
+        const prod = products.find((item) => item.ProductID === id);
+        if (!prod) return String(id).includes(query) || `sp${id}`.includes(query);
+        return (
+          String(prod.ProductID).includes(query) ||
+          `sp${prod.ProductID}`.includes(query) ||
+          `#${prod.ProductID}`.includes(query) ||
+          (prod.ProductName || '').toLowerCase().includes(query)
+        );
+      });
+
+      return titleMatch || descMatch || idMatch || hasProductMatch;
+    });
+  }, [promotions, products, bannerSearch]);
+
+  const promoTotalPages = Math.max(1, Math.ceil(filteredPromotions.length / 20));
   const promoCurrentPage = Math.min(page, promoTotalPages);
-  const visiblePromotions = promotions.slice((promoCurrentPage - 1) * 20, promoCurrentPage * 20);
+  const visiblePromotions = filteredPromotions.slice((promoCurrentPage - 1) * 20, promoCurrentPage * 20);
 
   const selectedProductsList = useMemo(() => {
     return selectedProductIds
@@ -312,6 +367,40 @@ export default function AdminBannersPage() {
         </div>
       )}
 
+      {/* Search Banners */}
+      <div className="space-y-3 bg-slate-900/80 p-4 rounded-2xl border border-slate-800/80 shadow-lg">
+        <div className="relative">
+          <input
+            type="text"
+            value={bannerSearch}
+            onChange={(e) => { setBannerSearch(e.target.value); setPage(1); }}
+            placeholder="Tìm theo mã banner (#12), tiêu đề, hoặc mã SP (#15, SP15), tên sản phẩm áp dụng trong banner..."
+            className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2.5 pr-10 text-xs text-white outline-none placeholder:text-slate-500 focus:border-orange-500 transition"
+          />
+          {bannerSearch && (
+            <button
+              type="button"
+              onClick={() => setBannerSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs font-bold p-1 cursor-pointer"
+              title="Xóa tìm kiếm"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-2 text-[11px] text-slate-400 flex-wrap pt-1 border-t border-slate-800/60">
+          <span className="font-semibold text-slate-500">Tìm kiếm theo:</span>
+          <span className="px-2 py-0.5 rounded-md bg-slate-950 text-slate-300 border border-slate-800">🏷️ Mã SP (#12, SP12)</span>
+          <span className="px-2 py-0.5 rounded-md bg-slate-950 text-slate-300 border border-slate-800">💻 Tên sản phẩm</span>
+          <span className="px-2 py-0.5 rounded-md bg-slate-950 text-slate-300 border border-slate-800">🖼️ Tiêu đề banner</span>
+          {bannerSearch && (
+            <span className="ml-auto text-orange-400 font-bold">
+              Tìm thấy {filteredPromotions.length} banner
+            </span>
+          )}
+        </div>
+      </div>
+
       {loading ? (
         <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-12 text-center text-slate-400">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-orange-500 border-r-transparent mb-4"></div>
@@ -324,7 +413,8 @@ export default function AdminBannersPage() {
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {visiblePromotions.map((p) => {
+          {visiblePromotions.map((p, index) => {
+            const stt = (promoCurrentPage - 1) * 9 + index + 1;
             const img = p.ImageUrl || p.BannerImageUrl || '/banner-placeholder.jpg';
             let promoProductCount = 0;
             if (p.ProductIDs) {
@@ -346,8 +436,11 @@ export default function AdminBannersPage() {
                 <div>
                   <div className="relative aspect-video w-full bg-slate-950 overflow-hidden">
                     <img src={img} alt={p.Title || ''} className="w-full h-full object-cover" />
+                    <span className="absolute top-2 left-2 rounded-md bg-slate-900/90 border border-slate-700 px-2 py-0.5 text-[10px] font-bold text-slate-200 backdrop-blur-xs">
+                      STT: {stt}
+                    </span>
                     <span className="absolute top-2 right-2 rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-xs">
-                      #{p.PromotionID}
+                      Mã: #{p.PromotionID}
                     </span>
                   </div>
                   <div className="p-4 space-y-2">
@@ -385,7 +478,7 @@ export default function AdminBannersPage() {
                       Sửa
                     </button>
                     <button
-                      onClick={() => handleDelete(p.PromotionID)}
+                      onClick={() => setDeletingBanner(p)}
                       className="rounded-lg bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 text-xs font-semibold text-rose-400 hover:bg-rose-500/20 cursor-pointer"
                     >
                       Xóa
@@ -398,7 +491,18 @@ export default function AdminBannersPage() {
         </div>
       )}
 
-      <Pagination currentPage={promoCurrentPage} totalItems={promotions.length} onPageChange={setPage} />
+      <Pagination currentPage={promoCurrentPage} totalItems={filteredPromotions.length} onPageChange={setPage} />
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(deletingBanner)}
+        title="Xác nhận xóa Banner"
+        itemType="banner khuyến mãi"
+        itemName={deletingBanner ? `#${deletingBanner.PromotionID} - ${deletingBanner.Title}` : ''}
+        description="Banner này sẽ bị gỡ bỏ khỏi trang chủ và danh sách sự kiện ưu đãi của cửa hàng."
+        isDeleting={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeletingBanner(null)}
+      />
 
       {/* Modal tạo / sửa Banner */}
       {modalOpen && (
@@ -599,7 +703,7 @@ export default function AdminBannersPage() {
                     type="text"
                     value={productSearch}
                     onChange={(e) => { setProductSearch(e.target.value); setProductPickerPage(1); }}
-                    placeholder="🔍 Nhập tên sản phẩm để tìm nhanh và thêm..."
+                    placeholder="🔍 Nhập mã SP (#12, SP12) hoặc tên sản phẩm..."
                     className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-200 outline-none focus:border-orange-500"
                   />
 
@@ -627,6 +731,7 @@ export default function AdminBannersPage() {
                               alt=""
                               className="w-7 h-7 object-contain rounded bg-slate-950 shrink-0"
                             />
+                            <span className="font-mono text-[10px] font-bold text-blue-400 bg-blue-500/10 px-1 py-0.5 rounded border border-blue-500/20 shrink-0">#SP{p.ProductID}</span>
                             <span className="text-xs truncate">{p.ProductName}</span>
                           </div>
                           <div className="flex items-center gap-2 shrink-0 ml-2">

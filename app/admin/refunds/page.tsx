@@ -1,7 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { api, getPrimaryProductImage, type StoreOrder } from '@/lib/api';
+import { useAdminData } from '@/lib/useAdminData';
+import { exportToExcel } from '@/lib/exportExcel';
+import { printRefundReceipt } from '@/lib/printUtils';
 import Pagination from '@/app/admin/components/Pagination';
 
 function money(value?: number | string | null) {
@@ -15,35 +18,62 @@ function dateTime(value?: string | null) {
 }
 
 export default function AdminRefundsPage() {
-  const [requests, setRequests] = useState<StoreOrder[]>([]);
+  const { data: requestsData, loading, error, reload } = useAdminData<StoreOrder[]>(
+    'admin:refunds',
+    () => api.getRefundRequests(),
+  );
+  const requests = requestsData ?? [];
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<StoreOrder | null>(null);
   const [processingId, setProcessingId] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectNote, setRejectNote] = useState('');
-  const totalPages = Math.max(1, Math.ceil(requests.length / 20));
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredRequests = (requests || []).filter((order) => {
+    const query = searchTerm.trim().toLowerCase();
+    if (!query) return true;
+    const idMatch = String(order.OrderID).includes(query) || `#${order.OrderID}`.includes(query);
+    const nameMatch = (order.RecipientName || '').toLowerCase().includes(query) || (order.User?.FullName || '').toLowerCase().includes(query);
+    const phoneMatch = (order.RecipientPhone || '').toLowerCase().includes(query) || (order.RefundPhone || '').toLowerCase().includes(query);
+    const bankMatch = (order.RefundBankAccount || '').toLowerCase().includes(query) || (order.RefundBankHolder || '').toLowerCase().includes(query) || (order.RefundBankName || '').toLowerCase().includes(query);
+    const reasonMatch = (order.RefundReason || '').toLowerCase().includes(query);
+    const productMatch = (order.OrderItems || []).some((item) => 
+      String(item.ProductID).includes(query) ||
+      `sp${item.ProductID}`.includes(query) ||
+      `#${item.ProductID}`.includes(query) ||
+      `#sp${item.ProductID}`.includes(query) ||
+      (item.Product?.ProductName || '').toLowerCase().includes(query)
+    );
+    return idMatch || nameMatch || phoneMatch || bankMatch || reasonMatch || productMatch;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filteredRequests.length / 20));
   const currentPage = Math.min(page, totalPages);
-  const visibleRequests = requests.slice((currentPage - 1) * 20, currentPage * 20);
+  const visibleRequests = filteredRequests.slice((currentPage - 1) * 20, currentPage * 20);
 
-  const loadRequests = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const data = await api.getRefundRequests();
-      setRequests(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thể tải danh sách yêu cầu hoàn tiền.');
-    } finally {
-      setLoading(false);
-    }
+
+
+  const handleExportExcel = () => {
+    exportToExcel<StoreOrder>({
+      filename: 'Yeu_Cau_Hoan_Tien',
+      sheetName: 'HoanTien',
+      data: filteredRequests,
+      columns: [
+        { header: 'STT', transform: (_, idx) => idx + 1, width: 8 },
+        { header: 'Mã đơn hàng', transform: (r) => '#' + r.OrderID, width: 14 },
+        { header: 'Khách hàng', transform: (r) => r.RecipientName || r.User?.FullName || '', width: 22 },
+        { header: 'Số điện thoại', transform: (r) => r.RefundPhone || r.RecipientPhone || '', width: 16 },
+        { header: 'Số tiền cần hoàn (₫)', transform: (r) => Number(r.TotalAmount || 0), width: 20 },
+        { header: 'Ngân hàng thụ hưởng', key: 'RefundBankName', width: 24 },
+        { header: 'Số tài khoản', key: 'RefundBankAccount', width: 20 },
+        { header: 'Chủ tài khoản', key: 'RefundBankHolder', width: 22 },
+        { header: 'Lý do yêu cầu hoàn tiền', key: 'RefundReason', width: 35 },
+        { header: 'Thời gian đặt hàng', transform: (r) => dateTime(r.OrderDate), width: 18 },
+      ],
+    });
   };
-
-  useEffect(() => {
-    void loadRequests();
-  }, []);
 
   const handleApprove = async (orderId: number) => {
     if (!window.confirm(`Xác nhận duyệt hoàn tiền cho đơn hàng #${orderId}? Bạn đã thực hiện chuyển tiền thành công cho khách hàng chưa?`)) return;
@@ -53,7 +83,7 @@ export default function AdminRefundsPage() {
       const res = await api.approveRefundRequest(orderId);
       setFeedback({ type: 'success', message: res.message || `Đã phê duyệt hoàn tiền cho đơn #${orderId}.` });
       setSelectedOrder(null);
-      await loadRequests();
+      await reload(true);
     } catch (err) {
       setFeedback({ type: 'error', message: err instanceof Error ? err.message : 'Lỗi khi phê duyệt hoàn tiền.' });
     } finally {
@@ -76,7 +106,7 @@ export default function AdminRefundsPage() {
       setFeedback({ type: 'success', message: res.message || `Đã từ chối hoàn tiền cho đơn #${selectedOrder.OrderID}.` });
       setRejectModalOpen(false);
       setSelectedOrder(null);
-      await loadRequests();
+      await reload(true);
     } catch (err) {
       setFeedback({ type: 'error', message: err instanceof Error ? err.message : 'Lỗi khi từ chối hoàn tiền.' });
     } finally {
@@ -95,7 +125,7 @@ export default function AdminRefundsPage() {
           </p>
         </div>
         <button
-          onClick={() => void loadRequests()}
+          onClick={() => void reload(true)}
           className="inline-flex items-center gap-2 rounded-xl bg-slate-800 border border-slate-700 px-4 py-2.5 text-sm font-semibold text-slate-200 hover:bg-slate-700 hover:text-white transition"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -122,6 +152,44 @@ export default function AdminRefundsPage() {
         </div>
       )}
 
+      {/* Search Bar */}
+      <div className="space-y-3 bg-slate-900/80 p-4 rounded-2xl border border-slate-800/80 shadow-lg">
+        <div className="relative">
+          <svg className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
+            placeholder="Tìm theo mã đơn (#101), mã SP (#12, SP12), tên sản phẩm, tên khách hàng, SĐT, số tài khoản..."
+            className="w-full pl-10 pr-10 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+          />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs font-bold p-1 cursor-pointer"
+              title="Xóa tìm kiếm"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-2 text-[11px] text-slate-400 flex-wrap pt-1 border-t border-slate-800/60">
+          <span className="font-semibold text-slate-500">Tìm kiếm theo:</span>
+          <span className="px-2 py-0.5 rounded-md bg-slate-950 text-slate-300 border border-slate-800">🏷️ Mã SP (#12, SP12)</span>
+          <span className="px-2 py-0.5 rounded-md bg-slate-950 text-slate-300 border border-slate-800">💻 Tên sản phẩm</span>
+          <span className="px-2 py-0.5 rounded-md bg-slate-950 text-slate-300 border border-slate-800">🧾 Mã đơn (#ID)</span>
+          <span className="px-2 py-0.5 rounded-md bg-slate-950 text-slate-300 border border-slate-800">💳 Số tài khoản ngân hàng</span>
+          {searchTerm && (
+            <span className="ml-auto text-blue-400 font-bold">
+              Tìm thấy {filteredRequests.length} yêu cầu
+            </span>
+          )}
+        </div>
+      </div>
+
       {loading ? (
         <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-12 text-center text-slate-400">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-500 border-r-transparent mb-4"></div>
@@ -139,7 +207,8 @@ export default function AdminRefundsPage() {
         </div>
       ) : (
         <div className="grid gap-4">
-          {visibleRequests.map((order) => {
+          {visibleRequests.map((order, index) => {
+            const stt = (currentPage - 1) * 20 + index + 1;
             const isProcessing = processingId === order.OrderID;
             return (
               <div
@@ -148,6 +217,7 @@ export default function AdminRefundsPage() {
               >
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
                   <div className="flex items-center gap-3">
+                    <span className="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 font-bold text-xs">STT: {stt}</span>
                     <span className="text-lg font-black text-white">Đơn hàng #{order.OrderID}</span>
                     <span className="rounded-full bg-amber-500/10 border border-amber-500/20 px-3 py-0.5 text-xs font-bold text-amber-400">
                       Chờ hoàn tiền
@@ -197,6 +267,7 @@ export default function AdminRefundsPage() {
                           {item.Product?.ImageUrl && (
                             <img src={getPrimaryProductImage(item.Product.ImageUrl)} alt="" className="w-6 h-6 object-cover rounded" />
                           )}
+                          <span className="font-mono text-[10px] font-bold text-blue-400 bg-blue-500/10 px-1 py-0.5 rounded border border-blue-500/20 shrink-0">#SP{item.ProductID}</span>
                           <span className="font-semibold max-w-[200px] truncate">{item.Product?.ProductName || `Sản phẩm #${item.ProductID}`}</span>
                           <span className="text-slate-500">×{item.Quantity}</span>
                         </div>
@@ -207,6 +278,17 @@ export default function AdminRefundsPage() {
 
                 {/* Actions */}
                 <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => printRefundReceipt(order)}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-xs font-bold text-blue-300 hover:bg-blue-500/20 transition cursor-pointer shadow-sm active:scale-95"
+                    title="In phiếu chi hoàn tiền / biên bản hoàn tất"
+                  >
+                    <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    <span>In Phiếu Hoàn Tiền</span>
+                  </button>
                   <button
                     type="button"
                     disabled={isProcessing}
@@ -239,7 +321,7 @@ export default function AdminRefundsPage() {
         </div>
       )}
 
-      <Pagination currentPage={currentPage} totalItems={requests.length} onPageChange={setPage} />
+      <Pagination currentPage={currentPage} totalItems={filteredRequests.length} onPageChange={setPage} />
 
       {/* Modal từ chối */}
       {rejectModalOpen && selectedOrder && (

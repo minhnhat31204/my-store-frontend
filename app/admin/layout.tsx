@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { getStoredUser, api, User, clearAllAuthSession } from '@/lib/api';
 import { useAdminGuard } from '@/lib/useAdminGuard';
+import { prefetch } from '@/lib/adminCache';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -124,6 +125,37 @@ const NAV_GROUPS = [
   },
 ];
 
+// Map route -> cache key + fetcher (for prefetch on hover)
+const PREFETCH_MAP: Record<string, { key: string; fetcher: () => Promise<unknown> }> = {
+  '/admin/users': { key: 'admin:users', fetcher: () => api.getUsers() },
+  '/admin/orders': { key: 'admin:orders', fetcher: () => api.getOrders() },
+  '/admin/refunds': { key: 'admin:refunds', fetcher: () => api.getRefundRequests() },
+  '/admin/products': {
+    key: 'admin:products',
+    fetcher: async () => {
+      const [prods, cats] = await Promise.all([api.getProducts(), api.getCategories()]);
+      return { products: Array.isArray(prods) ? prods : [], categories: Array.isArray(cats) ? cats : [] };
+    },
+  },
+  '/admin/reviews': { key: 'admin:reviews', fetcher: () => api.getAdminReviews() },
+  '/admin/banners': {
+    key: 'admin:banners',
+    fetcher: async () => {
+      const [promos, prods] = await Promise.all([api.getPromotions(), api.getProducts().catch(() => [])]);
+      return { promotions: promos, products: prods };
+    },
+  },
+  '/admin/categories': {
+    key: 'admin:categories',
+    fetcher: async () => {
+      const [cats, prods] = await Promise.all([api.getCategories(), api.getProducts()]);
+      return { categories: Array.isArray(cats) ? cats : [], products: Array.isArray(prods) ? prods : [] };
+    },
+  },
+  '/admin/vouchers': { key: 'admin:vouchers', fetcher: () => api.getVouchers() },
+};
+
+
 export default function AdminLayout({ children }: AdminLayoutProps) {
   useAdminGuard();
   const pathname = usePathname();
@@ -240,6 +272,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   <Link
                     key={item.href}
                     href={item.href}
+                    onMouseEnter={() => { const p = PREFETCH_MAP[item.href]; if (p) prefetch(p.key, p.fetcher); }}
                     className={`group relative flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-bold transition-all ${
                       isActive
                         ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-600/30 ring-1 ring-white/20'
