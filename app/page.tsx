@@ -60,6 +60,7 @@ export default function Home() {
   const isDraggingRef = useRef(false);
   const isAnimatingRef = useRef(false);
   const dragOffsetRef = useRef(0);
+  const hasDraggedRef = useRef(false);
 
   useEffect(() => {
     try {
@@ -221,7 +222,9 @@ export default function Home() {
   // Xử lý kéo bằng chuột và cảm ứng trên poster
   const handlePointerDown = (e: React.PointerEvent<HTMLElement>) => {
     if (N <= 1) return;
-    if ((e.target as HTMLElement).closest("button")) return;
+    if ((e.target as HTMLElement).closest("button") || (e.target as HTMLElement).closest(".banner-dots")) return;
+    hasDraggedRef.current = false;
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
 
     // Chuẩn hóa vị trí nếu đang ở slide clone trước khi kéo
     if (trackIndex >= N + 1) {
@@ -244,11 +247,13 @@ export default function Home() {
   const handlePointerMove = (e: React.PointerEvent<HTMLElement>) => {
     if (!isDraggingRef.current) return;
     const diff = e.clientX - startXRef.current;
+    if (Math.abs(diff) > 8) hasDraggedRef.current = true;
     dragOffsetRef.current = diff;
     setDragOffset(diff);
   };
 
-  const handlePointerEnd = () => {
+  const handlePointerEnd = (e?: React.PointerEvent<HTMLElement>) => {
+    if (e && e.currentTarget && typeof (e.currentTarget as any).releasePointerCapture === "function") { try { (e.currentTarget as any).releasePointerCapture(e.pointerId); } catch {} }
     if (!isDraggingRef.current) return;
     isDraggingRef.current = false;
     setIsDragging(false);
@@ -263,6 +268,7 @@ export default function Home() {
     }
     setDragOffset(0);
     dragOffsetRef.current = 0;
+    setTimeout(() => { hasDraggedRef.current = false; }, 120);
   };
 
   return (
@@ -298,9 +304,9 @@ export default function Home() {
                   : '/customer/products';
                 return (
                   <div key={`${promotion.PromotionID ?? idx}-${idx}`} className="promo-slide">
-                    <Link href={targetUrl} className="block w-full h-full cursor-pointer">
+                    <Link href={targetUrl} onClick={(e) => { if (hasDraggedRef.current) { e.preventDefault(); e.stopPropagation(); } }} className="block w-full h-full cursor-pointer select-none">
                       <img
-                        className="banner-image"
+                        className="banner-image pointer-events-none select-none"
                         src={getBannerImage(promotion)}
                         alt={promotion.Title || `Khuyến mãi`}
                         draggable={false}
@@ -324,6 +330,7 @@ export default function Home() {
               <button
                 type="button"
                 className="banner-arrow banner-arrow-left"
+                onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => {
                   e.stopPropagation();
                   changeBanner(-1);
@@ -337,6 +344,7 @@ export default function Home() {
               <button
                 type="button"
                 className="banner-arrow banner-arrow-right"
+                onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => {
                   e.stopPropagation();
                   changeBanner(1);
@@ -347,7 +355,7 @@ export default function Home() {
                   <path d="M9 18l6-6-6-6" />
                 </svg>
               </button>
-              <div className="banner-dots" onClick={(e) => e.stopPropagation()}>
+              <div className="banner-dots" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
                 {promotions.map((promotion, index) => (
                   <button
                     type="button"

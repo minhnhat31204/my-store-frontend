@@ -163,24 +163,33 @@ export default function SupportWidget() {
 
   const sendText = async (textToSend: string) => {
     const message = textToSend.trim();
+    if (!message || isSending) return;
+
     const channel = aiMode ? 'ai' : 'staff';
-    const conversationId = conversationIds[channel];
-    if (!message || !conversationId || loading || isSending) return;
-    
+    let targetConversationId = conversationIds[channel];
+
     setIsSending(true);
     setLoading(true);
     setError('');
     setDraft('');
+
     try {
       const owner = identity(channel);
-      const result = await api.sendSupportMessage(conversationId, { ...owner, message });
+
+      // Tự động mở/tìm hội thoại nếu chưa kịp nạp ID
+      if (!targetConversationId) {
+        const opened = await api.openSupportConversation(owner);
+        targetConversationId = opened.conversation.ConversationID;
+        setConversationIds((current) => ({ ...current, [channel]: targetConversationId }));
+      }
+      const result = await api.sendSupportMessage(targetConversationId, { ...owner, message });
       setMessages((current) => current.some((item) => item.MessageID === result.message.MessageID) ? current : [...current, result.message]);
       isUserNearBottomRef.current = true;
       setTimeout(() => scrollToBottom('smooth'), 50);
 
       if (aiMode) {
         try {
-          const answer = await api.requestSupportAiReply(conversationId, owner);
+          const answer = await api.requestSupportAiReply(targetConversationId, owner);
           setMessages((current) => current.some((item) => item.MessageID === answer.message.MessageID) ? current : [...current, answer.message]);
           setTimeout(() => scrollToBottom('smooth'), 60);
         } catch (aiError) {
@@ -349,7 +358,7 @@ export default function SupportWidget() {
             />
             <button
               type="submit"
-              disabled={!draft.trim() || !conversationIds[aiMode ? 'ai' : 'staff'] || loading || isSending}
+              disabled={!draft.trim() || isSending}
               aria-label="Gửi tin nhắn"
               className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2.5 text-xs md:text-sm font-bold text-white shadow-md shadow-blue-600/30 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-40 disabled:pointer-events-none transition-all active:scale-90 cursor-pointer h-[40px] group"
             >
