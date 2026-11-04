@@ -165,6 +165,13 @@ export default function CustomerNav({
   const [authLoaded, setAuthLoaded] = useState(false);
   const isAdmin = String(user?.Role || (user as (User & { role?: string }) | null)?.role || '').toLowerCase() === 'admin';
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
+  const userAvatarSrc = (typeof window !== 'undefined' && user?.UserID && localStorage.getItem(`devora_avatar_${user.UserID}`))
+    || (user?.Avatar ? resolveApiAssetUrl(user.Avatar, user.UserID) : '');
+
+  useEffect(() => {
+    setAvatarLoadFailed(false);
+  }, [userAvatarSrc]);
   const [localSearch, setLocalSearch] = useState(searchValue);
   const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
@@ -364,10 +371,12 @@ export default function CustomerNav({
 
         const latestCachedUser = getStoredUser();
         if (!latestCachedUser || Number(latestCachedUser.UserID) !== Number(result.user.UserID)) return;
-        if (JSON.stringify(result.user) === JSON.stringify(latestCachedUser)) return;
+        const cachedAvatar = typeof window !== 'undefined' ? localStorage.getItem(`devora_avatar_${result.user.UserID}`) : null;
+        const userToSave = cachedAvatar ? { ...result.user, Avatar: cachedAvatar } : result.user;
+        if (JSON.stringify(userToSave) === JSON.stringify(latestCachedUser)) return;
 
-        localStorage.setItem("user", JSON.stringify(result.user));
-        setUser(result.user);
+        localStorage.setItem("user", JSON.stringify(userToSave));
+        setUser(userToSave);
         setAuthLoaded(true);
         window.dispatchEvent(new Event("user-updated"));
       } catch {
@@ -693,10 +702,11 @@ export default function CustomerNav({
                   className={`account-avatar-btn group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${accountMenuOpen ? "is-open" : ""}`}
                 >
                   <div className="account-avatar-inner">
-                    {user.Avatar ? (
+                    {userAvatarSrc && !avatarLoadFailed ? (
                       <img
-                        src={resolveApiAssetUrl(user.Avatar)}
+                        src={userAvatarSrc}
                         alt=""
+                        onError={() => setAvatarLoadFailed(true)}
                         className="h-full w-full object-cover object-center transition duration-200 group-hover:scale-105"
                       />
                     ) : (
@@ -716,10 +726,11 @@ export default function CustomerNav({
                     <div className="relative mb-2 overflow-hidden rounded-xl bg-gradient-to-br from-blue-50 via-indigo-50/50 to-slate-50 p-3.5 border border-blue-100/60">
                       <div className="flex items-center gap-3">
                         <div className="relative shrink-0">
-                          {user.Avatar ? (
+                          {userAvatarSrc && !avatarLoadFailed ? (
                             <img
-                              src={resolveApiAssetUrl(user.Avatar)}
+                              src={userAvatarSrc}
                               alt=""
+                              onError={() => setAvatarLoadFailed(true)}
                               className="h-11 w-11 rounded-full border-2 border-white object-cover shadow-sm"
                             />
                           ) : (
@@ -929,7 +940,7 @@ export default function CustomerNav({
               className={`mobile-nav-item ${activeNav === "account" ? "active" : ""}`}
             >
               {user.Avatar ? (
-                <img src={resolveApiAssetUrl(user.Avatar)} alt="" className="w-5 h-5 rounded-full object-cover border border-blue-400" />
+                <img src={userAvatarSrc} alt="" className="w-5 h-5 rounded-full object-cover border border-blue-400" />
               ) : (
                 <MobileUserIcon active={activeNav === "account"} />
               )}

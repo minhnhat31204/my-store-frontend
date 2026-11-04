@@ -3,7 +3,7 @@
 import { ReactNode, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { getStoredUser, api, User, clearAllAuthSession } from '@/lib/api';
+import { getStoredUser, api, User, clearAllAuthSession, resolveApiAssetUrl } from '@/lib/api';
 import { useAdminGuard } from '@/lib/useAdminGuard';
 import { prefetch } from '@/lib/adminCache';
 
@@ -161,19 +161,37 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [badges, setBadges] = useState<{ pendingOrders?: number; pendingRefunds?: number; lowStock?: number; unreadSupport?: number }>({});
   const [currentTime, setCurrentTime] = useState('');
 
+  const adminAvatarSrc = (typeof window !== 'undefined' && currentUser?.UserID && localStorage.getItem(`devora_avatar_${currentUser.UserID}`))
+    || (currentUser?.Avatar ? resolveApiAssetUrl(currentUser.Avatar, currentUser.UserID) : '');
+
   useEffect(() => {
-    setCurrentUser(getStoredUser());
+    setAvatarLoadFailed(false);
+  }, [adminAvatarSrc]);
+
+  useEffect(() => {
+    const refreshUser = () => {
+      setCurrentUser(getStoredUser());
+    };
+    refreshUser();
+    window.addEventListener('user-updated', refreshUser);
+    window.addEventListener('storage', refreshUser);
+
     const updateClock = () => {
       const now = new Date();
       setCurrentTime(now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' • ' + now.toLocaleDateString('vi-VN'));
     };
     updateClock();
     const clockTimer = setInterval(updateClock, 1000);
-    return () => clearInterval(clockTimer);
+    return () => {
+      clearInterval(clockTimer);
+      window.removeEventListener('user-updated', refreshUser);
+      window.removeEventListener('storage', refreshUser);
+    };
   }, []);
 
   useEffect(() => {
@@ -325,8 +343,17 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           {currentUser ? (
             <div className="p-3 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900/90 to-slate-950 border border-slate-800 flex items-center justify-between gap-3 shadow-sm">
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 border border-blue-400/40 flex items-center justify-center font-black text-white text-sm shrink-0 shadow-sm">
-                  {currentUser.FullName ? currentUser.FullName.charAt(0).toUpperCase() : 'A'}
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 border border-blue-400/40 flex items-center justify-center font-black text-white text-sm shrink-0 shadow-sm overflow-hidden">
+                  {adminAvatarSrc && !avatarLoadFailed ? (
+                    <img
+                      src={adminAvatarSrc}
+                      alt={currentUser.FullName || 'Admin'}
+                      onError={() => setAvatarLoadFailed(true)}
+                      className="w-full h-full object-cover object-center"
+                    />
+                  ) : (
+                    <span>{currentUser.FullName ? currentUser.FullName.charAt(0).toUpperCase() : 'A'}</span>
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-black text-white truncate">{currentUser.FullName || 'Quản trị viên'}</p>
@@ -455,6 +482,25 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               </div>
             )}
 
+            {currentUser && (
+              <div className="flex items-center gap-2.5 bg-slate-900/90 border border-slate-800 rounded-xl px-2.5 py-1.5 shadow-sm">
+                <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 border border-blue-400/40 flex items-center justify-center font-black text-white text-[11px] shrink-0 overflow-hidden">
+                  {adminAvatarSrc && !avatarLoadFailed ? (
+                    <img
+                      src={adminAvatarSrc}
+                      alt=""
+                      onError={() => setAvatarLoadFailed(true)}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span>{currentUser.FullName ? currentUser.FullName.charAt(0).toUpperCase() : 'A'}</span>
+                  )}
+                </div>
+                <span className="text-xs font-bold text-slate-200 hidden sm:inline truncate max-w-[120px]">
+                  {currentUser.FullName || 'Admin'}
+                </span>
+              </div>
+            )}
           </div>
         </header>
 

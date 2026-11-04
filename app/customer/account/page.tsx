@@ -123,7 +123,7 @@ function CheckCircleIcon({ className = "w-5 h-5" }: { className?: string }) {
 // --- AVATAR CROPPER MODAL COMPONENT ---
 interface AvatarCropperModalProps {
   imageSrc: string;
-  onCropComplete: (croppedBlob: Blob) => void;
+  onCropComplete: (croppedBlob: Blob, dataUrl?: string) => void;
   onCancel: () => void;
 }
 
@@ -205,9 +205,10 @@ function AvatarCropperModal({ imageSrc, onCropComplete, onCancel }: AvatarCroppe
 
     ctx.restore();
 
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
     canvas.toBlob((blob) => {
       if (blob) {
-        onCropComplete(blob);
+        onCropComplete(blob, dataUrl);
       }
     }, 'image/jpeg', 0.92);
   };
@@ -362,7 +363,13 @@ export default function AccountPage() {
   
   // Avatar & Cropper States
   const [avatarBlob, setAvatarBlob] = useState<Blob | null>(null);
+  const [avatarDataUrl, setAvatarDataUrl] = useState<string>('');
   const [avatarPreview, setAvatarPreview] = useState('');
+  const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
+
+  useEffect(() => {
+    setAvatarLoadFailed(false);
+  }, [avatarPreview, user?.Avatar]);
   const [cropModalOpen, setCropModalOpen] = useState(false);
   const [rawImageSrc, setRawImageSrc] = useState('');
   const avatarFileInputRef = useRef<HTMLInputElement>(null);
@@ -403,7 +410,9 @@ export default function AccountPage() {
   useEffect(() => {
     const applyUserData = (data: any) => {
       if (!data) return;
-      setUser(data);
+      const cachedAvatar = typeof window !== 'undefined' ? localStorage.getItem(`devora_avatar_${data.UserID}`) : null;
+      const mergedUser = cachedAvatar ? { ...data, Avatar: cachedAvatar } : data;
+      setUser(mergedUser);
       setProfileName(data.FullName || '');
       setUsername(data.Username || '');
       setBio(data.Bio || '');
@@ -423,8 +432,10 @@ export default function AccountPage() {
     // Tự động đồng bộ thông tin mới nhất từ máy chủ (đặc biệt là email vừa xác minh)
     api.getCurrentUser().then((res) => {
       if (res?.user) {
-        localStorage.setItem('user', JSON.stringify(res.user));
-        applyUserData(res.user);
+        const cachedAvatar = typeof window !== 'undefined' ? localStorage.getItem(`devora_avatar_${res.user.UserID}`) : null;
+        const userToSave = cachedAvatar ? { ...res.user, Avatar: cachedAvatar } : res.user;
+        localStorage.setItem('user', JSON.stringify(userToSave));
+        applyUserData(userToSave);
       }
     }).catch(() => {});
     window.addEventListener('user-updated', refreshUser);
@@ -469,14 +480,15 @@ export default function AccountPage() {
   };
 
   // When Cropper finishes -> set avatarBlob and preview
-  const handleCropComplete = (croppedBlob: Blob) => {
+  const handleCropComplete = (croppedBlob: Blob, dataUrl?: string) => {
     if (previewBlobUrlRef.current) URL.revokeObjectURL(previewBlobUrlRef.current);
-    const newPreviewUrl = URL.createObjectURL(croppedBlob);
-    previewBlobUrlRef.current = newPreviewUrl;
+    const resolvedUrl = dataUrl || URL.createObjectURL(croppedBlob);
+    previewBlobUrlRef.current = resolvedUrl;
     setAvatarBlob(croppedBlob);
-    setAvatarPreview(newPreviewUrl);
+    setAvatarDataUrl(dataUrl || '');
+    setAvatarPreview(resolvedUrl);
     setCropModalOpen(false);
-    setProfileMessage('Đã chọn và cắt ảnh đại diện mới. Hãy bấm "Lưu thay đổi" để áp dụng.');
+    setProfileMessage('Đã chọn và căn chỉnh ảnh đại diện mới. Hãy bấm "Lưu thay đổi hồ sơ" để áp dụng.');
   };
 
   // Save Full Profile (Hồ sơ & Avatar)
@@ -488,6 +500,24 @@ export default function AccountPage() {
     setProfileMessage('');
 
     try {
+      // Guarantee high quality Base64 string for persistent display
+      let resolvedBase64 = avatarDataUrl;
+      if (!resolvedBase64 && avatarBlob) {
+        resolvedBase64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve((reader.result as string) || '');
+          reader.onerror = () => resolve('');
+          reader.readAsDataURL(avatarBlob);
+        });
+      }
+
+      if (resolvedBase64 && user?.UserID) {
+        localStorage.setItem(`devora_avatar_${user.UserID}`, resolvedBase64);
+        try {
+          sessionStorage.setItem(`devora_avatar_${user.UserID}`, resolvedBase64);
+        } catch {}
+      }
+
       const result = await api.updateUserProfile(user.UserID, {
         fullName: profileName.trim(),
         username: username.trim() || undefined,
@@ -498,12 +528,19 @@ export default function AccountPage() {
         avatar: avatarBlob || undefined,
       });
 
-      const updatedUser: User = { ...user, ...result.user };
+      const finalAvatar = resolvedBase64 || (user ? localStorage.getItem(`devora_avatar_${user.UserID}`) : null) || result.user?.Avatar || user.Avatar;
+      const updatedUser: User = {
+        ...user,
+        ...result.user,
+        ...(finalAvatar ? { Avatar: finalAvatar } : {}),
+      };
       setUser(updatedUser);
       localStorage.setItem('user', JSON.stringify(updatedUser));
+      sessionStorage.setItem('user', JSON.stringify(updatedUser));
       window.dispatchEvent(new Event('user-updated'));
 
       setAvatarBlob(null);
+      setAvatarDataUrl('');
       setProfileMessage('Cập nhật hồ sơ cá nhân thành công!');
     } catch (err) {
       setProfileError(err instanceof Error ? err.message : 'Không thể lưu hồ sơ.');
@@ -625,7 +662,9 @@ export default function AccountPage() {
     window.location.href = '/login?logout=1';
   };
 
-  const currentAvatarSrc = avatarPreview || (user?.Avatar ? resolveApiAssetUrl(user.Avatar) : '');
+  const currentAvatarSrc = avatarPreview
+    || (typeof window !== 'undefined' && user?.UserID && localStorage.getItem(`devora_avatar_${user.UserID}`))
+    || (user?.Avatar ? resolveApiAssetUrl(user.Avatar, user.UserID) : '');
 
   if (!user) {
     return (
@@ -694,10 +733,11 @@ export default function AccountPage() {
                   className="group relative block h-28 w-28 rounded-full border-4 border-white shadow-lg overflow-hidden focus:outline-none focus:ring-4 focus:ring-blue-400"
                   title="Bấm để thay đổi ảnh đại diện"
                 >
-                  {currentAvatarSrc ? (
+                  {currentAvatarSrc && !avatarLoadFailed ? (
                     <img
                       src={currentAvatarSrc}
                       alt="Ảnh đại diện"
+                      onError={() => setAvatarLoadFailed(true)}
                       className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                     />
                   ) : (

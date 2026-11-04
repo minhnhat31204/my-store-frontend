@@ -1,4 +1,4 @@
-const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+﻿const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
 const isInvalidProductionApiUrl = Boolean(
   configuredApiUrl && (
     /^http:\/\//i.test(configuredApiUrl) ||
@@ -888,10 +888,17 @@ export type OrderStatusHistory = {
   Actor?: { FullName?: string | null; Email?: string | null } | null;
 };
 
-export function resolveApiAssetUrl(value?: string | null): string {
+export function resolveApiAssetUrl(value?: string | null, userId?: number): string {
   if (!value) return '';
   if (/^(https?:|data:|blob:)/i.test(value)) return value;
-  const assetPath = value.startsWith('/') ? value : `/${value}`;
+  if (typeof window !== 'undefined' && userId) {
+    const cached = localStorage.getItem(`devora_avatar_${userId}`);
+    if (cached) return cached;
+  }
+  let assetPath = value.startsWith('/') ? value : '/' + value;
+  if (assetPath.startsWith('/uploads/') && !assetPath.startsWith('/api/uploads/')) {
+    assetPath = '/api' + assetPath;
+  }
   try {
     const apiOrigin = new URL(API_URL, typeof window === 'undefined' ? 'http://localhost' : window.location.origin).origin;
     return new URL(assetPath, `${apiOrigin}/`).toString();
@@ -916,10 +923,14 @@ export function getStoredUser(): User | null {
 
   try {
     const session = sessionStorage.getItem("user");
-    if (session) return JSON.parse(session);
-    return JSON.parse(
-      localStorage.getItem("user") || "null"
-    );
+    let parsed: User | null = session ? JSON.parse(session) : JSON.parse(localStorage.getItem("user") || "null");
+    if (parsed && parsed.UserID) {
+      const cached = localStorage.getItem(`devora_avatar_${parsed.UserID}`);
+      if (cached) {
+        parsed.Avatar = cached;
+      }
+    }
+    return parsed;
   } catch {
     return null;
   }
