@@ -33,14 +33,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               (function() {
                 try {
                   if (window.location.pathname === '/no-source.html') return;
-                  var isDesktop = /Windows|Macintosh|Linux/i.test(navigator.userAgent);
-                  var isNotFullscreen = !document.fullscreenElement;
-                  var isResponsiveMode = isDesktop && isNotFullscreen && (window.outerWidth === window.innerWidth) && (window.outerHeight === window.innerHeight) && (window.innerWidth < screen.availWidth - 50);
+                  var ua = navigator.userAgent || '';
+                  var isDesktop = /Windows NT|Macintosh|Linux/i.test(ua) && !/Android|iPhone|iPad|iPod/i.test(ua);
+                  var isEmulated = isDesktop && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
                   var wDiff = window.outerWidth - window.innerWidth;
                   var hDiff = window.outerHeight - window.innerHeight;
                   var isDocked = (wDiff > 160 || hDiff > 160);
 
-                  if (isResponsiveMode || isDocked) {
+                  if (isEmulated || isDocked) {
                     try {
                       sessionStorage.setItem('devora_return_url', window.location.pathname + window.location.search);
                     } catch(e){}

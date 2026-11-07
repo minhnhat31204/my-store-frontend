@@ -100,21 +100,21 @@
   </style>
   <script>
     function checkInspectClosed() {
-      var isDesktop = /Windows|Macintosh|Linux/i.test(navigator.userAgent);
-      var isNotFullscreen = !document.fullscreenElement;
-      var isResponsiveMode = isDesktop && isNotFullscreen && (window.outerWidth === window.innerWidth) && (window.outerHeight === window.innerHeight) && (window.innerWidth < screen.availWidth - 50);
+      var ua = navigator.userAgent || '';
+      var isDesktop = /Windows NT|Macintosh|Linux/i.test(ua) && !/Android|iPhone|iPad|iPod/i.test(ua);
+      var isEmulated = isDesktop && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
       var wDiff = window.outerWidth - window.innerWidth;
       var hDiff = window.outerHeight - window.innerHeight;
       var isDocked = (wDiff > 160 || hDiff > 160);
 
-      // Chỉ trở về trang cũ khi DevTools (cả Docked và Responsive) đã đóng hoàn toàn
-      if (!isResponsiveMode && !isDocked) {
+      // Chỉ tự động quay lại trang khi DevTools và chế độ giả lập thiết bị đã đóng hoàn toàn
+      if (!isEmulated && !isDocked) {
         var returnUrl = sessionStorage.getItem('devora_return_url') || '/';
         window.location.replace(returnUrl);
       }
     }
     window.addEventListener('resize', checkInspectClosed);
-    setInterval(checkInspectClosed, 600);
+    setInterval(checkInspectClosed, 500);
 
     try {
       console.clear();
