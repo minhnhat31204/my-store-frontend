@@ -31,6 +31,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
+                // Chặn phím tắt mở DevTools ngay từ tầng HTML sớm nhất
+                window.addEventListener('keydown', function(e) {
+                  if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && ['I','i','J','j','C','c','M','m'].indexOf(e.key) !== -1) || (e.ctrlKey && (e.key === 'u' || e.key === 'U'))) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                  }
+                }, true);
+
                 try {
                   if (window.location.pathname === '/no-source.html') return;
                   var ua = navigator.userAgent || '';
