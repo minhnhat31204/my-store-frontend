@@ -11,6 +11,16 @@ export default function SecurityShield() {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // 0. Hàm khóa và chuyển hướng ngay khi phát hiện DevTools
+    const triggerSecurityLockout = () => {
+      if (typeof window === 'undefined') return;
+      if (window.location.pathname === '/no-source.html') return;
+      try {
+        document.documentElement.innerHTML = '';
+      } catch {}
+      window.location.replace('/no-source.html');
+    };
+
     // 1. Chặn phím F12 và các tổ hợp phím tắt mở Inspect / View Source
     const handleKeyDown = (e: KeyboardEvent) => {
       // Chặn F12
@@ -69,16 +79,79 @@ export default function SecurityShield() {
       setContextMenu(null);
     };
 
+    // 3. PHÁT HIỆN DEVTOOLS MỞ TỪ MENU TRÌNH DUYỆT (3 chấm -> More tools -> Developer tools)
+    // Cách 1: Kiểm tra chênh lệch kích thước cửa sổ khi DevTools được ghim (Docked)
+    const checkDockedDevTools = () => {
+      if (typeof window === 'undefined') return;
+      if (window.location.pathname === '/no-source.html') return;
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      if (isMobile) return;
+
+      const widthDiff = window.outerWidth - window.innerWidth;
+      const heightDiff = window.outerHeight - window.innerHeight;
+
+      // Khi DevTools được mở ghim bên phải, bên trái hoặc dưới cùng:
+      // Chênh lệch chiều rộng > 160px hoặc chiều cao > 180px
+      if (widthDiff > 160 || heightDiff > 200) {
+        triggerSecurityLockout();
+      }
+    };
+
+    // Cách 2: Bẫy thời gian thực thi của lệnh debugger
+    const checkDebuggerTrap = () => {
+      if (typeof window === 'undefined') return;
+      if (window.location.pathname === '/no-source.html') return;
+      const start = performance.now();
+      try {
+        // eslint-disable-next-line no-debugger
+        Function('debugger')();
+      } catch {}
+      const duration = performance.now() - start;
+      if (duration > 100) {
+        triggerSecurityLockout();
+      }
+    };
+
+    // Cách 3: Bẫy định dạng đối tượng trong console khi DevTools mở
+    const checkConsoleTrap = () => {
+      if (typeof window === 'undefined') return;
+      if (window.location.pathname === '/no-source.html') return;
+      const r = /./;
+      let triggered = false;
+      r.toString = function () {
+        triggered = true;
+        triggerSecurityLockout();
+        return '';
+      };
+      // Khi DevTools mở, hàm log sẽ kích hoạt hàm toString của regex
+      try {
+        console.log('%c', r);
+      } catch {}
+      if (triggered) {
+        triggerSecurityLockout();
+      }
+    };
+
+    // Chạy kiểm tra định kỳ mỗi 500ms
+    const securityInterval = setInterval(() => {
+      checkDockedDevTools();
+      checkDebuggerTrap();
+      checkConsoleTrap();
+    }, 500);
+
     window.addEventListener('keydown', handleKeyDown, { capture: true });
     window.addEventListener('contextmenu', handleContextMenu);
     window.addEventListener('click', handleWindowClick);
     window.addEventListener('scroll', handleWindowScroll, { passive: true });
+    window.addEventListener('resize', checkDockedDevTools);
 
     return () => {
+      clearInterval(securityInterval);
       window.removeEventListener('keydown', handleKeyDown, { capture: true } as any);
       window.removeEventListener('contextmenu', handleContextMenu);
       window.removeEventListener('click', handleWindowClick);
       window.removeEventListener('scroll', handleWindowScroll);
+      window.removeEventListener('resize', checkDockedDevTools);
     };
   }, []);
 
