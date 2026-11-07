@@ -864,6 +864,7 @@ export const api = {
     ShippingAddress: string;
     Note?: string;
     TotalAmount: number;
+    ShippingFee?: number;
     PaymentMethod: string;
     Status?: string;
     DiscountAmount?: number;

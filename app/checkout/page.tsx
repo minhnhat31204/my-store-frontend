@@ -175,6 +175,7 @@ export default function CheckoutPage() {
         ShippingAddress: shippingAddress,
         Note: note,
         TotalAmount: totalAmount,
+        ShippingFee: SHIPPING_FEE,
         PaymentMethod: paymentMethod,
         Status: 'Pending',
         DiscountAmount: discountAmount,
