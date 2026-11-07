@@ -100,9 +100,15 @@
   </style>
   <script>
     function checkInspectClosed() {
+      var isDesktop = /Windows|Macintosh|Linux/i.test(navigator.userAgent);
+      var isNotFullscreen = !document.fullscreenElement;
+      var isResponsiveMode = isDesktop && isNotFullscreen && (window.outerWidth === window.innerWidth) && (window.outerHeight === window.innerHeight) && (window.innerWidth < screen.availWidth - 50);
       var wDiff = window.outerWidth - window.innerWidth;
       var hDiff = window.outerHeight - window.innerHeight;
-      if (wDiff <= 160 && hDiff <= 160) {
+      var isDocked = (wDiff > 160 || hDiff > 160);
+
+      // Chỉ trở về trang cũ khi DevTools (cả Docked và Responsive) đã đóng hoàn toàn
+      if (!isResponsiveMode && !isDocked) {
         var returnUrl = sessionStorage.getItem('devora_return_url') || '/';
         window.location.replace(returnUrl);
       }
