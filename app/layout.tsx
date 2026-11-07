@@ -26,7 +26,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="vi" className="antialiased">
-      <body className="min-h-screen flex flex-col bg-[#f6f8fb] text-slate-900 select-none">
+      <body className="min-h-screen flex flex-col bg-[#f6f8fb] text-slate-900">
         <SecurityShield />
         <CustomerNav />
         <FavoritesProvider>
