@@ -4,6 +4,7 @@ import CustomerNav from './components/CustomerNav';
 import Footer from './components/Footer';
 import SupportWidget from './components/SupportWidget';
 import CartNotificationToast from './components/CartNotificationToast';
+import SecurityShield from './components/SecurityShield';
 import { FavoritesProvider } from './components/FavoritesProvider';
 import PageTransitionProvider from './components/PageTransitionProvider';
 import './globals.css';
@@ -25,7 +26,8 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="vi" className="antialiased">
-      <body className="min-h-screen flex flex-col bg-[#f6f8fb] text-slate-900">
+      <body className="min-h-screen flex flex-col bg-[#f6f8fb] text-slate-900 select-none">
+        <SecurityShield />
         <CustomerNav />
         <FavoritesProvider>
           <PageTransitionProvider>

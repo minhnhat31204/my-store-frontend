@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { clearStoredToken, getStoredToken, getStoredUser, api } from '@/lib/api';
+import { clearStoredToken, getStoredToken, getStoredUser, api, User } from '@/lib/api';
 
 export function useAdminGuard() {
   const router = useRouter();
@@ -19,9 +19,9 @@ export function useAdminGuard() {
     }
 
     // Xác thực thực tế với máy chủ bằng Token để triệt hạ hành vi sửa đổi localStorage trên trình duyệt
-    api.getMe()
-      .then((res) => {
-        const liveUser = (res as any)?.user || res;
+    api.getCurrentUser()
+      .then((res: { user: User }) => {
+        const liveUser = res?.user;
         if (!liveUser || String(liveUser.Role || '').toLowerCase() !== 'admin') {
           router.replace('/');
         }
