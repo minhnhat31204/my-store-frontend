@@ -31,31 +31,18 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
-                // Chặn phím tắt mở DevTools ngay từ tầng HTML sớm nhất
+                // Chặn F12 và các phím tắt Inspect, View Source ngay từ cấp độ tài liệu
                 window.addEventListener('keydown', function(e) {
-                  if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && ['I','i','J','j','C','c','M','m'].indexOf(e.key) !== -1) || (e.ctrlKey && (e.key === 'u' || e.key === 'U'))) {
+                  if (
+                    e.key === 'F12' ||
+                    (e.ctrlKey && e.shiftKey && ['I','i','J','j','C','c','M','m'].indexOf(e.key) !== -1) ||
+                    (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S'))
+                  ) {
                     e.preventDefault();
                     e.stopPropagation();
                     return false;
                   }
                 }, true);
-
-                try {
-                  if (window.location.pathname === '/no-source.html') return;
-                  var ua = navigator.userAgent || '';
-                  var isDesktop = /Windows NT|Macintosh|Linux/i.test(ua) && !/Android|iPhone|iPad|iPod/i.test(ua);
-                  var isEmulated = isDesktop && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
-                  var wDiff = window.outerWidth - window.innerWidth;
-                  var hDiff = window.outerHeight - window.innerHeight;
-                  var isDocked = (wDiff > 160 || hDiff > 160);
-
-                  if (isEmulated || isDocked) {
-                    try {
-                      sessionStorage.setItem('devora_return_url', window.location.pathname + window.location.search);
-                    } catch(e){}
-                    window.location.replace('/no-source.html');
-                  }
-                } catch(e){}
               })();
             `,
           }}

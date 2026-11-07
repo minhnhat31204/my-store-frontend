@@ -98,29 +98,6 @@
       color: #475569;
     }
   </style>
-  <script>
-    function checkInspectClosed() {
-      var ua = navigator.userAgent || '';
-      var isDesktop = /Windows NT|Macintosh|Linux/i.test(ua) && !/Android|iPhone|iPad|iPod/i.test(ua);
-      var isEmulated = isDesktop && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
-      var wDiff = window.outerWidth - window.innerWidth;
-      var hDiff = window.outerHeight - window.innerHeight;
-      var isDocked = (wDiff > 160 || hDiff > 160);
-
-      // Chỉ tự động quay lại trang khi DevTools và chế độ giả lập thiết bị đã đóng hoàn toàn
-      if (!isEmulated && !isDocked) {
-        var returnUrl = sessionStorage.getItem('devora_return_url') || '/';
-        window.location.replace(returnUrl);
-      }
-    }
-    window.addEventListener('resize', checkInspectClosed);
-    setInterval(checkInspectClosed, 500);
-
-    try {
-      console.clear();
-      console.log('%c🔒 KHÔNG CÓ MÃ NGUỒN\\n\\nMã nguồn trang web đã được bảo vệ và ẩn hoàn toàn.', 'font-size: 24px; font-weight: 900; color: #ef4444;');
-    } catch(e){}
-  </script>
 </head>
 <body>
   <div class="card">
@@ -139,8 +116,8 @@
       [TRẠNG THÁI: TOÀN BỘ MÃ NGUỒN ĐÃ BỊ ẨN]
     </div>
     <div>
-      <button class="btn-return" onclick="window.location.replace(sessionStorage.getItem('devora_return_url') || '/')">
-        Đóng Inspect và bấm vào đây để tiếp tục
+      <button class="btn-return" onclick="window.location.replace('/')">
+        Quay lại trang chủ DEVORA
       </button>
     </div>
     <div class="footer-note">
