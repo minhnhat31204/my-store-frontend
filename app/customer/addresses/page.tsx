@@ -304,18 +304,82 @@ function AddressesContent() {
   function useMyLocation() {
     if (!navigator.geolocation) { setError("Trình duyệt này không hỗ trợ định vị."); return; }
     setLocating(true);
+    setError("");
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => { handleMapPick(coords.latitude, coords.longitude); setLocating(false); setError(""); },
-      () => {
+      (err) => {
         navigator.geolocation.getCurrentPosition(
           ({ coords }) => { handleMapPick(coords.latitude, coords.longitude); setLocating(false); setError(""); },
-          () => { setLocating(false); setError("Không lấy được vị trí GPS. Hãy bấm chọn vị trí trên bản đồ hoặc nhập địa chỉ."); },
+          (err2) => {
+            setLocating(false);
+            if (err?.code === 1 || err2?.code === 1) {
+              setError("Trình duyệt đã bị chặn quyền vị trí. Vui lòng bấm vào biểu tượng cài đặt cạnh URL và Cho phép (Allow) 'Vị trí' (Location).");
+            } else {
+              setError("Không lấy được vị trí GPS. Hãy bấm chọn vị trí trực tiếp trên bản đồ hoặc nhập địa chỉ.");
+            }
+          },
           { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
         );
       },
       { enableHighAccuracy: true, timeout: 8000 },
     );
-  }} onBlur={() => { if (form.provinceCode && form.wardCode) void geocodeAddress(completeAddressQuery, true); }} className="mt-1 w-full rounded-xl border p-3 font-normal" placeholder="Ví dụ: 123 Nguyễn Trãi" /></label>
+  }
+
+  if (!user) return <main className="mx-auto max-w-3xl px-4 py-10"><h1 className="text-3xl font-black">Sổ địa chỉ</h1><p className="mt-4">Đăng nhập để quản lý địa chỉ giao hàng.</p><Link className="mt-4 inline-block text-blue-700" href="/login">Đăng nhập →</Link></main>;
+
+  return <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900"><div className="mx-auto max-w-5xl">
+    <Link
+      href={returnTo || "/customer/account"}
+      className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-xs transition hover:border-slate-300 hover:bg-slate-50 hover:text-blue-600"
+    >
+      <svg className="h-4 w-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+        <path d="M19 12H5M12 19l-7-7 7-7" />
+      </svg>
+      <span>{returnTo ? "Quay lại trang đặt hàng" : "Quay lại"}</span>
+    </Link>
+    <h1 className="mt-4 text-2xl sm:text-3xl font-black">Sổ địa chỉ</h1>
+    <p className="mt-2 text-sm text-slate-600">Chọn địa giới hành chính hiện hành và ghim điểm giao hàng cụ thể trên bản đồ.</p>
+    {addressesLoading && <p className="mt-3 text-sm text-slate-500">Đang đồng bộ địa chỉ với tài khoản…</p>}
+    {saved && <p role="status" className="mt-4 rounded-xl bg-emerald-50 p-3 text-emerald-800">Đã lưu thay đổi.</p>}
+    {regionsError && <p role="alert" className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{regionsError} Thử tải lại trang sau.</p>}
+    <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_440px]">
+      <section className="space-y-3">
+        {addresses.length === 0 && !addressesLoading && <div className="rounded-2xl bg-white p-6 text-slate-600 shadow-sm">Bạn chưa lưu địa chỉ nào.</div>}
+        {addresses.map((item) => <article key={item.id} className="rounded-2xl border bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2"><div className="font-bold">{item.recipientName} <span className="font-normal text-slate-500">· {item.phone}</span></div>{item.isDefault && <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">Mặc định</span>}</div>
+          <p className="mt-3 text-sm text-slate-700">{[item.address, item.wardName, item.provinceName].filter(Boolean).join(", ")}</p>
+          {item.latitude !== undefined && item.longitude !== undefined && <a className="mt-2 inline-block text-xs font-semibold text-blue-700" href={`https://www.openstreetmap.org/?mlat=${item.latitude}&mlon=${item.longitude}#map=17/${item.latitude}/${item.longitude}`} target="_blank" rel="noreferrer">Xem vị trí trên bản đồ ↗ <span className="font-normal text-slate-500">({item.latitude.toFixed(6)}, {item.longitude.toFixed(6)})</span></a>}
+          <div className="mt-4 flex flex-wrap gap-4 text-sm font-semibold"><button type="button" disabled={saving} onClick={() => editAddress(item)} className="text-blue-700 disabled:opacity-50">Sửa</button><button type="button" disabled={saving} onClick={() => remove(item.id)} className="text-red-600 disabled:opacity-50">Xóa</button>{!item.isDefault && <button type="button" disabled={saving} onClick={() => makeDefault(item.id)} className="text-slate-700 disabled:opacity-50">Đặt mặc định</button>}</div>
+        </article>)}
+      </section>
+      <form onSubmit={submit} className="h-fit space-y-4 rounded-2xl bg-white p-5 shadow-sm">
+        <h2 className="text-lg font-black">{editingId ? "Sửa địa chỉ" : "Thêm địa chỉ"}</h2>
+        {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+        <label className="block text-sm font-semibold">Tên người nhận<input required value={form.recipientName} onChange={(event) => setForm({ ...form, recipientName: event.target.value })} className="mt-1 w-full rounded-xl border p-3 font-normal" /></label>
+        <label className="block text-sm font-semibold">Số điện thoại<input required type="tel" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} className="mt-1 w-full rounded-xl border p-3 font-normal" /></label>
+        <label className="block text-sm font-semibold">Tỉnh / thành phố
+          <input required list="address-provinces" autoComplete="off" value={provinceSearch} onChange={(event) => {
+            requestId.current += 1; setGeocoding(false); setMapAddressStatus("");
+            const value = event.target.value;
+            const selected = provinces.find((province) => province.name.toLocaleLowerCase("vi") === value.trim().toLocaleLowerCase("vi"));
+            setProvinceSearch(value);
+            setWardSearch("");
+            setForm((current) => ({ ...current, provinceCode: selected?.code || "", provinceName: selected?.name || "", wardCode: "", wardName: "" }));
+            setRegionsError("");
+          }} className="mt-1 w-full rounded-xl border p-3 font-normal" placeholder={regionsLoading ? "Đang tải danh mục lần đầu…" : "Nhập để tìm tỉnh/thành…"} />
+          <datalist id="address-provinces">{provinces.map((province) => <option key={province.code} value={province.name} />)}</datalist>
+        </label>
+        <label className="block text-sm font-semibold">Phường / xã
+          <input required list="address-wards" autoComplete="off" disabled={!form.provinceCode || regionsLoading} value={wardSearch} onChange={(event) => {
+            requestId.current += 1; setGeocoding(false); setMapAddressStatus("");
+            const value = event.target.value;
+            const selected = wards.find((ward) => ward.name.toLocaleLowerCase("vi") === value.trim().toLocaleLowerCase("vi"));
+            setWardSearch(value);
+            setForm((current) => ({ ...current, wardCode: selected?.code || "", wardName: selected?.name || "" }));
+          }} className="mt-1 w-full rounded-xl border p-3 font-normal disabled:bg-slate-100" placeholder={!form.provinceCode ? "Chọn tỉnh/thành trước" : regionsLoading ? "Đang tải danh mục lần đầu…" : "Nhập để tìm phường/xã…"} />
+          <datalist id="address-wards">{wards.map((ward) => <option key={ward.code} value={ward.name} />)}</datalist>
+        </label>
+        <label className="block text-sm font-semibold">Số nhà, tên đường<input required value={form.address} onChange={(event) => { requestId.current += 1; setGeocoding(false); lastGeocodedAddress.current = ""; setMapAddressStatus(""); setForm({ ...form, address: event.target.value }); }} onBlur={() => { if (form.provinceCode && form.wardCode) void geocodeAddress(completeAddressQuery, true); }} className="mt-1 w-full rounded-xl border p-3 font-normal" placeholder="Ví dụ: 123 Nguyễn Trãi" /></label>
         <div>
           <div className="mb-2 flex items-center justify-between gap-2"><span className="text-sm font-semibold">Ghim vị trí giao hàng</span><div className="flex gap-3"><button type="button" onClick={() => void geocodeAddress(completeAddressQuery, true)} disabled={geocoding || !form.address.trim() || !form.provinceCode || !form.wardCode} className="text-xs font-semibold text-blue-700 disabled:opacity-50">Tìm địa chỉ trên bản đồ</button><button type="button" onClick={useMyLocation} disabled={locating} className="text-xs font-semibold text-blue-700 disabled:opacity-50">{locating ? "Đang lấy vị trí…" : "Dùng vị trí hiện tại"}</button></div></div>
           <MapPicker latitude={form.latitude} longitude={form.longitude} onPick={handleMapPick} />
