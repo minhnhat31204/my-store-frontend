@@ -15,6 +15,14 @@ export function isVoucherValid(voucher: Voucher, now = new Date()) {
   return expiry >= now;
 }
 
+export function isVoucherExpired(voucher: Voucher, now = new Date()) {
+  if (!voucher.ExpiryDate) return false;
+  const expiry = new Date(voucher.ExpiryDate);
+  if (Number.isNaN(expiry.getTime())) return false;
+  expiry.setHours(23, 59, 59, 999);
+  return expiry < now;
+}
+
 export function voucherDiscount(voucher: Voucher | null, subtotal: number) {
   if (!voucher || !isVoucherValid(voucher)) return 0;
   const percentage = Math.max(0, Number(voucher.DiscountPercentage) || 0);

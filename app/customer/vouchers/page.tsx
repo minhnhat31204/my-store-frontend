@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api, getStoredUser, type User, type Voucher } from "@/lib/api";
-import { getSelectedVoucherId, isVoucherValid, saveSelectedVoucher } from "@/lib/vouchers";
+import { getSelectedVoucherId, isVoucherValid, isVoucherExpired, saveSelectedVoucher } from "@/lib/vouchers";
 
 export default function VouchersPage() {
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
@@ -29,7 +29,11 @@ export default function VouchersPage() {
 
   function choose(voucher: Voucher | null) {
     if (voucher && !isVoucherValid(voucher)) {
-      setError(`Mã ${voucher.Code} đã hết hạn hoặc tạm dừng áp dụng.`);
+      if (isVoucherExpired(voucher)) {
+        setError(`Mã ${voucher.Code} đã hết hạn sử dụng (${voucher.ExpiryDate ? new Date(voucher.ExpiryDate).toLocaleDateString("vi-VN") : ""}).`);
+      } else {
+        setError(`Mã ${voucher.Code} đã tạm dừng áp dụng.`);
+      }
       return;
     }
     if (voucher) {
@@ -117,13 +121,13 @@ export default function VouchersPage() {
               type="text"
               value={customCode}
               onChange={(e) => setCustomCode(e.target.value.toUpperCase())}
-              placeholder="Nhập mã giảm giá (ví dụ: SALE20, DEVORA50...)"
+              placeholder="Nhập mã giảm giá (ví dụ: SALE20, SUMMER2026...)"
               className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold uppercase placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:outline-none transition"
             />
             <button
               type="submit"
               disabled={checkingCustom || !customCode.trim()}
-              className="rounded-xl bg-blue-700 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-blue-800 disabled:bg-slate-300 shrink-0"
+              className="rounded-xl bg-blue-700 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-blue-800 disabled:bg-slate-300 shrink-0 cursor-pointer disabled:cursor-not-allowed"
             >
               {checkingCustom ? "Đang kiểm tra..." : "Áp dụng mã"}
             </button>
@@ -150,7 +154,7 @@ export default function VouchersPage() {
             {selected && (
               <button
                 onClick={() => choose(null)}
-                className="text-xs font-bold text-rose-600 hover:text-rose-700 underline shrink-0"
+                className="text-xs font-bold text-rose-600 hover:text-rose-700 underline shrink-0 cursor-pointer"
               >
                 Hủy chọn
               </button>
@@ -174,7 +178,7 @@ export default function VouchersPage() {
             </div>
             <button
               onClick={() => choose(null)}
-              className="rounded-xl border border-rose-200 bg-white px-3.5 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 transition shrink-0"
+              className="rounded-xl border border-rose-200 bg-white px-3.5 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 transition shrink-0 cursor-pointer"
             >
               Bỏ chọn mã
             </button>
@@ -196,6 +200,7 @@ export default function VouchersPage() {
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             {vouchers.map((voucher) => {
               const valid = isVoucherValid(voucher);
+              const expired = isVoucherExpired(voucher);
               const active = selected === voucher.VoucherID;
 
               return (
@@ -204,17 +209,23 @@ export default function VouchersPage() {
                   className={`relative rounded-2xl border bg-white p-5 shadow-xs transition-all ${
                     active
                       ? "border-blue-600 ring-2 ring-blue-100"
+                      : !valid
+                      ? "border-slate-200 bg-slate-50/70 opacity-80"
                       : "border-slate-200 hover:border-slate-300"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <span className="inline-block font-mono text-xs font-extrabold uppercase tracking-wide text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md">
+                      <span className={`inline-block font-mono text-xs font-extrabold uppercase tracking-wide px-2 py-0.5 rounded-md ${
+                        !valid ? "text-slate-500 bg-slate-200" : "text-blue-700 bg-blue-50"
+                      }`}>
                         {voucher.Code}
                       </span>
                       <h3 className="mt-2 text-base font-black text-slate-900 line-clamp-1">{voucher.Name}</h3>
                     </div>
-                    <span className="rounded-xl bg-blue-600 px-3 py-1.5 text-lg font-black text-white shrink-0">
+                    <span className={`rounded-xl px-3 py-1.5 text-lg font-black text-white shrink-0 ${
+                      !valid ? "bg-slate-400" : "bg-blue-600"
+                    }`}>
                       -{Number(voucher.DiscountPercentage) || 0}%
                     </span>
                   </div>
@@ -226,7 +237,15 @@ export default function VouchersPage() {
                   )}
 
                   <p className="mt-1 text-[11px] text-slate-500">
-                    Hạn dùng: {voucher.ExpiryDate ? new Date(voucher.ExpiryDate).toLocaleDateString("vi-VN") : "Không giới hạn"}
+                    Hạn dùng:{" "}
+                    {voucher.ExpiryDate ? (
+                      <span className={expired ? "font-bold text-rose-500" : "font-medium text-slate-700"}>
+                        {new Date(voucher.ExpiryDate).toLocaleDateString("vi-VN")}
+                        {expired && " (Đã hết hạn)"}
+                      </span>
+                    ) : (
+                      <span className="font-medium text-slate-700">Không giới hạn</span>
+                    )}
                   </p>
 
                   <button
@@ -236,11 +255,17 @@ export default function VouchersPage() {
                       !valid
                         ? "bg-slate-200 text-slate-400 cursor-not-allowed"
                         : active
-                        ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                        : "bg-blue-700 text-white hover:bg-blue-800"
+                        ? "bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer"
+                        : "bg-blue-700 text-white hover:bg-blue-800 cursor-pointer"
                     }`}
                   >
-                    {!valid ? "Hết hạn / Ngừng áp dụng" : active ? "✓ Đang áp dụng (Nhấn để hủy)" : "Áp dụng mã này"}
+                    {!valid
+                      ? expired
+                        ? "Hết hạn sử dụng"
+                        : "Ngừng áp dụng"
+                      : active
+                      ? "✓ Đang áp dụng (Nhấn để hủy)"
+                      : "Áp dụng mã này"}
                   </button>
                 </article>
               );
