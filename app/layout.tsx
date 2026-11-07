@@ -31,7 +31,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
-                if (window.location.pathname === '/no-source.html') return;
                 // Chặn F12 và các phím tắt Inspect, View Source ngay từ cấp độ tài liệu
                 window.addEventListener('keydown', function(e) {
                   if (
@@ -44,18 +43,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                     return false;
                   }
                 }, true);
-
-                function checkDevTools() {
-                  if (window.location.pathname === '/no-source.html') return;
-                  var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                  if (isMobile) return;
-                  if (window.outerWidth - window.innerWidth > 160 || window.outerHeight - window.innerHeight > 200) {
-                    try { document.documentElement.innerHTML = ''; } catch(e){}
-                    window.location.replace('/no-source.html');
-                  }
-                }
-                checkDevTools();
-                window.addEventListener('resize', checkDevTools);
               })();
             `,
           }}
