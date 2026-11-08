@@ -15,7 +15,62 @@ html {
   scroll-behavior: auto;
   overscroll-behavior-x: none;
   overflow-x: hidden;
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
   width: 100%;
+}
+
+/* Stable scrollbar container for admin portal to eliminate jitter/shifts */
+#admin-main-scroll {
+  overflow-y: scroll !important;
+  scrollbar-gutter: stable;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+}
+
+/* WebKit (Chrome, Edge, Safari, Opera) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.28);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.55);
+}
+
+/* Dark theme & Admin Portal scrollbar */
+.dark ::-webkit-scrollbar-thumb,
+#admin-main-scroll::-webkit-scrollbar-thumb,
+aside::-webkit-scrollbar-thumb,
+.bg-slate-950 ::-webkit-scrollbar-thumb,
+.bg-slate-900 ::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.22);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover,
+#admin-main-scroll::-webkit-scrollbar-thumb:hover,
+aside::-webkit-scrollbar-thumb:hover,
+.bg-slate-950 ::-webkit-scrollbar-thumb:hover,
+.bg-slate-900 ::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.45);
 }
 body {
   margin: 0;

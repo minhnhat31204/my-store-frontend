@@ -482,16 +482,16 @@ export default function AdminOrders() {
 
       {/* Orders List in 2-Row Format (Khong dung thanh cuon ngang) */}
       {loading ? (
-        <div className="p-16 text-center text-slate-400 font-medium">
+        <div className="p-16 text-center text-slate-400 font-medium min-h-[420px] flex flex-col items-center justify-center">
           <div className="inline-block w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-3" />
           <p>Đang đồng bộ danh sách đơn hàng...</p>
         </div>
       ) : filteredOrders.length === 0 ? (
-        <div className="p-16 text-center border border-dashed border-slate-800 rounded-3xl text-slate-400 bg-slate-900/30">
+        <div className="p-16 text-center border border-dashed border-slate-800 rounded-3xl text-slate-400 bg-slate-900/30 min-h-[420px] flex flex-col items-center justify-center">
           {orders.length ? 'Không tìm thấy đơn hàng nào khớp với điều kiện lọc.' : 'Chưa có đơn hàng nào trong hệ thống.'}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-3xl border border-slate-800/80 bg-slate-900/90 shadow-2xl">
+        <div className="overflow-hidden rounded-3xl border border-slate-800/80 bg-slate-900/90 shadow-2xl min-h-[420px]">
           {/* List Header with Select All */}
           <div className="flex items-center justify-between px-5 py-3.5 bg-slate-950/80 border-b border-slate-800 text-xs text-slate-400 font-bold uppercase tracking-wider">
             <div className="flex items-center gap-3">

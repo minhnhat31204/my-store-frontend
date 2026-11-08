@@ -459,7 +459,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       )}
 
       {/* Main Content Area */}
-      <div id="admin-main-scroll" className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto bg-slate-950">
+      <div id="admin-main-scroll" className="flex-1 flex flex-col min-w-0 h-full overflow-y-scroll bg-slate-950">
         {/* Top bar for desktop */}
         <header className="sticky top-0 z-20 hidden md:flex items-center justify-between px-8 py-3.5 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800/80 shrink-0">
           <div className="flex items-center gap-3">
@@ -505,7 +505,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </header>
 
         {/* Page Inner Container */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 min-h-[calc(100vh-140px)]">
           {children}
         </main>
 

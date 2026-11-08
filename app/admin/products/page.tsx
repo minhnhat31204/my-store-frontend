@@ -678,12 +678,12 @@ export default function AdminProducts() {
 
       {/* Product List / Table */}
       {loading ? (
-        <div className="p-16 text-center text-slate-400 font-medium">
+        <div className="p-16 text-center text-slate-400 font-medium min-h-[420px] flex flex-col items-center justify-center">
           <div className="inline-block w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-3" />
           <p>Đang đồng bộ dữ liệu sản phẩm từ máy chủ...</p>
         </div>
       ) : filteredProducts.length === 0 ? (
-        <div className="p-16 text-center border border-dashed border-slate-800 rounded-3xl text-slate-400 bg-slate-900/30">
+        <div className="p-16 text-center border border-dashed border-slate-800 rounded-3xl text-slate-400 bg-slate-900/30 min-h-[420px] flex flex-col items-center justify-center">
           Không tìm thấy sản phẩm nào khớp với điều kiện tìm kiếm.
         </div>
       ) : (
