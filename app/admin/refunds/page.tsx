@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { motion } from 'motion/react';
 import { api, getPrimaryProductImage, type StoreOrder } from '@/lib/api';
 import { useAdminData } from '@/lib/useAdminData';
 import { exportToExcel } from '@/lib/exportExcel';
@@ -50,23 +51,37 @@ export default function AdminRefundsPage() {
     return { pending, approved, rejected, total: requests.length };
   }, [requests]);
 
-  const filteredRequests = (requests || []).filter((order) => {
-    const query = searchTerm.trim().toLowerCase();
-    if (!query) return true;
-    const idMatch = String(order.OrderID).includes(query) || `#${order.OrderID}`.includes(query);
-    const nameMatch = (order.RecipientName || '').toLowerCase().includes(query) || (order.User?.FullName || '').toLowerCase().includes(query);
-    const phoneMatch = (order.RecipientPhone || '').toLowerCase().includes(query) || (order.RefundPhone || '').toLowerCase().includes(query);
-    const bankMatch = (order.RefundBankAccount || '').toLowerCase().includes(query) || (order.RefundBankHolder || '').toLowerCase().includes(query) || (order.RefundBankName || '').toLowerCase().includes(query);
-    const reasonMatch = (order.RefundReason || '').toLowerCase().includes(query);
-    const productMatch = (order.OrderItems || []).some((item) => 
-      String(item.ProductID).includes(query) ||
-      `sp${item.ProductID}`.includes(query) ||
-      `#${item.ProductID}`.includes(query) ||
-      `#sp${item.ProductID}`.includes(query) ||
-      (item.Product?.ProductName || '').toLowerCase().includes(query)
-    );
-    return idMatch || nameMatch || phoneMatch || bankMatch || reasonMatch || productMatch;
-  });
+  const filteredRequests = useMemo(() => {
+    return (requests || []).filter((order) => {
+      // 1. Filter by Tab
+      const s = (order.RefundStatus || 'pending').toLowerCase();
+      if (refundTab === 'approved' && s !== 'approved') return false;
+      if (refundTab === 'rejected' && s !== 'rejected') return false;
+      if (refundTab === 'pending' && (s === 'approved' || s === 'rejected')) return false;
+
+      // 2. Filter by Date
+      if (!matchesDateFilter(order.RefundRequestAt || order.OrderDate, dateFilter, customDate)) {
+        return false;
+      }
+
+      // 3. Search query
+      const query = searchTerm.trim().toLowerCase();
+      if (!query) return true;
+      const idMatch = String(order.OrderID).includes(query) || `#${order.OrderID}`.includes(query);
+      const nameMatch = (order.RecipientName || '').toLowerCase().includes(query) || (order.User?.FullName || '').toLowerCase().includes(query);
+      const phoneMatch = (order.RecipientPhone || '').toLowerCase().includes(query) || (order.RefundPhone || '').toLowerCase().includes(query);
+      const bankMatch = (order.RefundBankAccount || '').toLowerCase().includes(query) || (order.RefundBankHolder || '').toLowerCase().includes(query) || (order.RefundBankName || '').toLowerCase().includes(query);
+      const reasonMatch = (order.RefundReason || '').toLowerCase().includes(query);
+      const productMatch = (order.OrderItems || []).some((item) => 
+        String(item.ProductID).includes(query) ||
+        `sp${item.ProductID}`.includes(query) ||
+        `#${item.ProductID}`.includes(query) ||
+        `#sp${item.ProductID}`.includes(query) ||
+        (item.Product?.ProductName || '').toLowerCase().includes(query)
+      );
+      return idMatch || nameMatch || phoneMatch || bankMatch || reasonMatch || productMatch;
+    });
+  }, [requests, refundTab, dateFilter, customDate, searchTerm]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRequests.length / 20));
   const currentPage = Math.min(page, totalPages);
@@ -177,6 +192,49 @@ export default function AdminRefundsPage() {
           {error}
         </div>
       )}
+
+      {/* 3 Tabs + Date Filter */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800">
+        <div className="flex items-center gap-1.5 p-1 bg-slate-950 rounded-xl border border-slate-800">
+          {[
+            { key: 'pending', label: 'Yêu cầu hoàn tiền', count: counts.pending, color: 'text-amber-400' },
+            { key: 'approved', label: 'Đã hoàn tiền', count: counts.approved, color: 'text-emerald-400' },
+            { key: 'rejected', label: 'Từ chối hoàn tiền', count: counts.rejected, color: 'text-rose-400' },
+          ].map((t) => {
+            const isSelected = refundTab === t.key;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => { setRefundTab(t.key as any); setPage(1); }}
+                className={`relative px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                  isSelected ? 'text-white' : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+                }`}
+              >
+                {isSelected && (
+                  <motion.div
+                    layoutId="refundTabActivePill"
+                    className="absolute inset-0 rounded-lg bg-blue-600 shadow-md shadow-blue-600/30"
+                    transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-10">{t.label}</span>
+                <span className={`relative z-10 px-1.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                  isSelected ? 'bg-white/20 text-white' : 'bg-slate-800 ' + t.color
+                }`}>
+                  {t.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <DateFilterBar
+          value={dateFilter}
+          customDate={customDate}
+          onChange={(val, cDate) => { setDateFilter(val); if (cDate) setCustomDate(cDate); setPage(1); }}
+        />
+      </div>
 
       {/* Search Bar */}
       <div className="space-y-3 bg-slate-900/80 p-4 rounded-2xl border border-slate-800/80 shadow-lg">

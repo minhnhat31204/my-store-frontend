@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { AnimatedModal, AnimatedButton } from '@/app/components/ui/motion-primitives';
 
 interface ConfirmDeleteModalProps {
   isOpen: boolean;
@@ -27,21 +28,18 @@ export default function ConfirmDeleteModal({
   onConfirm,
   onCancel,
 }: ConfirmDeleteModalProps) {
-  if (!isOpen) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-fadeIn"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget && !isDeleting) onCancel();
-      }}
-    >
-      <div className="w-full max-w-md space-y-5 rounded-3xl bg-slate-900 border border-slate-800 p-6 sm:p-7 shadow-2xl text-slate-200 animate-scaleUp">
+    <AnimatedModal isOpen={isOpen} onClose={!isDeleting ? onCancel : undefined} maxWidth="max-w-md">
+      <div className="space-y-5 bg-slate-900 border border-slate-800 p-6 sm:p-7 shadow-2xl text-slate-200">
         {/* Warning Icon & Header */}
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center shrink-0 shadow-inner">
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
             </svg>
           </div>
           <div>
@@ -75,19 +73,17 @@ export default function ConfirmDeleteModal({
 
         {/* Action Buttons */}
         <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-800/80">
-          <button
-            type="button"
+          <AnimatedButton
             onClick={onCancel}
             disabled={isDeleting}
-            className="rounded-2xl border border-slate-700 bg-slate-800/80 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-slate-700 transition disabled:opacity-50 cursor-pointer"
+            className="rounded-2xl border border-slate-700 bg-slate-800/80 px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-slate-700 transition disabled:opacity-50"
           >
             {cancelText}
-          </button>
-          <button
-            type="button"
+          </AnimatedButton>
+          <AnimatedButton
             onClick={() => void onConfirm()}
             disabled={isDeleting}
-            className="inline-flex items-center gap-2 rounded-2xl bg-rose-600 hover:bg-rose-500 px-5 py-2.5 text-xs font-bold text-white transition disabled:opacity-50 shadow-lg shadow-rose-600/30 active:scale-95 cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-2xl bg-rose-600 hover:bg-rose-500 px-5 py-2.5 text-xs font-bold text-white transition disabled:opacity-50 shadow-lg shadow-rose-600/30"
           >
             {isDeleting ? (
               <>
@@ -97,14 +93,18 @@ export default function ConfirmDeleteModal({
             ) : (
               <>
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
                 </svg>
                 <span>{confirmText}</span>
               </>
             )}
-          </button>
+          </AnimatedButton>
         </div>
       </div>
-    </div>
+    </AnimatedModal>
   );
 }

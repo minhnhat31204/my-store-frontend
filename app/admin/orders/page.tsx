@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { api, getPrimaryProductImage, type StoreOrder } from '@/lib/api';
 import Pagination from '@/app/admin/components/Pagination';
 import DateFilterBar, { matchesDateFilter, type DateFilterPeriod } from '@/app/admin/components/DateFilterBar';
@@ -390,8 +391,15 @@ export default function AdminOrders() {
       )}
 
       {/* Illuminated Bulk Actions Bar */}
-      {selectedOrderIds.length > 0 && (
-        <div className="sticky top-4 z-30 flex flex-wrap items-center justify-between gap-3 p-4 rounded-3xl bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-600 text-white shadow-2xl shadow-blue-500/30 border border-blue-400/40 animate-in slide-in-from-top-4 duration-200">
+      <AnimatePresence>
+        {selectedOrderIds.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -16, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -12, scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+            className="sticky top-4 z-30 flex flex-wrap items-center justify-between gap-3 p-4 rounded-3xl bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-600 text-white shadow-2xl shadow-blue-500/30 border border-blue-400/40"
+          >
           <div className="flex items-center gap-3">
             <span className="w-3 h-3 rounded-full bg-emerald-400 animate-ping" />
             <span className="font-extrabold text-sm">
@@ -430,8 +438,9 @@ export default function AdminOrders() {
               {bulkUpdating ? 'Đang cập nhật...' : '✓ Cập nhật hàng loạt'}
             </button>
           </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Orders List in 2-Row Format (Khong dung thanh cuon ngang) */}
       {loading ? (

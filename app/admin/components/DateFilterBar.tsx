@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { motion } from 'motion/react';
 
 export type DateFilterPeriod = 'today' | '7days' | 'month' | 'all' | 'custom';
 
@@ -67,6 +68,13 @@ export default function DateFilterBar({
     year: 'numeric',
   });
 
+  const options: Array<{ key: DateFilterPeriod; label: string; badge?: boolean }> = [
+    { key: 'today', label: `Hôm nay (${todayStr})`, badge: true },
+    { key: '7days', label: '7 ngày qua' },
+    { key: 'month', label: 'Tháng này' },
+    { key: 'all', label: 'Tất cả' },
+  ];
+
   return (
     <div className={`flex flex-wrap items-center gap-2 text-xs ${className}`}>
       <span className="font-bold text-slate-400 flex items-center gap-1.5">
@@ -77,56 +85,32 @@ export default function DateFilterBar({
       </span>
 
       <div className="flex flex-wrap items-center gap-1.5 bg-slate-950 p-1 rounded-2xl border border-slate-800">
-        <button
-          type="button"
-          onClick={() => onChange('today')}
-          className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 cursor-pointer ${
-            value === 'today'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900'
-          }`}
-        >
-          <span>Hôm nay ({todayStr})</span>
-          {value === 'today' && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
-        </button>
+        {options.map((opt) => {
+          const isSelected = value === opt.key;
+          return (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => onChange(opt.key)}
+              className={`relative px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                isSelected ? 'text-white' : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+              }`}
+            >
+              {isSelected && (
+                <motion.div
+                  layoutId="dateFilterActivePill"
+                  className="absolute inset-0 rounded-xl bg-blue-600 shadow-md shadow-blue-600/30 -z-0"
+                  transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+                />
+              )}
+              <span className="relative z-10">{opt.label}</span>
+              {isSelected && opt.badge && <span className="relative z-10 w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
+            </button>
+          );
+        })}
 
-        <button
-          type="button"
-          onClick={() => onChange('7days')}
-          className={`px-3 py-1.5 rounded-xl font-bold transition cursor-pointer ${
-            value === '7days'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900'
-          }`}
-        >
-          7 ngày qua
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onChange('month')}
-          className={`px-3 py-1.5 rounded-xl font-bold transition cursor-pointer ${
-            value === 'month'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900'
-          }`}
-        >
-          Tháng này
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onChange('all')}
-          className={`px-3 py-1.5 rounded-xl font-bold transition cursor-pointer ${
-            value === 'all'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900'
-          }`}
-        >
-          Tất cả
-        </button>
-
-        <div className="flex items-center gap-1 pl-1 border-l border-slate-800">
+        {/* Custom date picker */}
+        <div className="relative flex items-center pl-1 border-l border-slate-800">
           <input
             type="date"
             value={customDate}
@@ -135,10 +119,10 @@ export default function DateFilterBar({
                 onChange('custom', e.target.value);
               }
             }}
-            className={`bg-transparent text-slate-300 font-semibold px-2 py-1 rounded-lg border outline-none cursor-pointer ${
+            className={`px-2.5 py-1 rounded-xl text-[11px] font-bold border transition outline-none cursor-pointer ${
               value === 'custom'
-                ? 'border-blue-500 text-white bg-blue-600/10'
-                : 'border-slate-800 hover:border-slate-700'
+                ? 'bg-blue-600/20 text-blue-400 border-blue-500'
+                : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700'
             }`}
           />
         </div>

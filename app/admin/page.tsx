@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { motion } from 'motion/react';
 import { api, type Product, type StoreOrder, type User } from '@/lib/api';
 import { useAdminData } from '@/lib/useAdminData';
 import { exportDashboardRevenueReport } from '@/lib/exportRevenueReport';
@@ -216,7 +217,10 @@ export default function AdminDashboard() {
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
         {/* Lifetime Revenue */}
-        <div className="relative group overflow-hidden p-6 rounded-3xl bg-slate-900/90 border border-slate-800/80 hover:border-emerald-500/40 shadow-xl transition duration-300">
+        <motion.div
+          whileHover={{ y: -5, transition: { type: 'spring', stiffness: 400, damping: 25 } }}
+          className="relative group overflow-hidden p-6 rounded-3xl bg-slate-900/90 border border-slate-800/80 hover:border-emerald-500/40 shadow-xl cursor-default"
+        >
           <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:scale-125 transition duration-500" />
           <div className="flex items-center justify-between relative z-10">
             <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
@@ -237,10 +241,13 @@ export default function AdminDashboard() {
               <span>đã hoàn tất</span>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Monthly Revenue */}
-        <div className="relative group overflow-hidden p-6 rounded-3xl bg-slate-900/90 border border-slate-800/80 hover:border-blue-500/40 shadow-xl transition duration-300">
+        <motion.div
+          whileHover={{ y: -5, transition: { type: 'spring', stiffness: 400, damping: 25 } }}
+          className="relative group overflow-hidden p-6 rounded-3xl bg-slate-900/90 border border-slate-800/80 hover:border-blue-500/40 shadow-xl cursor-default"
+        >
           <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl group-hover:scale-125 transition duration-500" />
           <div className="flex items-center justify-between relative z-10">
             <span className="text-xs font-bold uppercase tracking-wider text-blue-400">
@@ -261,10 +268,13 @@ export default function AdminDashboard() {
               <span>kỳ báo cáo</span>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Orders Pending & Processing */}
-        <div className="relative group overflow-hidden p-6 rounded-3xl bg-slate-900/90 border border-slate-800/80 hover:border-amber-500/40 shadow-xl transition duration-300">
+        <motion.div
+          whileHover={{ y: -5, transition: { type: 'spring', stiffness: 400, damping: 25 } }}
+          className="relative group overflow-hidden p-6 rounded-3xl bg-slate-900/90 border border-slate-800/80 hover:border-amber-500/40 shadow-xl cursor-default"
+        >
           <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl group-hover:scale-125 transition duration-500" />
           <div className="flex items-center justify-between relative z-10">
             <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
@@ -287,10 +297,13 @@ export default function AdminDashboard() {
               </Link>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Products & Inventory */}
-        <div className="relative group overflow-hidden p-6 rounded-3xl bg-slate-900/90 border border-slate-800/80 hover:border-purple-500/40 shadow-xl transition duration-300">
+        <motion.div
+          whileHover={{ y: -5, transition: { type: 'spring', stiffness: 400, damping: 25 } }}
+          className="relative group overflow-hidden p-6 rounded-3xl bg-slate-900/90 border border-slate-800/80 hover:border-purple-500/40 shadow-xl cursor-default"
+        >
           <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl group-hover:scale-125 transition duration-500" />
           <div className="flex items-center justify-between relative z-10">
             <span className="text-xs font-bold uppercase tracking-wider text-purple-400">
@@ -314,7 +327,7 @@ export default function AdminDashboard() {
               )}
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Revenue Chart Section */}
