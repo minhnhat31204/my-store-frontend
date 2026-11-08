@@ -195,6 +195,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   }, []);
 
   useEffect(() => {
+    document.documentElement.style.backgroundColor = '#020617';
     document.body.style.backgroundColor = '#020617';
     async function fetchBadges() {
       try {
@@ -256,7 +257,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   };
 
   return (
-    <div className="h-screen overflow-hidden bg-slate-950 text-slate-100 flex flex-col md:flex-row antialiased font-sans">
+    <div className="admin-root-viewport h-full w-full overflow-hidden bg-slate-950 text-slate-100 flex flex-col md:flex-row antialiased font-sans">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-56 h-full bg-slate-950/95 border-r border-slate-800/80 p-3.5 shrink-0 select-none overflow-y-auto z-30">
         {/* Brand Header */}

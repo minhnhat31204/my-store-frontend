@@ -59,17 +59,32 @@ html {
   width: 100%;
 }
 
-/* Proportional Compact Scaling for Desktop/Tablet
-   Scales rem units cleanly without breaking 100vh/h-screen viewport units */
+/* ========================================================
+   GLOBAL COMPACT SCALE (THU NHỎ TOÀN BỘ GIAO DIỆN ~28%)
+   Đưa toàn bộ mọi trang trên web về kích thước gọn gàng, tinh tế
+   tương đương mức zoom 67%–72% mà người dùng mong muốn
+   ======================================================== */
 @media (min-width: 768px) and (max-width: 1023px) {
   html {
-    font-size: 13px;
+    zoom: 0.82;
+  }
+  .admin-root-viewport {
+    height: calc(100vh / 0.82) !important;
+    min-height: calc(100vh / 0.82) !important;
   }
 }
 
 @media (min-width: 1024px) {
   html {
-    font-size: 12px;
+    zoom: 0.72;
+  }
+  .admin-root-viewport {
+    height: calc(100vh / 0.72) !important;
+    min-height: calc(100vh / 0.72) !important;
+  }
+  .fixed.inset-0 {
+    min-height: 140vh;
+    min-width: 140vw;
   }
 }
 
