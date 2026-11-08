@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { api, getPrimaryProductImage, type StoreOrder } from '@/lib/api';
 import { useAdminData } from '@/lib/useAdminData';
 import { exportToExcel } from '@/lib/exportExcel';
 import { printRefundReceipt } from '@/lib/printUtils';
 import Pagination from '@/app/admin/components/Pagination';
+import DateFilterBar, { matchesDateFilter, type DateFilterPeriod } from '@/app/admin/components/DateFilterBar';
+import ConfirmModal from '@/app/components/ConfirmModal';
 
 function money(value?: number | string | null) {
   return `${Number(value || 0).toLocaleString('vi-VN')} ₫`;
@@ -20,7 +22,7 @@ function dateTime(value?: string | null) {
 export default function AdminRefundsPage() {
   const { data: requestsData, loading, error, reload } = useAdminData<StoreOrder[]>(
     'admin:refunds',
-    () => api.getRefundRequests(),
+    () => api.getRefundRequests('all'),
   );
   const requests = requestsData ?? [];
   const [page, setPage] = useState(1);
@@ -30,6 +32,23 @@ export default function AdminRefundsPage() {
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectNote, setRejectNote] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [refundTab, setRefundTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
+  const [dateFilter, setDateFilter] = useState<DateFilterPeriod>('today');
+  const [customDate, setCustomDate] = useState('');
+  const [approveConfirmOrder, setApproveConfirmOrder] = useState<StoreOrder | null>(null);
+
+  const counts = useMemo(() => {
+    let pending = 0;
+    let approved = 0;
+    let rejected = 0;
+    for (const r of requests) {
+      const s = (r.RefundStatus || 'pending').toLowerCase();
+      if (s === 'approved') approved++;
+      else if (s === 'rejected') rejected++;
+      else pending++;
+    }
+    return { pending, approved, rejected, total: requests.length };
+  }, [requests]);
 
   const filteredRequests = (requests || []).filter((order) => {
     const query = searchTerm.trim().toLowerCase();
@@ -75,14 +94,21 @@ export default function AdminRefundsPage() {
     });
   };
 
-  const handleApprove = async (orderId: number) => {
-    if (!window.confirm(`Xác nhận duyệt hoàn tiền cho đơn hàng #${orderId}? Bạn đã thực hiện chuyển tiền thành công cho khách hàng chưa?`)) return;
+  const handleApprove = (orderOrId: StoreOrder | number) => {
+    const target = typeof orderOrId === 'number' ? requests.find((r) => r.OrderID === orderOrId) || null : orderOrId;
+    setApproveConfirmOrder(target);
+  };
+
+  const confirmApproveAction = async () => {
+    if (!approveConfirmOrder) return;
+    const orderId = approveConfirmOrder.OrderID;
     setProcessingId(orderId);
     setFeedback(null);
     try {
       const res = await api.approveRefundRequest(orderId);
       setFeedback({ type: 'success', message: res.message || `Đã phê duyệt hoàn tiền cho đơn #${orderId}.` });
       setSelectedOrder(null);
+      setApproveConfirmOrder(null);
       await reload(true);
     } catch (err) {
       setFeedback({ type: 'error', message: err instanceof Error ? err.message : 'Lỗi khi phê duyệt hoàn tiền.' });
@@ -300,7 +326,7 @@ export default function AdminRefundsPage() {
                   <button
                     type="button"
                     disabled={isProcessing}
-                    onClick={() => handleApprove(order.OrderID)}
+                    onClick={() => handleApprove(order)}
                     className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2 text-xs font-bold text-white hover:bg-emerald-500 shadow-md shadow-emerald-950 disabled:opacity-50 transition"
                   >
                     {isProcessing ? (

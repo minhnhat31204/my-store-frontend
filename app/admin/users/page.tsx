@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { api, User } from '@/lib/api';
 import Pagination from '@/app/admin/components/Pagination';
 import ConfirmDeleteModal from '@/app/admin/components/ConfirmDeleteModal';
+import DateFilterBar, { matchesDateFilter, type DateFilterPeriod } from '@/app/admin/components/DateFilterBar';
 import { useAdminData } from '@/lib/useAdminData';
 import { exportToExcel } from '@/lib/exportExcel';
 
@@ -16,6 +17,8 @@ export default function AdminUsers() {
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
   const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'customer'>('all');
+  const [dateFilter, setDateFilter] = useState<DateFilterPeriod>('today');
+  const [customDate, setCustomDate] = useState('');
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -146,6 +149,16 @@ export default function AdminUsers() {
 
       {/* Filter and Search Bar */}
       <div className="space-y-3 bg-slate-900/80 p-4 rounded-2xl border border-slate-800/80 shadow-lg">
+        {/* Date Filter Bar */}
+        <DateFilterBar
+          value={dateFilter}
+          customDate={customDate}
+          onChange={(period, date) => {
+            setDateFilter(period);
+            if (date) setCustomDate(date);
+            setPage(1);
+          }}
+        />
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           {/* Search */}
           <div className="relative flex-1">

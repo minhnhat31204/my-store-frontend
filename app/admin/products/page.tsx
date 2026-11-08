@@ -687,7 +687,7 @@ export default function AdminProducts() {
           Không tìm thấy sản phẩm nào khớp với điều kiện tìm kiếm.
         </div>
       ) : (
-        <div className="overflow-hidden rounded-3xl border border-slate-800/80 bg-slate-900/90 shadow-2xl">
+        <div className="overflow-hidden rounded-3xl border border-slate-800/80 bg-slate-900/90 shadow-2xl min-h-[420px] transition-all duration-150">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm text-slate-300">
               <thead className="bg-slate-950/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">

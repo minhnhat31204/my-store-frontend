@@ -68,6 +68,7 @@ function AddressesContent() {
   const [addressesLoading, setAddressesLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deletingAddressId, setDeletingAddressId] = useState<string | null>(null);
   const [geocoding, setGeocoding] = useState(false);
   const [mapAddressStatus, setMapAddressStatus] = useState("");
   const requestId = useRef(0);
@@ -407,7 +408,7 @@ function AddressesContent() {
                   <button type="button" disabled={saving} onClick={() => editAddress(item)} className="text-blue-700 hover:text-blue-800 disabled:opacity-50">
                     Sửa
                   </button>
-                  <button type="button" disabled={saving} onClick={() => remove(item.id)} className="text-red-600 hover:text-red-700 disabled:opacity-50">
+                  <button type="button" disabled={saving} onClick={() => setDeletingAddressId(item.id)} className="text-red-600 hover:text-red-700 disabled:opacity-50">
                     Xóa
                   </button>
                   {!item.isDefault && (

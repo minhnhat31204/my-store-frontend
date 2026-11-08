@@ -5,6 +5,7 @@ import { api, getPrimaryProductImage, type ProductReview } from '@/lib/api';
 import { useAdminData } from '@/lib/useAdminData';
 import { exportToExcel } from '@/lib/exportExcel';
 import Pagination from '@/app/admin/components/Pagination';
+import DateFilterBar, { matchesDateFilter, type DateFilterPeriod } from '@/app/admin/components/DateFilterBar';
 
 function dateTime(value?: string | null) {
   if (!value) return '—';
@@ -23,6 +24,19 @@ export default function AdminReviewsPage() {
   const [page, setPage] = useState(1);
   const [savingId, setSavingId] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<Record<number, string>>({});
+  const [reviewTab, setReviewTab] = useState<'unreplied' | 'replied'>('unreplied');
+  const [dateFilter, setDateFilter] = useState<DateFilterPeriod>('today');
+  const [customDate, setCustomDate] = useState('');
+
+  const counts = useMemo(() => {
+    let unreplied = 0;
+    let replied = 0;
+    for (const r of reviews) {
+      if (r.AdminReply?.trim()) replied++;
+      else unreplied++;
+    }
+    return { unreplied, replied, total: reviews.length };
+  }, [reviews]);
 
   // Sync replies state when reviews data changes (from cache or fetch)
   useEffect(() => {
@@ -39,20 +53,28 @@ export default function AdminReviewsPage() {
 
   const groups = useMemo(() => {
     const query = search.trim().toLocaleLowerCase('vi');
-    const filtered = reviews.filter((review) => !query || [
-      String(review.ProductID),
-      `sp${review.ProductID}`,
-      `#${review.ProductID}`,
-      `#sp${review.ProductID}`,
-      review.Product?.ProductName,
-      review.User?.FullName,
-      review.User?.Email,
-      review.User?.Phone,
-      review.Comment,
-      review.AdminReply,
-      String(review.OrderID || ''),
-      `#${review.OrderID}`,
-    ].some((value) => String(value || '').toLocaleLowerCase('vi').includes(query)));
+    const filtered = reviews.filter((review) => {
+      const isReplied = Boolean(review.AdminReply?.trim());
+      if (reviewTab === 'unreplied' && isReplied) return false;
+      if (reviewTab === 'replied' && !isReplied) return false;
+      if (!matchesDateFilter(review.ReviewDate, dateFilter, customDate)) return false;
+
+      if (!query) return true;
+      return [
+        String(review.ProductID),
+        `sp${review.ProductID}`,
+        `#${review.ProductID}`,
+        `#sp${review.ProductID}`,
+        review.Product?.ProductName,
+        review.User?.FullName,
+        review.User?.Email,
+        review.User?.Phone,
+        review.Comment,
+        review.AdminReply,
+        String(review.OrderID || ''),
+        `#${review.OrderID}`,
+      ].some((value) => String(value || '').toLocaleLowerCase('vi').includes(query));
+    });
     const grouped = new Map<number, { name: string; image?: string | null; reviews: ProductReview[] }>();
     for (const review of filtered) {
       const productId = Number(review.ProductID);
@@ -65,7 +87,7 @@ export default function AdminReviewsPage() {
       grouped.set(productId, group);
     }
     return [...grouped.entries()].sort((a, b) => a[1].name.localeCompare(b[1].name, 'vi'));
-  }, [reviews, search]);
+  }, [reviews, search, reviewTab, dateFilter, customDate]);
   const totalPages = Math.max(1, Math.ceil(groups.length / 20));
   const currentPage = Math.min(page, totalPages);
   const visibleGroups = groups.slice((currentPage - 1) * 20, currentPage * 20);
@@ -104,6 +126,60 @@ export default function AdminReviewsPage() {
           {loading ? 'Đang tải…' : 'Làm mới'}
         </button>
       </section>
+
+      {/* 2 Mục Đánh Giá: Chưa phản hồi vs Đã phản hồi */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={() => { setReviewTab('unreplied'); setPage(1); }}
+          className={`p-4 rounded-2xl border text-left transition cursor-pointer ${
+            reviewTab === 'unreplied'
+              ? 'bg-amber-600/15 border-amber-500/50 shadow-lg shadow-amber-950/40 text-white'
+              : 'bg-slate-900/60 border-slate-800/80 hover:border-slate-700 text-slate-400'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-400">⏳ Chưa phản hồi</span>
+            <span className="px-2 py-0.5 rounded-full text-xs font-black bg-amber-500/20 text-amber-300">
+              {counts.unreplied}
+            </span>
+          </div>
+          <p className="text-xl font-black mt-2 text-white">Cần xử lý & Trả lời</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Đánh giá mới từ khách hàng chưa có phản hồi từ shop</p>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => { setReviewTab('replied'); setPage(1); }}
+          className={`p-4 rounded-2xl border text-left transition cursor-pointer ${
+            reviewTab === 'replied'
+              ? 'bg-emerald-600/15 border-emerald-500/50 shadow-lg shadow-emerald-950/40 text-white'
+              : 'bg-slate-900/60 border-slate-800/80 hover:border-slate-700 text-slate-400'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">✓ Đã phản hồi</span>
+            <span className="px-2 py-0.5 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-300">
+              {counts.replied}
+            </span>
+          </div>
+          <p className="text-xl font-black mt-2 text-white">Đã hoàn tất chăm sóc</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Đã gửi phản hồi giải đáp công khai tới khách hàng</p>
+        </button>
+      </div>
+
+      {/* Date Filter Bar */}
+      <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800/80 shadow-lg">
+        <DateFilterBar
+          value={dateFilter}
+          customDate={customDate}
+          onChange={(period, date) => {
+            setDateFilter(period);
+            if (date) setCustomDate(date);
+            setPage(1);
+          }}
+        />
+      </div>
 
       <div className="space-y-3 bg-slate-900/80 p-4 rounded-2xl border border-slate-800/80 shadow-lg">
         <div className="relative">

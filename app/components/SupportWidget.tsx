@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { api, getStoredUser, type SupportMessage } from '@/lib/api';
+import { api, getStoredUser, type SupportMessage, type SupportConversation } from '@/lib/api';
 
 const ZALO_URL = process.env.NEXT_PUBLIC_ZALO_URL || 'https://zalo.me/0909680426';
 const VISITOR_KEY = 'devora-support-visitor';
@@ -29,6 +29,18 @@ export default function SupportWidget() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [currentConversation, setCurrentConversation] = useState<SupportConversation | null>(null);
+
+  const handleRespondClose = async (close: boolean) => {
+    if (!currentConversation) return;
+    try {
+      const res = await api.respondCloseSupportConversation(currentConversation.ConversationID, close);
+      if (res.conversation) setCurrentConversation(res.conversation);
+      if (res.message) setMessages((prev) => [...prev, res.message]);
+    } catch (err) {
+      console.error("Lỗi phản hồi đóng đoạn chat:", err);
+    }
+  };
   const [showTeaser, setShowTeaser] = useState(true);
   useEffect(() => {
     const root = document.documentElement;
@@ -81,6 +93,7 @@ export default function SupportWidget() {
     try {
       const owner = identity(channel);
       const result = await api.getSupportMessages(id, owner);
+      if (result.conversation) setCurrentConversation(result.conversation);
       const newMsgs = result.messages || [];
       setMessages((prev) => {
         if (
@@ -345,6 +358,49 @@ export default function SupportWidget() {
             )}
           </div>
 
+          {/* Interactive Close Confirmation Prompt */}
+          {currentConversation?.CloseRequested && currentConversation.Status !== 'Closed' && (
+            <div className="mx-3 my-2 p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 shadow-sm animate-in fade-in">
+              <p className="text-xs font-bold text-center leading-relaxed">
+                Quản trị viên hỏi: Quý khách có muốn đóng đoạn chat hỗ trợ này không ạ?
+              </p>
+              <div className="mt-2.5 flex items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleRespondClose(true)}
+                  className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition active:scale-95 cursor-pointer"
+                >
+                  ✓ Có, đóng đoạn chat
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleRespondClose(false)}
+                  className="px-3.5 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold transition active:scale-95 cursor-pointer"
+                >
+                  ✕ Không, tiếp tục hỗ trợ
+                </button>
+              </div>
+            </div>
+          )}
+
+          {currentConversation?.Status === 'Closed' ? (
+            <div className="p-4 bg-slate-100 border-t border-slate-200 text-center space-y-1.5">
+              <p className="text-xs font-bold text-slate-600">
+                🔒 Đã đóng phiên hỗ trợ. Cảm ơn quý khách đã liên hệ DEVORA!
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setMessages([]);
+                  setCurrentConversation(null);
+                  void openChat(true);
+                }}
+                className="text-xs font-bold text-blue-600 hover:underline cursor-pointer"
+              >
+                + Bắt đầu phiên hỗ trợ mới
+              </button>
+            </div>
+          ) : (
           <form onSubmit={send} className="flex items-end gap-2 border-t border-slate-200 p-3 bg-white">
             <textarea
               aria-label="Tin nhắn"
@@ -368,6 +424,7 @@ export default function SupportWidget() {
               <span>Gửi</span>
             </button>
           </form>
+          )}
         </section>
       )}
 

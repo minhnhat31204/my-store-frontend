@@ -96,6 +96,25 @@ export default function AdminDashboard() {
     });
   }
 
+  const [selYear, selMonth] = useMemo(() => {
+    const parts = selectedMonth.split('-').map(Number);
+    return [parts[0] || new Date().getFullYear(), parts[1] || (new Date().getMonth() + 1)];
+  }, [selectedMonth]);
+
+  function handlePrevMonth() {
+    const date = new Date(selYear, selMonth - 2, 1);
+    setSelectedMonth(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`);
+  }
+
+  function handleNextMonth() {
+    const date = new Date(selYear, selMonth, 1);
+    setSelectedMonth(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`);
+  }
+
+  function handleCurrentMonth() {
+    setSelectedMonth(currentMonthValue());
+  }
+
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-fadeIn">
       {/* Top Welcome Header */}
@@ -118,16 +137,68 @@ export default function AdminDashboard() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-2 text-xs font-bold text-slate-300 bg-slate-950/80 border border-slate-700/80 px-4 py-2.5 rounded-2xl shadow-sm hover:border-slate-600 transition">
-              <span className="text-slate-400">Chọn tháng:</span>
-              <input
-                aria-label="Chọn tháng xem doanh thu"
-                type="month"
-                value={selectedMonth}
-                onChange={(event) => setSelectedMonth(event.target.value)}
-                className="bg-transparent text-white font-bold outline-none cursor-pointer"
-              />
-            </label>
+            <div className="flex flex-wrap items-center gap-2 bg-slate-950/90 border border-slate-700/80 p-1.5 rounded-2xl shadow-sm">
+              <button
+                type="button"
+                onClick={handlePrevMonth}
+                title="Tháng trước"
+                className="w-8 h-8 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center font-bold text-xs transition cursor-pointer"
+              >
+                ◀
+              </button>
+
+              <div className="flex items-center gap-1.5 px-1 sm:px-2">
+                <span className="text-xs text-slate-400 font-bold hidden sm:inline">Kỳ báo cáo:</span>
+                <select
+                  aria-label="Chọn tháng"
+                  value={selMonth}
+                  onChange={(e) => {
+                    const m = Number(e.target.value);
+                    setSelectedMonth(`${selYear}-${String(m).padStart(2, '0')}`);
+                  }}
+                  className="bg-slate-900 border border-slate-700 text-white font-bold text-xs rounded-xl px-2.5 py-1.5 outline-none cursor-pointer focus:border-blue-500"
+                >
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                    <option key={m} value={m} className="bg-slate-900 text-white">
+                      Tháng {m}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  aria-label="Chọn năm"
+                  value={selYear}
+                  onChange={(e) => {
+                    const y = Number(e.target.value);
+                    setSelectedMonth(`${y}-${String(selMonth).padStart(2, '0')}`);
+                  }}
+                  className="bg-slate-900 border border-slate-700 text-white font-bold text-xs rounded-xl px-2.5 py-1.5 outline-none cursor-pointer focus:border-blue-500"
+                >
+                  {[2024, 2025, 2026, 2027, 2028].map((y) => (
+                    <option key={y} value={y} className="bg-slate-900 text-white">
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleNextMonth}
+                title="Tháng sau"
+                className="w-8 h-8 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center font-bold text-xs transition cursor-pointer"
+              >
+                ▶
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCurrentMonth}
+                className="px-2.5 py-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 hover:text-blue-300 text-[11px] font-bold border border-blue-500/30 transition cursor-pointer"
+              >
+                Hiện tại
+              </button>
+            </div>
 
             <button
               onClick={exportRevenueExcel}

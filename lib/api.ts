@@ -269,6 +269,9 @@ export type SupportConversation = {
   CustomerName: string;
   CustomerEmail?: string | null;
   Status: string;
+  AssignedAdminName?: string | null;
+  AssignedAdminID?: number | null;
+  CloseRequested?: boolean;
   CreatedAt: string;
   LastMessageAt: string;
   LastMessage?: string;
@@ -406,6 +409,24 @@ export const api = {
 
   requestSupportAiReply: (conversationId: number, identity: { userId?: number; visitorKey?: string }) =>
     request<{ message: SupportMessage }>(`/support/conversations/${conversationId}/ai-reply`, { method: 'POST', body: JSON.stringify(identity) }),
+
+  claimSupportConversation: (conversationId: number, payload: { adminName: string; adminId?: number }) =>
+    request<{ success: boolean; conversation: SupportConversation }>(`/support/conversations/${conversationId}/claim`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  askCloseSupportConversation: (conversationId: number, payload: { adminName?: string } = {}) =>
+    request<{ success: boolean; conversation: SupportConversation; message: SupportMessage }>(`/support/conversations/${conversationId}/ask-close`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  respondCloseSupportConversation: (conversationId: number, close: boolean) =>
+    request<{ success: boolean; status: string; conversation: SupportConversation; message: SupportMessage }>(`/support/conversations/${conversationId}/respond-close`, {
+      method: 'POST',
+      body: JSON.stringify({ close }),
+    }),
 
   // =========================
   // PRODUCTS
@@ -850,8 +871,14 @@ export const api = {
       body: JSON.stringify({ note }),
     }),
 
-  getRefundRequests: () =>
-    request<StoreOrder[]>("/orders/refund-requests"),
+  getRefundRequests: (status?: string) =>
+    request<StoreOrder[]>(`/orders/refund-requests${status ? `?status=${encodeURIComponent(status)}` : ''}`),
+
+  bulkUpdateOrderStatus: (orderIds: number[], status: string) =>
+    request<{ message: string; updatedIds: number[] }>('/orders/bulk-status', {
+      method: 'PUT',
+      body: JSON.stringify({ orderIds, status }),
+    }),
 
   getOrdersByUser: (userId: number) =>
     request<StoreOrder[]>(`/orders/user/${userId}`),
