@@ -290,7 +290,15 @@ const AUTH_TOKEN_KEY = "auth_token";
 export function getStoredToken(): string | null {
   if (typeof window === "undefined") return null;
   try {
-    return localStorage.getItem(AUTH_TOKEN_KEY) || sessionStorage.getItem(AUTH_TOKEN_KEY) || null;
+    return (
+      localStorage.getItem(AUTH_TOKEN_KEY) ||
+      sessionStorage.getItem(AUTH_TOKEN_KEY) ||
+      localStorage.getItem("token") ||
+      sessionStorage.getItem("token") ||
+      localStorage.getItem("sessionToken") ||
+      sessionStorage.getItem("sessionToken") ||
+      null
+    );
   } catch {
     return null;
   }
@@ -345,6 +353,18 @@ async function request<T>(
   }
 
   if (!response.ok) {
+    if (response.status === 401 && typeof window !== "undefined") {
+      try {
+        localStorage.removeItem("user");
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("sessionToken");
+        sessionStorage.removeItem("user");
+        sessionStorage.removeItem("auth_token");
+        sessionStorage.removeItem("sessionToken");
+        window.dispatchEvent(new Event("user-updated"));
+      } catch {}
+    }
+
     const message =
       typeof data === "object" &&
       data !== null &&
@@ -919,6 +939,15 @@ export function getPrimaryProductImage(value?: string | null): string {
 
 export function getStoredUser(): User | null {
   if (typeof window === "undefined") {
+    return null;
+  }
+
+  const token = getStoredToken();
+  if (!token) {
+    try {
+      localStorage.removeItem("user");
+      sessionStorage.removeItem("user");
+    } catch {}
     return null;
   }
 

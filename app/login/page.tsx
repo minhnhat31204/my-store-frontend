@@ -117,23 +117,16 @@ export default function LoginPage() {
       if (!user) throw new Error('Không nhận được thông tin người dùng từ backend.');
       
       if (data.token) {
-        if (rememberMe) {
-          localStorage.setItem('auth_token', data.token);
-          sessionStorage.removeItem('auth_token');
-        } else {
-          sessionStorage.setItem('auth_token', data.token);
-          localStorage.removeItem('auth_token');
-        }
+        localStorage.setItem('auth_token', data.token);
+        sessionStorage.setItem('auth_token', data.token);
       }
 
+      localStorage.setItem('user', JSON.stringify(user));
+      sessionStorage.setItem('user', JSON.stringify(user));
       if (rememberMe) {
         localStorage.setItem('remembered_phone', phone.trim());
-        localStorage.setItem('user', JSON.stringify(user));
-        sessionStorage.removeItem('user');
       } else {
         localStorage.removeItem('remembered_phone');
-        localStorage.removeItem('user');
-        sessionStorage.setItem('user', JSON.stringify(user));
       }
       localStorage.removeItem('sessionToken');
       window.dispatchEvent(new Event('user-updated'));
