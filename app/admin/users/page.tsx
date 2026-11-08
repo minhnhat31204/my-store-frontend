@@ -341,6 +341,30 @@ export default function AdminUsers() {
       )}
 
       <Pagination currentPage={currentPage} totalItems={filteredUsers.length} onPageChange={setPage} />
+
+      {/* Modal Xác nhận Xóa Tài Khoản */}
+      <ConfirmDeleteModal
+        isOpen={!!deletingUser}
+        title="Xác nhận xóa tài khoản người dùng"
+        itemType="tài khoản"
+        itemName={deletingUser ? `${deletingUser.FullName || deletingUser.Username || 'Người dùng'} (#${deletingUser.UserID})` : undefined}
+        description="Toàn bộ lịch sử giỏ hàng, thông báo, địa chỉ của người dùng này sẽ được dọn dẹp và xóa hoàn toàn khỏi cơ sở dữ liệu."
+        isDeleting={isDeleting}
+        onConfirm={async () => {
+          if (!deletingUser) return;
+          setIsDeleting(true);
+          try {
+            await api.deleteUser(deletingUser.UserID);
+            setDeletingUser(null);
+            void reload(true);
+          } catch (e) {
+            alert(e instanceof Error ? e.message : 'Xóa tài khoản thất bại');
+          } finally {
+            setIsDeleting(false);
+          }
+        }}
+        onCancel={() => setDeletingUser(null)}
+      />
     </div>
   );
 }

@@ -363,7 +363,8 @@ function AddressesContent() {
           return (
             <article
               key={item.id}
-              className={`rounded-2xl border bg-white p-5 shadow-sm transition-all ${
+              onClick={() => chooseAddress(item)}
+              className={`rounded-2xl border bg-white p-5 shadow-sm transition-all cursor-pointer ${
                 isSelected
                   ? "border-blue-500 ring-2 ring-blue-500/20 bg-blue-50/10"
                   : "border-slate-200 hover:border-slate-300"
@@ -403,7 +404,7 @@ function AddressesContent() {
                   Xem vị trí trên bản đồ ↗ <span className="font-normal text-slate-500">({item.latitude.toFixed(6)}, {item.longitude.toFixed(6)})</span>
                 </a>
               )}
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
                 <div className="flex flex-wrap items-center gap-3 text-sm font-semibold">
                   <button type="button" disabled={saving} onClick={() => editAddress(item)} className="text-blue-700 hover:text-blue-800 disabled:opacity-50">
                     Sửa

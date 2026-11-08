@@ -1364,6 +1364,17 @@ export default function AdminProducts() {
           </form>
         </div>
       )}
+      {/* Modal Xác nhận Xóa Sản Phẩm */}
+      <ConfirmDeleteModal
+        isOpen={!!deletingProduct}
+        title="Xác nhận xóa sản phẩm khỏi kho"
+        itemType="sản phẩm"
+        itemName={deletingProduct ? `${deletingProduct.ProductName} (#SP${deletingProduct.ProductID})` : undefined}
+        description="Toàn bộ hình ảnh, biến thể và đánh giá của sản phẩm này sẽ được xóa sạch khỏi cơ sở dữ liệu."
+        isDeleting={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeletingProduct(null)}
+      />
     </div>
   );
 }
