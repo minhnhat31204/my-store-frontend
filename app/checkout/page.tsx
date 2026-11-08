@@ -225,9 +225,59 @@ export default function CheckoutPage() {
           <form onSubmit={handleCheckout} className="rounded-3xl bg-white p-6 shadow-sm space-y-4">
             <h2 className="text-xl font-bold mb-4">Thông tin nhận hàng</h2>
 
-            <div className="rounded-xl border border-blue-100 bg-blue-50 p-3">
-              <div className="flex flex-wrap items-center justify-between gap-2"><label htmlFor="saved-address" className="text-sm font-bold">Địa chỉ đã lưu</label><Link href="/customer/addresses?returnTo=/checkout" className="text-sm font-bold text-blue-700">Quản lý sổ địa chỉ →</Link></div>
-                {addresses.length ? <select id="saved-address" value={selectedAddressId} onChange={(e) => selectAddress(e.target.value)} className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="">Nhập địa chỉ khác</option>{addresses.map((item) => <option key={item.id} value={item.id}>{item.recipientName} · {item.phone} · {formatShippingAddress(item)}</option>)}</select> : <p className="mt-2 text-xs text-slate-600">Bạn chưa lưu địa chỉ. <Link href="/customer/addresses?returnTo=/checkout" className="font-bold text-blue-700">Thêm địa chỉ</Link></p>}
+            <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-sm font-bold text-slate-800">Chọn địa chỉ nhận hàng</span>
+                <Link href="/customer/addresses?returnTo=/checkout" className="text-xs font-bold text-blue-700 hover:underline">
+                  + Thêm / Quản lý địa chỉ →
+                </Link>
+              </div>
+
+              {addresses.length > 0 ? (
+                <div className="space-y-2.5">
+                  {addresses.map((item) => {
+                    const isSelected = selectedAddressId === item.id;
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => selectAddress(item.id)}
+                        className={`p-3.5 rounded-xl border transition cursor-pointer flex items-start gap-3 ${
+                          isSelected
+                            ? 'border-blue-600 bg-white ring-2 ring-blue-500/20 shadow-xs'
+                            : 'border-slate-200 bg-white/70 hover:bg-white hover:border-slate-300'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="checkout-address"
+                          checked={isSelected}
+                          onChange={() => selectAddress(item.id)}
+                          className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        />
+                        <div className="flex-1 text-xs">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-bold text-slate-900 text-sm">{item.recipientName}</span>
+                            <span className="text-slate-500 font-medium">· {item.phone}</span>
+                            {item.isDefault && (
+                              <span className="rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-800">
+                                Mặc định
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-slate-600 leading-relaxed">{formatShippingAddress(item)}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-600">
+                  Bạn chưa lưu địa chỉ nào.{' '}
+                  <Link href="/customer/addresses?returnTo=/checkout" className="font-bold text-blue-700">
+                    Thêm địa chỉ ngay
+                  </Link>
+                </p>
+              )}
             </div>
 
             <div>
