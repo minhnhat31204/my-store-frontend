@@ -328,7 +328,7 @@ export default function CartPage() {
                     Mã giảm giá
                   </span>
                   <a href="/customer/vouchers" className="text-xs font-bold text-blue-700 hover:underline">
-                    Xem mã có sẵn →
+                    Xem mã có sẵn
                   </a>
                 </div>
 

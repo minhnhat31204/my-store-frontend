@@ -874,21 +874,21 @@ export default function AccountPage() {
                   className="flex items-center justify-between rounded-xl px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 transition"
                 >
                   <span>Đơn hàng của tôi</span>
-                  <span>→</span>
+                  
                 </Link>
                 <Link
                   href="/customer/addresses"
                   className="flex items-center justify-between rounded-xl px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 transition"
                 >
                   <span>Sổ địa chỉ giao hàng</span>
-                  <span>→</span>
+                  
                 </Link>
                 <Link
                   href="/customer/favorites"
                   className="flex items-center justify-between rounded-xl px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 transition"
                 >
                   <span>Sản phẩm yêu thích</span>
-                  <span>→</span>
+                  
                 </Link>
                 <button
                   type="button"

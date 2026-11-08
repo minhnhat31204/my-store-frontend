@@ -180,7 +180,7 @@ export default function PromotionDetailPage() {
                 href="/customer/products"
                 className="inline-block rounded-xl bg-orange-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-orange-500 shadow-md transition"
               >
-                Khám phá toàn bộ sản phẩm →
+                Khám phá toàn bộ sản phẩm
               </Link>
             </div>
           </div>

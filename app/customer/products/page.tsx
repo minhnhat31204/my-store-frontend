@@ -82,7 +82,7 @@ export default function ProductsPage() {
     { value: 'recommended', label: 'Gợi ý nổi bật' },
     { value: 'price-low', label: 'Giá: Thấp đến cao' },
     { value: 'price-high', label: 'Giá: Cao đến thấp' },
-    { value: 'name', label: 'Tên sản phẩm: A → Z' },
+    { value: 'name', label: 'Tên sản phẩm: A - Z' },
   ], []);
 
   const filtered = useMemo(() => {

@@ -229,7 +229,7 @@ export default function CheckoutPage() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-sm font-bold text-slate-800">Chọn địa chỉ nhận hàng</span>
                 <Link href="/customer/addresses?returnTo=/checkout" className="text-xs font-bold text-blue-700 hover:underline">
-                  + Thêm / Quản lý địa chỉ →
+                  + Thêm / Quản lý địa chỉ
                 </Link>
               </div>
 
@@ -477,7 +477,7 @@ export default function CheckoutPage() {
                   Mã ưu đãi / giảm giá
                 </span>
                 <Link href="/customer/vouchers" className="text-[11px] font-bold text-blue-700 hover:underline">
-                  Chọn voucher →
+                  Chọn voucher
                 </Link>
               </div>
 

@@ -382,7 +382,7 @@ export default function Home() {
               <p>SẢN PHẨM NỔI BẬT</p>
               <h2>Sản phẩm dành cho bạn</h2>
             </div>
-            <Link href="/customer/products">Xem tất cả →</Link>
+            <Link href="/customer/products">Xem tất cả</Link>
           </div>
 
           {loading && products.length === 0 && <p className="text-center py-8 text-slate-500 font-medium">Đang tải sản phẩm...</p>}
@@ -400,7 +400,7 @@ export default function Home() {
 
               {remainingCount > 0 && (
                 <button className="load-more-button" onClick={() => handleSetVisibleCount((count) => count + 8)}>
-                  Xem tiếp {remainingCount} sản phẩm →
+                  Xem tiếp {remainingCount} sản phẩm
                 </button>
               )}
             </>

@@ -97,7 +97,7 @@ export default function VouchersPage() {
             href="/checkout"
             className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 hover:underline"
           >
-            <span>Đến trang thanh toán →</span>
+            <span>Đến trang thanh toán</span>
           </Link>
         </div>
 

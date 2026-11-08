@@ -938,7 +938,7 @@ export default function ProductDetailPage() {
                     }}
                     className="text-xs font-bold text-blue-600 hover:underline"
                   >
-                    Xem tất cả →
+                    Xem tất cả
                   </Link>
                 </div>
                 <div className="product-grid">

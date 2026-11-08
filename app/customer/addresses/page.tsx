@@ -338,7 +338,7 @@ function AddressesContent() {
     );
   }
 
-  if (!user) return <main className="mx-auto max-w-3xl px-4 py-10"><h1 className="text-3xl font-black">Sổ địa chỉ</h1><p className="mt-4">Đăng nhập để quản lý địa chỉ giao hàng.</p><Link className="mt-4 inline-block text-blue-700" href="/login">Đăng nhập →</Link></main>;
+  if (!user) return <main className="mx-auto max-w-3xl px-4 py-10"><h1 className="text-3xl font-black">Sổ địa chỉ</h1><p className="mt-4">Đăng nhập để quản lý địa chỉ giao hàng.</p><Link className="mt-4 inline-block text-blue-700" href="/login">Đăng nhập</Link></main>;
 
   return <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900"><div className="mx-auto max-w-5xl">
     <Link

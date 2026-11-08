@@ -293,7 +293,7 @@ export default function AdminDashboard() {
                 +{processingOrders.length} đang giao
               </span>
               <Link href="/admin/orders" className="text-xs font-bold text-amber-400 hover:text-amber-300 underline">
-                Xem đơn →
+                Xem đơn
               </Link>
             </div>
           </div>
@@ -392,7 +392,7 @@ export default function AdminDashboard() {
                 <h3 className="text-base font-bold text-white">Đơn hàng mới nhất</h3>
               </div>
               <Link href="/admin/orders" className="text-xs font-bold text-blue-400 hover:text-blue-300 transition">
-                Tất cả đơn →
+                Tất cả đơn
               </Link>
             </div>
 
@@ -481,7 +481,7 @@ export default function AdminDashboard() {
               href="/admin/products"
               className="text-xs font-bold text-blue-400 hover:text-blue-300 transition"
             >
-              Quản lý kho hàng đầy đủ →
+              Quản lý kho hàng đầy đủ
             </Link>
           </div>
         </div>

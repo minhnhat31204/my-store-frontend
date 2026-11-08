@@ -98,7 +98,15 @@ export default function DateFilterBar({
               }`}
             >
               <span>{opt.label}</span>
-              {isSelected && opt.badge && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
+              {opt.badge && (
+                <span
+                  className={`w-1.5 h-1.5 rounded-full shrink-0 transition-colors ${
+                    isSelected
+                      ? 'bg-white shadow-xs shadow-white/80'
+                      : 'bg-blue-400 shadow-xs shadow-blue-400/50'
+                  }`}
+                />
+              )}
             </button>
           );
         })}
