@@ -207,19 +207,14 @@ export default function AdminRefundsPage() {
                 key={t.key}
                 type="button"
                 onClick={() => { setRefundTab(t.key as any); setPage(1); }}
-                className={`relative px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
-                  isSelected ? 'text-white' : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                  isSelected
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
                 }`}
               >
-                {isSelected && (
-                  <motion.div
-                    layoutId="refundTabActivePill"
-                    className="absolute inset-0 rounded-lg bg-blue-600 shadow-md shadow-blue-600/30"
-                    transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-                  />
-                )}
-                <span className="relative z-10">{t.label}</span>
-                <span className={`relative z-10 px-1.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                <span>{t.label}</span>
+                <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold ${
                   isSelected ? 'bg-white/20 text-white' : 'bg-slate-800 ' + t.color
                 }`}>
                   {t.count}

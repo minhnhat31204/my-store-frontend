@@ -9,6 +9,21 @@ import { useAdminData } from '@/lib/useAdminData';
 import { exportToExcel } from '@/lib/exportExcel';
 import { printOrderInvoice } from '@/lib/printUtils';
 
+const STATUS_ROW_1 = [
+  { value: 'all', label: 'Tất cả đơn' },
+  { value: 'Pending', label: 'Chờ xác nhận' },
+  { value: 'Confirmed', label: 'Đã xác nhận' },
+  { value: 'Processing', label: 'Đang chuẩn bị' },
+  { value: 'Shipping', label: 'Đang giao hàng' },
+  { value: 'Delivered', label: 'Giao thành công' },
+];
+
+const STATUS_ROW_2 = [
+  { value: 'Cancelled', label: 'Đã hủy' },
+  { value: 'Returned', label: 'Đã trả hàng (Hoàn tiền)' },
+  { value: 'RefundPending', label: 'Yêu cầu hoàn tiền' },
+];
+
 const STATUS_OPTIONS = [
   { value: 'Pending', label: 'Chờ xác nhận', style: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
   { value: 'Confirmed', label: 'Đã xác nhận', style: 'bg-sky-500/10 text-sky-400 border-sky-500/20' },
@@ -289,38 +304,61 @@ export default function AdminOrders() {
 
       {/* Filter and Search Bar */}
       <div className="space-y-3 bg-slate-900/80 p-5 rounded-3xl border border-slate-800/80 shadow-xl">
-        {/* Status Tab Chips */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
-          <button
-            onClick={() => { setStatusFilter('all'); setPage(1); }}
-            className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition whitespace-nowrap flex items-center gap-2 ${
-              statusFilter === 'all'
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-                : 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800'
-            }`}
-          >
-            <span>Tất cả đơn</span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300 font-black">
-              {countsByStatus.all || 0}
-            </span>
-          </button>
+        {/* Status Tab Chips - 2 Dòng Rõ Ràng, Không Có Thanh Trượt Ngang */}
+        <div className="space-y-2.5 p-3.5 bg-slate-950/70 rounded-2xl border border-slate-800/80">
+          {/* Hàng 1: Tất cả đơn, chờ xác nhận, đã xác nhận, đang chuẩn bị, đang giao hàng, giao thành công */}
+          <div className="flex flex-wrap items-center gap-2">
+            {STATUS_ROW_1.map((item) => {
+              const isSelected = statusFilter === item.value;
+              const count = item.value === 'all' ? (countsByStatus.all || 0) : (countsByStatus[item.value] || 0);
+              return (
+                <button
+                  key={item.value}
+                  type="button"
+                  onClick={() => { setStatusFilter(item.value); setPage(1); }}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-sm ${
+                    isSelected
+                      ? 'bg-blue-600 text-white shadow-blue-600/30 ring-2 ring-blue-400/40'
+                      : 'bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800'
+                  }`}
+                >
+                  <span>{item.label}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                    isSelected ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
+                  }`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
 
-          {STATUS_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => { setStatusFilter(opt.value); setPage(1); }}
-              className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition whitespace-nowrap flex items-center gap-2 ${
-                statusFilter === opt.value
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-                  : 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800'
-              }`}
-            >
-              <span>{opt.label}</span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300 font-black">
-                {countsByStatus[opt.value] || 0}
-              </span>
-            </button>
-          ))}
+          {/* Hàng 2: Đã hủy, đã trả hàng và yêu cầu hoàn tiền */}
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-800/60">
+            {STATUS_ROW_2.map((item) => {
+              const isSelected = statusFilter === item.value;
+              const count = countsByStatus[item.value] || 0;
+              return (
+                <button
+                  key={item.value}
+                  type="button"
+                  onClick={() => { setStatusFilter(item.value); setPage(1); }}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-sm ${
+                    isSelected
+                      ? 'bg-blue-600 text-white shadow-blue-600/30 ring-2 ring-blue-400/40'
+                      : 'bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800'
+                  }`}
+                >
+                  <span>{item.label}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                    isSelected ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
+                  }`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Date Filter Bar */}

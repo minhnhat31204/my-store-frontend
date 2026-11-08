@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'motion/react';
 
 export type DateFilterPeriod = 'today' | '7days' | 'month' | 'all' | 'custom';
 
@@ -92,19 +91,14 @@ export default function DateFilterBar({
               key={opt.key}
               type="button"
               onClick={() => onChange(opt.key)}
-              className={`relative px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                isSelected ? 'text-white' : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+              className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                isSelected
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
               }`}
             >
-              {isSelected && (
-                <motion.div
-                  layoutId="dateFilterActivePill"
-                  className="absolute inset-0 rounded-xl bg-blue-600 shadow-md shadow-blue-600/30 -z-0"
-                  transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-                />
-              )}
-              <span className="relative z-10">{opt.label}</span>
-              {isSelected && opt.badge && <span className="relative z-10 w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
+              <span>{opt.label}</span>
+              {isSelected && opt.badge && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
             </button>
           );
         })}
