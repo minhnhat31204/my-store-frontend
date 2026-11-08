@@ -7,6 +7,7 @@ import CartNotificationToast from './components/CartNotificationToast';
 import SecurityShield from './components/SecurityShield';
 import { FavoritesProvider } from './components/FavoritesProvider';
 import PageTransitionProvider from './components/PageTransitionProvider';
+import AnimateUIProvider from './components/AnimateUIProvider';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -53,7 +54,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <CustomerNav />
         <FavoritesProvider>
           <PageTransitionProvider>
-            {children}
+            <AnimateUIProvider>
+              {children}
+            </AnimateUIProvider>
           </PageTransitionProvider>
         </FavoritesProvider>
         <Footer />

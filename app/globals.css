@@ -52,36 +52,143 @@ body {
   background: #f6f8fb;
 }
 
-/* Hiệu ứng nhún nảy xúc giác khi bấm vào các nút, thẻ sản phẩm, menu */
-button,
+/* ========================================================
+   ANIMATE-UI ENGINE (Optimized Zero-Bloat Motion System)
+   Applied automatically to ALL buttons, inputs, cards, and pages
+   ======================================================== */
+:root {
+  --anim-spring-bounce: cubic-bezier(0.16, 1, 0.3, 1);
+  --anim-spring-press: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --anim-ease-out: cubic-bezier(0.2, 0.85, 0.3, 1);
+}
+
+/* 1. Animate-UI Ripple Animation */
+@keyframes animateUIRipple {
+  0% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0.65;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.8);
+    opacity: 0;
+  }
+}
+
+.animate-ui-ripple-wave {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: animateUIRipple 0.6s var(--anim-spring-bounce) forwards;
+  z-index: 10;
+}
+
+/* 2. Global Button Spring Physics (All buttons across all pages) */
+button:not(.no-anim),
 input[type="submit"],
 input[type="button"],
 input[type="reset"],
-select,
-.product-card,
+[role="button"],
+.login-button,
+.add-button,
+.favorite-btn,
 .nav-bubble-link,
 .mobile-nav-item,
-.cart-link,
-.account-avatar-btn,
-.login-button,
-.favorite-btn,
-.add-button {
-  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease, filter 0.18s ease;
+.cart-link {
+  transition: transform 0.18s var(--anim-spring-bounce),
+              box-shadow 0.2s ease,
+              filter 0.16s ease,
+              background-color 0.16s ease,
+              border-color 0.16s ease !important;
+  will-change: transform;
 }
 
-button:not(:disabled):active,
+/* Hover Elevation */
+button:not(:disabled):not(.search-submit-btn):not(.banner-arrow):hover,
+input[type="submit"]:not(:disabled):hover,
+input[type="button"]:not(:disabled):hover,
+[role="button"]:not([aria-disabled="true"]):hover,
+.login-button:hover,
+.add-button:not(:disabled):hover {
+  transform: translateY(-1.5px);
+  filter: brightness(1.03);
+}
+
+/* Active Tap Spring Compress */
+button:not(:disabled):not(.search-submit-btn):not(.banner-arrow):active,
 input[type="submit"]:not(:disabled):active,
 input[type="button"]:not(:disabled):active,
-select:active,
-.product-card:active,
+input[type="reset"]:not(:disabled):active,
+[role="button"]:not([aria-disabled="true"]):active,
+.login-button:active,
+.add-button:not(:disabled):active,
+.favorite-btn:active,
 .nav-bubble-link:active,
 .mobile-nav-item:active,
-.cart-link:active,
-.account-avatar-btn:active,
-.login-button:active,
-.favorite-btn:active,
-.add-button:active {
-  transform: scale(0.96);
+.cart-link:active {
+  transform: scale(0.96) !important;
+  transition: transform 0.08s var(--anim-spring-press) !important;
+}
+
+/* Preserved Buttons (with absolute vertical center) */
+button.search-submit-btn:hover {
+  transform: translateY(-50%) scale(1.06) !important;
+}
+button.search-submit-btn:active {
+  transform: translateY(-50%) scale(0.94) !important;
+}
+.banner-arrow:hover {
+  transform: translateY(-50%) scale(1.08) !important;
+}
+.banner-arrow:active {
+  transform: translateY(-50%) scale(0.92) !important;
+}
+
+/* Disabled State */
+button:disabled,
+input:disabled,
+[aria-disabled="true"] {
+  transform: none !important;
+  filter: none !important;
+  cursor: not-allowed !important;
+}
+
+/* 3. Primary Button Shimmer Sheen */
+button.bg-blue-600,
+button.bg-emerald-600,
+button.bg-rose-600,
+.add-button:not(:disabled),
+.login-button {
+  position: relative;
+  overflow: hidden;
+}
+
+button.bg-blue-600::after,
+button.bg-emerald-600::after,
+button.bg-rose-600::after,
+.add-button:not(:disabled)::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -70%;
+  width: 25%;
+  height: 200%;
+  background: linear-gradient(
+    60deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.22) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: rotate(25deg);
+  pointer-events: none;
+  transition: none;
+}
+
+button.bg-blue-600:hover::after,
+button.bg-emerald-600:hover::after,
+button.bg-rose-600:hover::after,
+.add-button:not(:disabled):hover::after {
+  left: 150%;
+  transition: left 0.7s ease-in-out;
 }
 
 button, input { font: inherit; }
