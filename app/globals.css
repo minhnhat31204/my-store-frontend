@@ -59,6 +59,20 @@ html {
   width: 100%;
 }
 
+/* Proportional Compact Scaling for Desktop/Tablet
+   Fixes oversized UI at 100% browser zoom to look sleek, comfortable and refined */
+@media (min-width: 768px) and (max-width: 1023px) {
+  html {
+    zoom: 0.85;
+  }
+}
+
+@media (min-width: 1024px) {
+  html {
+    zoom: 0.80;
+  }
+}
+
 body {
   margin: 0;
   background: #f6f8fb;
