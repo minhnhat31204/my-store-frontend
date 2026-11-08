@@ -12,35 +12,43 @@
 
 * { box-sizing: border-box; }
 /* ========================================================
-   SEAMLESS ZERO-SCROLLBAR SYSTEM
-   Permanently removes ugly white/gray scrollbar bars across ALL browsers
-   while keeping 100% smooth mouse wheel and touch scrolling
+   TRANSLUCENT SLEEK SCROLLBAR SYSTEM (THANH CUỘN MỜ TRONG SUỐT)
+   Loại bỏ thanh trắng mặc định, chỉ để lại thanh cuộn mờ hiện đại
    ======================================================== */
 * {
-  scrollbar-width: none !important; /* Firefox */
-  -ms-overflow-style: none !important; /* IE & Edge */
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
 }
 
 ::-webkit-scrollbar {
-  display: none !important; /* Chrome, Edge, Safari, Opera */
-  width: 0 !important;
-  height: 0 !important;
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
   background: transparent !important;
 }
 
-html, body, #admin-main-scroll, aside, main {
-  scrollbar-width: none !important;
-  -ms-overflow-style: none !important;
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.28) !important;
+  border-radius: 9999px !important;
 }
 
-html::-webkit-scrollbar,
-body::-webkit-scrollbar,
-#admin-main-scroll::-webkit-scrollbar,
-aside::-webkit-scrollbar,
-main::-webkit-scrollbar {
-  display: none !important;
-  width: 0 !important;
-  height: 0 !important;
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.55) !important;
+}
+
+/* Dark mode and Admin Portal translucent scrollbar */
+.dark ::-webkit-scrollbar-thumb,
+#admin-main-scroll::-webkit-scrollbar-thumb,
+aside::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.22) !important;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover,
+#admin-main-scroll::-webkit-scrollbar-thumb:hover,
+aside::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5) !important;
 }
 
 html {

@@ -459,7 +459,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       )}
 
       {/* Main Content Area */}
-      <div id="admin-main-scroll" className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto bg-slate-950">
+      <div className="flex-1 flex flex-col min-w-0 h-full bg-slate-950 overflow-hidden">
         {/* Top bar for desktop */}
         <header className="sticky top-0 z-20 hidden md:flex items-center justify-between px-8 py-3.5 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800/80 shrink-0">
           <div className="flex items-center gap-3">
@@ -505,12 +505,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </header>
 
         {/* Page Inner Container */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 min-h-[calc(100vh-140px)]">
+        <main id="admin-main-scroll" className="flex-1 overflow-y-auto min-w-0 p-4 sm:p-6 lg:p-8">
           {children}
         </main>
 
         {/* Admin Dark Footer */}
-        <footer className="mt-auto py-4 px-8 border-t border-slate-800 bg-slate-950 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400 shrink-0">
+        <footer className="py-3 px-8 border-t border-slate-800/80 bg-slate-950 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400 shrink-0 z-20">
           <div className="flex items-center gap-2 font-medium">
             <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block shadow-sm shadow-emerald-400/50 animate-pulse" />
             <span>Hệ thống DEVORA Admin Portal v2.5 • Máy chủ hoạt động ổn định</span>
