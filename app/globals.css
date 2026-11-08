@@ -61,9 +61,15 @@ html {
 
 /* Proportional Compact Scaling for Desktop/Tablet
    Scales rem units cleanly without breaking 100vh/h-screen viewport units */
+@media (min-width: 768px) and (max-width: 1023px) {
+  html {
+    font-size: 13px;
+  }
+}
+
 @media (min-width: 1024px) {
   html {
-    font-size: 13.5px;
+    font-size: 12px;
   }
 }
 
@@ -254,26 +260,26 @@ a { text-decoration: none; -webkit-tap-highlight-color: transparent; }
 .store-header { position: sticky; top: 0; z-index: 60; background: var(--blue); color: #fff; box-shadow: 0 2px 8px #102d9126; transform: translateZ(0); backface-visibility: hidden; transition: transform .24s ease; }
 .store-header.nav-hidden { transform: translate3d(0, -105%, 0); pointer-events: none; }
 .header-inner {
-  width: min(1250px, calc(100% - 32px));
-  min-height: 62px;
+  width: min(1180px, calc(100% - 32px));
+  min-height: 54px;
 
   margin: 0 auto;
   display: flex;
   align-items: center;
   gap: 20px;
 }
-.brand { flex: 0 0 auto; color: #fff; font-size: 21px; font-weight: 900; letter-spacing: -1px; }
+.brand { flex: 0 0 auto; color: #fff; font-size: 19px; font-weight: 900; letter-spacing: -1px; }
 .brand span { color: #dce5ff; }
 .header-search { position: relative; flex: 0 1 380px; min-width: 220px; }
 .header-search input {
   display: block;
   width: 100%;
-  height: 38px;
+  height: 35px;
   border: 2px solid transparent;
   border-radius: 999px;
   background: #fff;
   color: #182230;
-  padding: 0 40px 0 44px;
+  padding: 0 36px 0 38px;
   outline: none;
   box-shadow: 0 2px 6px #102d9112;
 }
@@ -373,11 +379,11 @@ button.search-submit-btn:not(:disabled):active {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 36px;
-  padding: 0 14px;
+  height: 33px;
+  padding: 0 12px;
   border-radius: 999px;
   color: rgba(255, 255, 255, 0.9) !important;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 750;
   text-decoration: none;
   background: transparent;
@@ -578,7 +584,7 @@ button.search-submit-btn:not(:disabled):active {
 
 .store-container { width: min(1250px, calc(100% - 32px)); margin: 0 auto; }
 .promo-banner {
-  height: 300px;
+  height: 260px;
   margin-top: 0;
   border-radius: 20px;
   overflow: hidden;
@@ -693,7 +699,7 @@ button.search-submit-btn:not(:disabled):active {
 .featured-section { padding: 24px 2px 80px; }
 .section-heading { display: flex; justify-content: space-between; align-items: end; gap: 20px; margin-bottom: 18px; }
 .section-heading p { margin: 0 0 7px; color: var(--blue); font-weight: 900; }
-.section-heading h2 { margin: 0; font-size: 24px; font-weight: 850; letter-spacing: -0.5px; }
+.section-heading h2 { margin: 0; font-size: 21px; font-weight: 850; letter-spacing: -0.5px; }
 .product-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
 
 /* Hiệu ứng thẻ sản phẩm xuất hiện lần lượt khi cuộn trang */

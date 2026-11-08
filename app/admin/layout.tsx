@@ -258,7 +258,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   return (
     <div className="h-screen overflow-hidden bg-slate-950 text-slate-100 flex flex-col md:flex-row antialiased font-sans">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col w-64 h-full bg-slate-950/95 border-r border-slate-800/80 p-5 shrink-0 select-none overflow-y-auto z-30">
+      <aside className="hidden md:flex flex-col w-56 h-full bg-slate-950/95 border-r border-slate-800/80 p-3.5 shrink-0 select-none overflow-y-auto z-30">
         {/* Brand Header */}
         <div className="group flex items-center gap-3 px-3 py-3 mb-4 bg-gradient-to-r from-blue-900/20 via-indigo-900/10 to-transparent rounded-2xl border border-blue-500/20 shadow-sm">
           <img src="/devora-icon.png" alt="DEVORA" className="w-11 h-11 rounded-xl object-cover shadow-lg shadow-blue-500/25 ring-2 ring-blue-400/30 group-hover:scale-105 transition-transform shrink-0" />
@@ -462,7 +462,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 h-full bg-slate-950 overflow-hidden">
         {/* Top bar for desktop */}
-        <header className="sticky top-0 z-20 hidden md:flex items-center justify-between px-8 py-3.5 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800/80 shrink-0">
+        <header className="sticky top-0 z-20 hidden md:flex items-center justify-between px-6 py-2.5 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800/80 shrink-0">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 text-xs font-medium">
               <span className="text-slate-400 font-semibold">Admin</span>
@@ -506,12 +506,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </header>
 
         {/* Page Inner Container */}
-        <main id="admin-main-scroll" className="flex-1 overflow-y-auto min-w-0 p-4 sm:p-6 lg:p-8">
+        <main id="admin-main-scroll" className="flex-1 overflow-y-auto min-w-0 p-3 sm:p-5 lg:p-6">
           {children}
         </main>
 
         {/* Admin Dark Footer */}
-        <footer className="py-3 px-8 border-t border-slate-800/80 bg-slate-950 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400 shrink-0 z-20">
+        <footer className="py-2.5 px-6 border-t border-slate-800/80 bg-slate-950 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400 shrink-0 z-20">
           <div className="flex items-center gap-2 font-medium">
             <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block shadow-sm shadow-emerald-400/50 animate-pulse" />
             <span>Hệ thống DEVORA Admin Portal v2.5 • Máy chủ hoạt động ổn định</span>
