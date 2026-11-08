@@ -195,6 +195,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   }, []);
 
   useEffect(() => {
+    document.body.style.backgroundColor = '#020617';
     async function fetchBadges() {
       try {
         const [ordersRes, productsRes, supportRes, refundsRes] = await Promise.allSettled([
@@ -257,7 +258,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   return (
     <div className="h-screen overflow-hidden bg-slate-950 text-slate-100 flex flex-col md:flex-row antialiased font-sans">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col w-72 h-full bg-slate-950/95 border-r border-slate-800/80 p-5 shrink-0 select-none overflow-y-auto z-30">
+      <aside className="hidden md:flex flex-col w-64 h-full bg-slate-950/95 border-r border-slate-800/80 p-5 shrink-0 select-none overflow-y-auto z-30">
         {/* Brand Header */}
         <div className="group flex items-center gap-3 px-3 py-3 mb-4 bg-gradient-to-r from-blue-900/20 via-indigo-900/10 to-transparent rounded-2xl border border-blue-500/20 shadow-sm">
           <img src="/devora-icon.png" alt="DEVORA" className="w-11 h-11 rounded-xl object-cover shadow-lg shadow-blue-500/25 ring-2 ring-blue-400/30 group-hover:scale-105 transition-transform shrink-0" />
