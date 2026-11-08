@@ -1,6 +1,7 @@
 'use client';
 
 import { ReactNode, useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { getStoredUser, api, User, clearAllAuthSession, resolveApiAssetUrl } from '@/lib/api';
@@ -293,13 +294,20 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     key={item.href}
                     href={item.href}
                     onMouseEnter={() => { const p = PREFETCH_MAP[item.href]; if (p) prefetch(p.key, p.fetcher); }}
-                    className={`group relative flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-bold transition-all ${
+                    className={`group relative flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-colors ${
                       isActive
-                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-600/30 ring-1 ring-white/20'
-                        : 'text-slate-300 hover:bg-slate-900 hover:text-white'
+                        ? 'text-white font-extrabold'
+                        : 'text-slate-400 hover:text-slate-100 hover:bg-slate-900/60'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
+                    {isActive && (
+                      <motion.div
+                        layoutId="adminSidebarActiveGlider"
+                        className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 shadow-md shadow-blue-600/30 ring-1 ring-white/20 z-0"
+                        transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                      />
+                    )}
+                    <div className="relative z-10 flex items-center gap-3">
                       <span className={`transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-blue-400'}`}>
                         {item.icon}
                       </span>
@@ -307,7 +315,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     </div>
 
                     {badgeVal !== undefined && badgeVal > 0 && (
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                      <span className={`relative z-10 px-2 py-0.5 rounded-full text-[10px] font-black ${
                         isActive
                           ? 'bg-white/20 text-white'
                           : item.badgeKey === 'pendingOrders'
@@ -508,7 +516,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
         {/* Page Inner Container */}
         <main id="admin-main-scroll" className="flex-1 overflow-y-auto min-w-0 p-3 sm:p-5 lg:p-6">
-          {children}
+          <motion.div
+            key={pathname}
+            initial={{ opacity: 0, y: 14, filter: 'blur(2px)' }}
+            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full h-full"
+          >
+            {children}
+          </motion.div>
         </main>
 
         {/* Admin Dark Footer */}

@@ -186,7 +186,7 @@ export default function AdminSupportPage() {
   const isChatClosed = activeConversation?.Status === 'Closed';
 
   return (
-    <div className="max-w-7xl mx-auto flex flex-col h-[calc(100vh-10rem)] gap-5 animate-fadeIn">
+    <div className="max-w-7xl mx-auto flex flex-col h-[calc(100vh/0.72-130px)] min-h-[680px] gap-4 animate-fadeIn">
       {/* Top Banner */}
       <div className="flex items-center justify-between bg-slate-900/90 p-5 sm:p-6 rounded-3xl border border-slate-800/80 shadow-2xl shrink-0">
         <div>
@@ -211,7 +211,7 @@ export default function AdminSupportPage() {
       )}
 
       {/* Main 2-Pane Chat Box */}
-      <div className="grid min-h-0 flex-1 overflow-hidden rounded-3xl border border-slate-800/80 bg-slate-900/90 shadow-2xl md:grid-cols-[360px_minmax(0,1fr)]">
+      <div className="grid min-h-0 flex-1 overflow-hidden rounded-3xl border border-slate-800/80 bg-slate-900/90 shadow-2xl md:grid-cols-[390px_minmax(0,1fr)]">
         {/* Left Side: Conversations List */}
         <aside className="flex min-h-0 flex-col border-b border-slate-800 md:border-b-0 md:border-r">
           <div className="p-3.5 border-b border-slate-800 space-y-2.5">
@@ -326,8 +326,26 @@ export default function AdminSupportPage() {
               );
             })}
           </div>
-          <div className="shrink-0 border-t border-slate-800 p-2">
-            <Pagination currentPage={currentPage} totalItems={filteredConversations.length} onPageChange={setPage} />
+          <div className="shrink-0 border-t border-slate-800 px-3.5 py-2.5 bg-slate-950/70 flex items-center justify-between text-xs text-slate-400">
+            <span>Trang <strong className="text-white">{currentPage}</strong> / {Math.max(1, Math.ceil(filteredConversations.length / 20))} <span className="text-slate-500">({filteredConversations.length})</span></span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage <= 1}
+                className="px-2.5 py-1 rounded-lg border border-slate-800 bg-slate-900 text-slate-300 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed font-bold transition active:scale-95"
+              >
+                Trước
+              </button>
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(Math.ceil(filteredConversations.length / 20) || 1, p + 1))}
+                disabled={currentPage >= Math.ceil(filteredConversations.length / 20)}
+                className="px-2.5 py-1 rounded-lg border border-slate-800 bg-slate-900 text-slate-300 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed font-bold transition active:scale-95"
+              >
+                Tiếp
+              </button>
+            </div>
           </div>
         </aside>
 

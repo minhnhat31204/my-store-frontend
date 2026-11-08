@@ -91,7 +91,7 @@ export default function DateFilterBar({
               key={opt.key}
               type="button"
               onClick={() => onChange(opt.key)}
-              className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 cursor-pointer outline-none focus:outline-none ${
                 isSelected
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
                   : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
