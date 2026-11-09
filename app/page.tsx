@@ -30,6 +30,7 @@ function getBannerImage(promotion: Promotion) {
 }
 
 export default function Home() {
+  const router = useRouter();
   // Keep the server and first client render identical; browser cache is read after hydration.
   const [products, setProducts] = useState<Product[]>([]);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
@@ -236,7 +237,6 @@ export default function Home() {
     if (N <= 1) return;
     if ((e.target as HTMLElement).closest("button") || (e.target as HTMLElement).closest(".banner-dots")) return;
     hasDraggedRef.current = false;
-    try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
 
     // Chuẩn hóa vị trí nếu đang ở slide clone trước khi kéo
     if (trackIndex >= N + 1) {
@@ -259,13 +259,18 @@ export default function Home() {
   const handlePointerMove = (e: React.PointerEvent<HTMLElement>) => {
     if (!isDraggingRef.current) return;
     const diff = e.clientX - startXRef.current;
-    if (Math.abs(diff) > 8) hasDraggedRef.current = true;
+    if (Math.abs(diff) > 15) {
+      hasDraggedRef.current = true;
+      try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
+    }
     dragOffsetRef.current = diff;
     setDragOffset(diff);
   };
 
   const handlePointerEnd = (e?: React.PointerEvent<HTMLElement>) => {
-    if (e && e.currentTarget && typeof (e.currentTarget as any).releasePointerCapture === "function") { try { (e.currentTarget as any).releasePointerCapture(e.pointerId); } catch {} }
+    if (e && e.currentTarget && typeof (e.currentTarget as any).releasePointerCapture === "function") {
+      try { (e.currentTarget as any).releasePointerCapture(e.pointerId); } catch {}
+    }
     if (!isDraggingRef.current) return;
     isDraggingRef.current = false;
     setIsDragging(false);
@@ -274,13 +279,13 @@ export default function Home() {
     setWithTransition(true);
     isAnimatingRef.current = true;
     if (dragOffsetRef.current > threshold) {
-      setTrackIndex((prev) => Math.max(0, prev - 1));
+      changeBanner(-1);
     } else if (dragOffsetRef.current < -threshold) {
-      setTrackIndex((prev) => Math.min(N + 1, prev + 1));
+      changeBanner(1);
     }
     setDragOffset(0);
     dragOffsetRef.current = 0;
-    setTimeout(() => { hasDraggedRef.current = false; }, 120);
+    setTimeout(() => { hasDraggedRef.current = false; }, 80);
   };
 
   return (
@@ -316,7 +321,23 @@ export default function Home() {
                   : '/customer/products';
                 return (
                   <div key={`${promotion.PromotionID ?? idx}-${idx}`} className="promo-slide">
-                    <Link href={targetUrl} onClick={(e) => { if (hasDraggedRef.current) { e.preventDefault(); e.stopPropagation(); } }} className="block w-full h-full cursor-pointer select-none">
+                    <Link
+                      href={targetUrl}
+                      onClick={(e) => {
+                        if (hasDraggedRef.current) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          return;
+                        }
+                        e.preventDefault();
+                        if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
+                          window.location.href = targetUrl;
+                        } else {
+                          router.push(targetUrl);
+                        }
+                      }}
+                      className="block w-full h-full cursor-pointer select-none"
+                    >
                       <img
                         className="banner-image pointer-events-none select-none"
                         src={getBannerImage(promotion)}
