@@ -65,10 +65,21 @@ export default function Home() {
 
   useEffect(() => {
     try {
-      const saved = sessionStorage.getItem("home_visible_count");
-      const savedCount = saved ? parseInt(saved, 10) : 0;
-      if (savedCount >= 8) setVisibleCount(savedCount);
-    } catch {}
+      const isBackFromProduct = typeof document !== 'undefined' && (
+        document.referrer.includes('/customer/products/') ||
+        sessionStorage.getItem("nav_direction") === "back"
+      );
+      if (isBackFromProduct) {
+        const saved = sessionStorage.getItem("home_visible_count");
+        const savedCount = saved ? parseInt(saved, 10) : 0;
+        if (savedCount >= 8) setVisibleCount(savedCount);
+      } else {
+        sessionStorage.removeItem("home_visible_count");
+        setVisibleCount(8);
+      }
+    } catch {
+      setVisibleCount(8);
+    }
 
     const cachedProducts = getCachedProductsSync() || [];
     if (cachedProducts.length > 0) {
@@ -376,7 +387,7 @@ export default function Home() {
           {bannerLoading && <span className="banner-status">Đang tải banner...</span>}
         </section>
 
-        <section className="featured-section">
+        <section className="featured-section" id="featured-products">
           <div className="section-heading">
             <div>
               <p>SẢN PHẨM NỔI BẬT</p>
@@ -398,11 +409,30 @@ export default function Home() {
                 ))}
               </div>
 
-              {remainingCount > 0 && (
-                <button className="load-more-button" onClick={() => handleSetVisibleCount((count) => count + 8)}>
+              {remainingCount > 0 ? (
+                <button
+                  type="button"
+                  className="load-more-button"
+                  onClick={() => handleSetVisibleCount((count) => count + 8)}
+                >
                   Xem tiếp {remainingCount} sản phẩm
                 </button>
-              )}
+              ) : visibleCount > 8 ? (
+                <div className="text-center mt-8 flex flex-col items-center gap-2">
+                  <p className="text-xs text-slate-500 font-medium">Đã hiển thị toàn bộ {filteredProducts.length} sản phẩm</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleSetVisibleCount(8);
+                      const el = document.getElementById("featured-products");
+                      if (el) el.scrollIntoView({ behavior: "smooth" });
+                    }}
+                    className="px-5 py-2 rounded-full border border-slate-200 bg-white text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-blue-600 shadow-xs transition active:scale-95 cursor-pointer"
+                  >
+                    Thu gọn về 8 sản phẩm
+                  </button>
+                </div>
+              ) : null}
             </>
           )}
         </section>

@@ -564,7 +564,16 @@ export default function CustomerNav({
     <>
       <header className={`store-header${navVisible ? "" : " nav-hidden"}`}>
         <div className="header-inner">
-          <Link href="/" className="brand flex items-center gap-2.5">
+          <Link
+            href="/"
+            onClick={() => {
+              try {
+                sessionStorage.removeItem("home_visible_count");
+                sessionStorage.setItem("active_nav_origin", "home");
+              } catch {}
+              setActiveNav("home");
+            }}
+            className="brand flex items-center gap-2.5">
             <img src="/devora-icon.png" alt="DEVORA" className="h-9 w-9 object-cover rounded-xl shadow-md border border-white/20 shrink-0" />
             <span className="tracking-tight">DEVORA<span>.VN</span></span>
           </Link>
