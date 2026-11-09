@@ -636,6 +636,9 @@ export const api = {
       body: JSON.stringify({ phone, otp }),
     }),
 
+  checkPhone: (phone: string) =>
+    request<{ available: boolean; message: string; error?: string }>(`/auth/check-phone/${encodeURIComponent(phone)}`),
+
   checkUsername: (username: string) =>
     request<{ available: boolean; message: string; error?: string }>(`/auth/check-username/${encodeURIComponent(username)}`),
 

@@ -34,6 +34,13 @@ export default function RegisterPage() {
 
   // Step 1: Phone & OTP
   const [phone, setPhone] = useState('');
+  const [phoneChecking, setPhoneChecking] = useState(false);
+  const [phoneStatus, setPhoneStatus] = useState<{
+    checked: boolean;
+    available: boolean;
+    message: string;
+  }>({ checked: false, available: true, message: '' });
+
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
@@ -61,7 +68,9 @@ export default function RegisterPage() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const checkTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const checkUsernameTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const checkPhoneTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Countdown timer cho gửi lại OTP
   useEffect(() => {
@@ -70,12 +79,59 @@ export default function RegisterPage() {
     return () => window.clearTimeout(timer);
   }, [countdown]);
 
+  // Real-time check phone availability
+  useEffect(() => {
+    if (step !== 'phone_otp') return;
+
+    if (checkPhoneTimerRef.current) {
+      clearTimeout(checkPhoneTimerRef.current);
+    }
+
+    const clean = phone.trim().replace(/\D/g, '');
+    if (!clean || clean.length < 9) {
+      setPhoneStatus({ checked: false, available: true, message: '' });
+      return;
+    }
+
+    setPhoneChecking(true);
+    checkPhoneTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await api.checkPhone(clean);
+        setPhoneStatus({
+          checked: true,
+          available: Boolean(res.available),
+          message: res.available
+            ? 'Số điện thoại hợp lệ và có thể đăng ký.'
+            : (res.message || 'Số điện thoại này đã được đăng ký tài khoản.'),
+        });
+        if (!res.available) {
+          setError('Số điện thoại này đã được đăng ký tài khoản.');
+        } else {
+          setError('');
+        }
+      } catch (err: any) {
+        setPhoneStatus({
+          checked: true,
+          available: false,
+          message: err?.message || 'Số điện thoại này đã được đăng ký tài khoản.',
+        });
+        setError(err?.message || 'Số điện thoại này đã được đăng ký tài khoản.');
+      } finally {
+        setPhoneChecking(false);
+      }
+    }, 350);
+
+    return () => {
+      if (checkPhoneTimerRef.current) clearTimeout(checkPhoneTimerRef.current);
+    };
+  }, [phone, step]);
+
   // Real-time check username availability
   useEffect(() => {
     if (step !== 'user_id') return;
 
-    if (checkTimerRef.current) {
-      clearTimeout(checkTimerRef.current);
+    if (checkUsernameTimerRef.current) {
+      clearTimeout(checkUsernameTimerRef.current);
     }
 
     const clean = username.trim().toLowerCase().replace(/^@/, '');
@@ -94,7 +150,7 @@ export default function RegisterPage() {
     }
 
     setCheckingUsername(true);
-    checkTimerRef.current = setTimeout(async () => {
+    checkUsernameTimerRef.current = setTimeout(async () => {
       try {
         const res = await api.checkUsername(clean);
         setUsernameStatus({
@@ -114,24 +170,43 @@ export default function RegisterPage() {
     }, 400);
 
     return () => {
-      if (checkTimerRef.current) clearTimeout(checkTimerRef.current);
+      if (checkUsernameTimerRef.current) clearTimeout(checkUsernameTimerRef.current);
     };
   }, [username, step]);
 
   async function sendOtp() {
     setError('');
     setMessage('');
-    if (!phone.trim()) return setError('Vui lòng nhập số điện thoại.');
+    const cleanPhone = phone.trim().replace(/\D/g, '');
+    if (!cleanPhone || cleanPhone.length < 9) return setError('Vui lòng nhập số điện thoại hợp lệ.');
+
+    if (phoneStatus.checked && !phoneStatus.available) {
+      return setError('Số điện thoại này đã được đăng ký tài khoản. Vui lòng đăng nhập hoặc sử dụng số khác.');
+    }
+
     setLoading(true);
     try {
-      const result = await api.sendRegistrationOtp(phone.trim());
+      // Kiểm tra ngay số điện thoại có bị trùng không
+      const checkRes = await api.checkPhone(cleanPhone);
+      if (!checkRes.available) {
+        setPhoneStatus({ checked: true, available: false, message: checkRes.message || 'Số điện thoại này đã được đăng ký tài khoản.' });
+        setError('Số điện thoại này đã được đăng ký tài khoản. Vui lòng đăng nhập hoặc sử dụng số khác.');
+        setLoading(false);
+        return;
+      }
+
+      const result = await api.sendRegistrationOtp(cleanPhone);
       setOtpSent(true);
       setOtp('');
       setOtpVerified(false);
       setCountdown(OTP_RESEND_SECONDS);
       if (result.otp) setDisplayedOtp(result.otp);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không gửi được mã xác thực.');
+    } catch (err: any) {
+      const errMsg = err instanceof Error ? err.message : 'Không gửi được mã xác thực.';
+      setError(errMsg);
+      if (errMsg.toLowerCase().includes('đã được đăng ký')) {
+        setPhoneStatus({ checked: true, available: false, message: errMsg });
+      }
     } finally {
       setLoading(false);
     }
@@ -245,35 +320,66 @@ export default function RegisterPage() {
               )}
 
               <div>
-                <label htmlFor="register-phone" className="mb-1 block text-sm font-semibold">Số điện thoại</label>
+                <label htmlFor="register-phone" className="mb-1 block text-sm font-semibold">
+                  Số điện thoại
+                </label>
                 <div className="flex gap-2">
-                  <input
-                    id="register-phone"
-                    type="tel"
-                    inputMode="tel"
-                    autoComplete="tel"
-                    required
-                    value={phone}
-                    onChange={(e) => {
-                      setPhone(e.target.value);
-                      setOtpSent(false);
-                      setOtp('');
-                      setOtpVerified(false);
-                      setCountdown(0);
-                      setDisplayedOtp(null);
-                    }}
-                    placeholder="0901234567"
-                    className="min-w-0 flex-1 rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500"
-                  />
+                  <div className="relative min-w-0 flex-1">
+                    <input
+                      id="register-phone"
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      required
+                      value={phone}
+                      onChange={(e) => {
+                        setPhone(e.target.value);
+                        setOtpSent(false);
+                        setOtp('');
+                        setOtpVerified(false);
+                        setCountdown(0);
+                        setDisplayedOtp(null);
+                        setError('');
+                      }}
+                      placeholder="0901234567"
+                      className={`w-full rounded-xl border px-4 py-3 outline-none transition ${
+                        phoneStatus.checked && !phoneStatus.available
+                          ? 'border-red-400 bg-red-50/40 text-red-900 focus:border-red-500 focus:ring-2 focus:ring-red-100'
+                          : phoneStatus.checked && phoneStatus.available
+                          ? 'border-emerald-500 bg-emerald-50/30 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100'
+                          : 'border-slate-200 bg-white focus:border-blue-500'
+                      }`}
+                    />
+                    {phoneChecking && (
+                      <span className="absolute inset-y-0 right-3 flex items-center text-xs text-slate-400 animate-spin">
+                        ⏳
+                      </span>
+                    )}
+                  </div>
                   <button
                     type="button"
                     onClick={sendOtp}
-                    disabled={loading || !phone.trim() || countdown > 0}
+                    disabled={loading || phoneChecking || !phone.trim() || (phoneStatus.checked && !phoneStatus.available) || countdown > 0}
                     className="shrink-0 rounded-xl border border-blue-600 px-3.5 text-sm font-bold text-blue-700 disabled:opacity-50 hover:bg-blue-50 transition cursor-pointer"
                   >
                     {loading ? 'Đang gửi…' : countdown > 0 ? `Gửi lại (${countdown}s)` : otpSent ? 'Gửi lại mã' : 'Gửi OTP'}
                   </button>
                 </div>
+
+                {/* Cảnh báo SĐT đã tồn tại ngay lập tức */}
+                {phoneStatus.checked && !phoneStatus.available && (
+                  <div className="mt-2.5 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700 flex items-center justify-between">
+                    <span>⚠️ Số điện thoại này đã được đăng ký tài khoản.</span>
+                    <Link href="/login" className="font-bold text-blue-700 hover:underline shrink-0 ml-2">
+                      Đăng nhập ngay ➔
+                    </Link>
+                  </div>
+                )}
+                {phoneStatus.checked && phoneStatus.available && !otpSent && (
+                  <p className="mt-1.5 text-xs font-semibold text-emerald-600">
+                    ✓ Số điện thoại hợp lệ và có thể đăng ký.
+                  </p>
+                )}
               </div>
 
               {otpSent && (
