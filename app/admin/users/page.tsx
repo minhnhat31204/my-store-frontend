@@ -24,7 +24,8 @@ export default function AdminUsers() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const filteredUsers = useMemo(() => {
-    const query = searchTerm.toLowerCase().trim();
+    const rawQuery = searchTerm.toLowerCase().trim();
+    const cleanQuery = rawQuery.replace(/^@/, '');
     return users.filter((u) => {
       const name = (u.FullName || '').toLowerCase();
       const username = (u.Username || '').toLowerCase();
@@ -33,17 +34,17 @@ export default function AdminUsers() {
       const phone = (u.Phone || '').toLowerCase();
       const id = String(u.UserID);
 
-      // Tìm kiếm theo: Tên (họ tên, username), Email (email chính, email liên kết/khôi phục), Số điện thoại, Mã người dùng
+      // Tìm kiếm theo: Tên hiển thị, ID người dùng (@id), Email, Số điện thoại, Mã người dùng (#id)
       const matchSearch =
-        !query ||
-        name.includes(query) ||
-        username.includes(query) ||
-        email.includes(query) ||
-        recoveryEmail.includes(query) ||
-        phone.includes(query) ||
-        id === query ||
-        id.includes(query) ||
-        `#${id}`.includes(query);
+        !rawQuery ||
+        name.includes(rawQuery) ||
+        username.includes(cleanQuery) ||
+        email.includes(rawQuery) ||
+        recoveryEmail.includes(rawQuery) ||
+        phone.includes(rawQuery) ||
+        id === rawQuery ||
+        id.includes(rawQuery) ||
+        `#${id}`.includes(rawQuery);
 
       const userRole = (u.Role || 'customer').toLowerCase();
       const matchRole = roleFilter === 'all' || userRole === roleFilter;
@@ -167,7 +168,7 @@ export default function AdminUsers() {
             </svg>
             <input
               type="text"
-              placeholder="Tìm theo họ tên, email liên hệ, số điện thoại hoặc mã ID (#12)..."
+              placeholder="Tìm theo tên hiển thị, ID người dùng (@id), email, số điện thoại hoặc mã ID (#12)..."
               value={searchTerm}
               onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
               className="w-full pl-10 pr-10 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
@@ -245,7 +246,7 @@ export default function AdminUsers() {
                 <tr>
                   <th className="px-5 py-4 w-16 text-center">STT</th>
                   <th className="px-5 py-4">Mã tài khoản</th>
-                  <th className="px-5 py-4">Họ và tên</th>
+                  <th className="px-5 py-4">Tên hiển thị / ID người dùng</th>
                   <th className="px-5 py-4">Email liên hệ</th>
                   <th className="px-5 py-4">Số điện thoại</th>
                   <th className="px-5 py-4">Vai trò / Phân quyền</th>
@@ -281,8 +282,8 @@ export default function AdminUsers() {
                             <p className="font-bold text-white text-sm">
                               {user.FullName || 'Chưa đặt tên'}
                             </p>
-                            <p className="text-[11px] text-slate-500">
-                              {user.Username ? `@${user.Username}` : 'Tài khoản thành viên'}
+                            <p className="text-[11px] font-semibold text-blue-400">
+                              {user.Username ? `ID: @${user.Username}` : <span className="text-slate-500">Chưa có ID</span>}
                             </p>
                           </div>
                         </div>

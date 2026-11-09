@@ -796,7 +796,7 @@ export default function AccountPage() {
                 {user.FullName || 'Khách hàng'}
               </h2>
               {user.Username && (
-                <p className="text-xs text-blue-600 font-semibold">@{user.Username}</p>
+                <p className="text-xs text-blue-600 font-bold">ID: @{user.Username}</p>
               )}
               {(() => {
                 const isInternalEmail = user.Email?.includes('@phone.devora.local') || user.Email?.includes('@phone.manb.local') || user.Email?.includes('@phone.local');
@@ -962,7 +962,12 @@ export default function AccountPage() {
                     {/* Tên người dùng */}
                     <div>
                       <label htmlFor="username" className="block text-xs font-bold text-slate-700">
-                        Tên người dùng / Biệt danh
+                      <div className="flex items-center justify-between">
+                        <span className="block text-xs font-bold text-slate-700">ID người dùng</span>
+                        <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 border border-slate-200">
+                          🔒 Cố định (Duy nhất)
+                        </span>
+                      </div>
                       </label>
                       <div className="relative mt-1.5">
                         <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-sm font-bold text-slate-400">
@@ -973,10 +978,15 @@ export default function AccountPage() {
                           type="text"
                           value={username}
                           onChange={(e) => { isFormDirtyRef.current = true; setUsername(e.target.value.replace(/\s+/g, '')); }}
-                          placeholder="username_devora"
-                          className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2.5 pl-9 pr-4 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                          readOnly
+                          disabled
+                          placeholder="Chưa có ID người dùng"
+                          className="w-full rounded-xl border border-slate-200 bg-slate-100/80 py-2.5 pl-9 pr-4 text-sm font-bold text-slate-700 outline-none cursor-not-allowed select-none"
                         />
                       </div>
+                      <p className="mt-1 text-[11px] text-slate-400">
+                        ID người dùng được tạo khi đăng ký, là mã định danh duy nhất và không thể thay đổi.
+                      </p>
                     </div>
 
                     {/* Email liên hệ */}

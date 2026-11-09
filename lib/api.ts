@@ -1,4 +1,4 @@
-﻿const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
 const isInvalidProductionApiUrl = Boolean(
   configuredApiUrl && (
     /^http:\/\//i.test(configuredApiUrl) ||
@@ -636,7 +636,10 @@ export const api = {
       body: JSON.stringify({ phone, otp }),
     }),
 
-  register: (payload: { phone: string; otp: string; password: string }) =>
+  checkUsername: (username: string) =>
+    request<{ available: boolean; message: string; error?: string }>(`/auth/check-username/${encodeURIComponent(username)}`),
+
+  register: (payload: { phone: string; otp: string; password: string; username: string; fullName?: string }) =>
     request<{
       message: string;
       token?: string;
