@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, clearAllAuthSession, getStoredUser, resolveApiAssetUrl, AUTH_TOKEN_KEY, type User } from '@/lib/api';
 
 // --- ICONS ---
@@ -427,6 +427,24 @@ export default function AccountPage() {
   const loadedUserIdRef = useRef<number | null>(null);
   const isFormDirtyRef = useRef(false);
 
+  const isFormDirty = useMemo(() => {
+    if (!user) return false;
+    const originalName = (user.FullName || '').trim();
+    const originalBio = (user.Bio || '').trim();
+    const originalGender = user.Gender || 'Nam';
+    const originalBirthday = user.Birthday ? String(user.Birthday).slice(0, 10) : '';
+    const originalAddress = (user.Address || '').trim();
+
+    return (
+      profileName.trim() !== originalName ||
+      bio.trim() !== originalBio ||
+      gender !== originalGender ||
+      birthday !== originalBirthday ||
+      address.trim() !== originalAddress ||
+      avatarBlob !== null
+    );
+  }, [user, profileName, bio, gender, birthday, address, avatarBlob]);
+
   const applyUserData = useCallback((data: any, forceFormUpdate = false) => {
     if (!data) return;
     const cachedAvatar = typeof window !== 'undefined' ? localStorage.getItem(`devora_avatar_${data.UserID}`) : null;
@@ -530,6 +548,11 @@ export default function AccountPage() {
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    if (!isFormDirty) return;
+    if (bio.trim().length > 255) {
+      setProfileError('Tiểu sử không được dài quá 255 ký tự.');
+      return;
+    }
     if (birthday) {
       const bDate = new Date(birthday);
       const now = new Date();
@@ -566,10 +589,10 @@ export default function AccountPage() {
       const result = await api.updateUserProfile(user.UserID, {
         fullName: profileName.trim(),
         username: username.trim() || undefined,
-        bio: bio.trim() || undefined,
+        bio: bio.trim(),
         gender,
         birthday: birthday || undefined,
-        address: address.trim() || undefined,
+        address: address.trim(),
         avatar: avatarBlob || undefined,
       });
 
@@ -1150,13 +1173,15 @@ export default function AccountPage() {
                         <label className="block text-xs font-bold text-slate-700">
                           Email liên hệ
                         </label>
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab('email')}
-                          className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline transition cursor-pointer"
-                        >
-                          {(user.Email && !user.Email.includes('@phone.')) || user.RecoveryEmail ? 'Thay đổi email' : '+ Liên kết email ngay'}
-                        </button>
+                        {Boolean((user.Email && !user.Email.includes('@phone.')) || user.RecoveryEmail) && (
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('email')}
+                            className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline transition cursor-pointer"
+                          >
+                            Thay đổi email
+                          </button>
+                        )}
                       </div>
                       <div className="mt-1.5 flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-2.5">
                         {(() => {
@@ -1200,12 +1225,18 @@ export default function AccountPage() {
 
                     {/* Tiểu sử */}
                     <div>
-                      <label htmlFor="bio" className="block text-xs font-bold text-slate-700">
-                        Tiểu sử / Giới thiệu
-                      </label>
+                      <div className="flex items-center justify-between">
+                        <label htmlFor="bio" className="block text-xs font-bold text-slate-700">
+                          Tiểu sử / Giới thiệu
+                        </label>
+                        <span className={`text-[11px] font-semibold ${bio.length >= 240 ? 'text-amber-600 font-bold' : 'text-slate-400'}`}>
+                          {bio.length}/255 ký tự
+                        </span>
+                      </div>
                       <textarea
                         id="bio"
                         rows={3}
+                        maxLength={255}
                         value={bio}
                         onChange={(e) => { isFormDirtyRef.current = true; setBio(e.target.value); }}
                         placeholder="Chia sẻ đôi nét về bạn..."
@@ -1292,8 +1323,8 @@ export default function AccountPage() {
                     {/* Submit Button */}
                     <button
                       type="submit"
-                      disabled={profileLoading || !profileName.trim()}
-                      className="rounded-xl bg-blue-600 px-6 py-3 text-xs font-black text-white shadow-md transition hover:bg-blue-700 active:scale-95 disabled:opacity-50"
+                      disabled={profileLoading || !profileName.trim() || !isFormDirty}
+                      className="rounded-xl bg-blue-600 px-6 py-3 text-xs font-black text-white shadow-md transition hover:bg-blue-700 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
                     >
                       {profileLoading ? 'Đang lưu…' : 'Lưu thay đổi hồ sơ'}
                     </button>
