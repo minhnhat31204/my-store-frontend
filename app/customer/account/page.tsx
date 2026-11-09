@@ -514,6 +514,16 @@ export default function AccountPage() {
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    if (birthday) {
+      const bDate = new Date(birthday);
+      const now = new Date();
+      now.setHours(23, 59, 59, 999);
+      if (bDate > now) {
+        setProfileError('Ngày sinh không thể là ngày trong tương lai.');
+        return;
+      }
+    }
+
     setProfileLoading(true);
     setProfileError('');
     setProfileMessage('');
@@ -1080,14 +1090,29 @@ export default function AccountPage() {
 
                     {/* Ngày sinh */}
                     <div>
-                      <label htmlFor="birthday" className="block text-xs font-bold text-slate-700">
-                        Ngày sinh
-                      </label>
+                      <div className="flex items-center justify-between sm:w-64">
+                        <label htmlFor="birthday" className="block text-xs font-bold text-slate-700">
+                          Ngày sinh
+                        </label>
+                        <span className="text-[10px] font-semibold text-slate-400">Tối đa là hôm nay</span>
+                      </div>
                       <input
                         id="birthday"
                         type="date"
+                        max={new Date().toISOString().split('T')[0]}
                         value={birthday}
-                        onChange={(e) => { isFormDirtyRef.current = true; setBirthday(e.target.value); }}
+                        onChange={(e) => {
+                          isFormDirtyRef.current = true;
+                          const val = e.target.value;
+                          const todayStr = new Date().toISOString().split('T')[0];
+                          if (val && val > todayStr) {
+                            setProfileError('Ngày sinh không thể là ngày trong tương lai.');
+                            setBirthday(todayStr);
+                          } else {
+                            setProfileError('');
+                            setBirthday(val);
+                          }
+                        }}
                         className="mt-1.5 w-full sm:w-64 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
                       />
                     </div>
