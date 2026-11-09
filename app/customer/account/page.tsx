@@ -406,25 +406,38 @@ export default function AccountPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState('');
 
+  // Refs to prevent background syncs from wiping user draft edits
+  const initialFormLoadedRef = useRef(false);
+  const loadedUserIdRef = useRef<number | null>(null);
+  const isFormDirtyRef = useRef(false);
+
+  const applyUserData = useCallback((data: any, forceFormUpdate = false) => {
+    if (!data) return;
+    const cachedAvatar = typeof window !== 'undefined' ? localStorage.getItem(`devora_avatar_${data.UserID}`) : null;
+    const mergedUser = cachedAvatar ? { ...data, Avatar: cachedAvatar } : data;
+    setUser(mergedUser);
+
+    const isDifferentUser = loadedUserIdRef.current !== null && loadedUserIdRef.current !== data.UserID;
+    if (forceFormUpdate || !initialFormLoadedRef.current || isDifferentUser) {
+      if (!isFormDirtyRef.current || forceFormUpdate || isDifferentUser) {
+        initialFormLoadedRef.current = true;
+        loadedUserIdRef.current = data.UserID;
+        setProfileName(data.FullName || '');
+        setUsername(data.Username || '');
+        setBio(data.Bio || '');
+        setGender(data.Gender || 'Nam');
+        setBirthday(data.Birthday ? String(data.Birthday).slice(0, 10) : '');
+        setAddress(data.Address || '');
+        setRecoveryEmail(data.RecoveryEmail || data.Email || '');
+      }
+    }
+  }, []);
+
   // Load User Data
   useEffect(() => {
-    const applyUserData = (data: any) => {
-      if (!data) return;
-      const cachedAvatar = typeof window !== 'undefined' ? localStorage.getItem(`devora_avatar_${data.UserID}`) : null;
-      const mergedUser = cachedAvatar ? { ...data, Avatar: cachedAvatar } : data;
-      setUser(mergedUser);
-      setProfileName(data.FullName || '');
-      setUsername(data.Username || '');
-      setBio(data.Bio || '');
-      setGender(data.Gender || 'Nam');
-      setBirthday(data.Birthday ? String(data.Birthday).slice(0, 10) : '');
-      setAddress(data.Address || '');
-      setRecoveryEmail(data.RecoveryEmail || data.Email || '');
-    };
-
     const refreshUser = () => {
       const stored = getStoredUser();
-      applyUserData(stored);
+      applyUserData(stored, false);
     };
 
     refreshUser();
@@ -435,7 +448,7 @@ export default function AccountPage() {
         const cachedAvatar = typeof window !== 'undefined' ? localStorage.getItem(`devora_avatar_${res.user.UserID}`) : null;
         const userToSave = cachedAvatar ? { ...res.user, Avatar: cachedAvatar } : res.user;
         localStorage.setItem('user', JSON.stringify(userToSave));
-        applyUserData(userToSave);
+        applyUserData(userToSave, false);
       }
     }).catch(() => {});
     window.addEventListener('user-updated', refreshUser);
@@ -444,7 +457,7 @@ export default function AccountPage() {
       window.removeEventListener('user-updated', refreshUser);
       window.removeEventListener('storage', refreshUser);
     };
-  }, []);
+  }, [applyUserData]);
 
   // Cleanup object URLs on unmount
   useEffect(() => {
@@ -532,11 +545,19 @@ export default function AccountPage() {
       const updatedUser: User = {
         ...user,
         ...result.user,
+        FullName: profileName.trim(),
+        Username: username.trim() || null,
+        Bio: bio.trim() || null,
+        Gender: gender || null,
+        Birthday: birthday || null,
+        Address: address.trim() || null,
         ...(finalAvatar ? { Avatar: finalAvatar } : {}),
       };
       setUser(updatedUser);
       localStorage.setItem('user', JSON.stringify(updatedUser));
       sessionStorage.setItem('user', JSON.stringify(updatedUser));
+      isFormDirtyRef.current = false;
+      applyUserData(updatedUser, true);
       window.dispatchEvent(new Event('user-updated'));
 
       setAvatarBlob(null);
@@ -926,7 +947,7 @@ export default function AccountPage() {
                         type="text"
                         required
                         value={profileName}
-                        onChange={(e) => setProfileName(e.target.value)}
+                        onChange={(e) => { isFormDirtyRef.current = true; setProfileName(e.target.value); }}
                         placeholder="Nguyễn Văn A"
                         className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
                       />
@@ -945,7 +966,7 @@ export default function AccountPage() {
                           id="username"
                           type="text"
                           value={username}
-                          onChange={(e) => setUsername(e.target.value.replace(/\s+/g, ''))}
+                          onChange={(e) => { isFormDirtyRef.current = true; setUsername(e.target.value.replace(/\s+/g, '')); }}
                           placeholder="username_devora"
                           className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2.5 pl-9 pr-4 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
                         />
@@ -1015,7 +1036,7 @@ export default function AccountPage() {
                         id="bio"
                         rows={3}
                         value={bio}
-                        onChange={(e) => setBio(e.target.value)}
+                        onChange={(e) => { isFormDirtyRef.current = true; setBio(e.target.value); }}
                         placeholder="Chia sẻ đôi nét về bạn..."
                         className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
                       />
@@ -1032,7 +1053,7 @@ export default function AccountPage() {
                               name="gender"
                               value={g}
                               checked={gender === g}
-                              onChange={(e) => setGender(e.target.value)}
+                              onChange={(e) => { isFormDirtyRef.current = true; setGender(e.target.value); }}
                               className="h-4 w-4 text-blue-600 focus:ring-blue-500"
                             />
                             <span>{g}</span>
@@ -1050,7 +1071,7 @@ export default function AccountPage() {
                         id="birthday"
                         type="date"
                         value={birthday}
-                        onChange={(e) => setBirthday(e.target.value)}
+                        onChange={(e) => { isFormDirtyRef.current = true; setBirthday(e.target.value); }}
                         className="mt-1.5 w-full sm:w-64 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
                       />
                     </div>
@@ -1064,7 +1085,7 @@ export default function AccountPage() {
                         id="address"
                         type="text"
                         value={address}
-                        onChange={(e) => setAddress(e.target.value)}
+                        onChange={(e) => { isFormDirtyRef.current = true; setAddress(e.target.value); }}
                         placeholder="Số nhà, tên đường, phường/xã, quận/huyện..."
                         className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
                       />
