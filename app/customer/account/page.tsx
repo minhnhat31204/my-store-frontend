@@ -390,6 +390,15 @@ export default function AccountPage() {
   const [emailMessage, setEmailMessage] = useState('');
   const [emailError, setEmailError] = useState('');
 
+  // Change Email with Phone OTP States
+  const [isChangingEmail, setIsChangingEmail] = useState(false);
+  const [changeEmailPhoneOtp, setChangeEmailPhoneOtp] = useState('');
+  const [changeEmailPhoneOtpSent, setChangeEmailPhoneOtpSent] = useState(false);
+  const [changeEmailPhoneVerified, setChangeEmailPhoneVerified] = useState(false);
+  const [changeEmailDisplayedPhoneOtp, setChangeEmailDisplayedPhoneOtp] = useState<string | null>(null);
+  const [changeEmailDisplayedEmailOtp, setChangeEmailDisplayedEmailOtp] = useState<string | null>(null);
+  const [changeEmailPhoneCountdown, setChangeEmailPhoneCountdown] = useState(0);
+
   // Password Change States
   const [currentPassword, setCurrentPassword] = useState('');
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -408,6 +417,13 @@ export default function AccountPage() {
 
   // Refs to prevent background syncs from wiping user draft edits
   const initialFormLoadedRef = useRef(false);
+  // Countdown timer cho đổi email qua OTP SĐT
+  useEffect(() => {
+    if (changeEmailPhoneCountdown <= 0) return;
+    const timer = window.setTimeout(() => setChangeEmailPhoneCountdown((v) => v - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [changeEmailPhoneCountdown]);
+
   const loadedUserIdRef = useRef<number | null>(null);
   const isFormDirtyRef = useRef(false);
 
@@ -583,6 +599,118 @@ export default function AccountPage() {
       setProfileError(err instanceof Error ? err.message : 'Không thể lưu hồ sơ.');
     } finally {
       setProfileLoading(false);
+    }
+  };
+
+  // 1. Gửi OTP về SĐT để bắt đầu đổi email
+  const handleSendChangeEmailPhoneOtp = async () => {
+    if (!user) return;
+    setEmailLoading(true);
+    setEmailError('');
+    setEmailMessage('');
+    try {
+      const res = await api.sendChangeEmailPhoneOtp(user.UserID);
+      setChangeEmailPhoneOtpSent(true);
+      setChangeEmailPhoneCountdown(60);
+      if (res.otp) setChangeEmailDisplayedPhoneOtp(res.otp);
+      setEmailMessage(res.message || 'Đã gửi mã xác thực OTP về số điện thoại.');
+    } catch (err) {
+      setEmailError(err instanceof Error ? err.message : 'Không gửi được mã OTP.');
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
+  // 2. Xác thực OTP từ SĐT
+  const handleVerifyChangeEmailPhoneOtp = async () => {
+    if (!user) return;
+    if (changeEmailPhoneOtp.length !== 6) {
+      setEmailError('Mã OTP phải gồm 6 chữ số.');
+      return;
+    }
+    setEmailLoading(true);
+    setEmailError('');
+    setEmailMessage('');
+    try {
+      await api.verifyChangeEmailPhoneOtp(user.UserID, changeEmailPhoneOtp);
+      setChangeEmailPhoneVerified(true);
+      setChangeEmailDisplayedPhoneOtp(null);
+      setEmailMessage('Xác thực số điện thoại thành công! Hãy nhập địa chỉ Gmail mới.');
+    } catch (err) {
+      setEmailError(err instanceof Error ? err.message : 'Mã OTP không đúng hoặc đã hết hạn.');
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
+  // 3. Gửi OTP xác minh về Gmail mới
+  const handleSendNewGmailOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    const cleanEmail = recoveryEmail.trim().toLowerCase();
+    if (!cleanEmail) {
+      setEmailError('Vui lòng nhập địa chỉ Gmail mới.');
+      return;
+    }
+    if (!/^[a-zA-Z0-9._%+-]+@gmail\.com$/i.test(cleanEmail)) {
+      setEmailError('Email xác minh phải đúng định dạng @gmail.com (ví dụ: devora@gmail.com).');
+      return;
+    }
+    setEmailLoading(true);
+    setEmailError('');
+    setEmailMessage('');
+    try {
+      const result = await api.sendEmailVerificationOtp(user.UserID, cleanEmail, emailPassword);
+      setEmailOtpSent(true);
+      if (result.otp) setChangeEmailDisplayedEmailOtp(result.otp);
+      setEmailMessage(result.message || 'Đã gửi mã xác minh đến địa chỉ Gmail mới.');
+    } catch (err) {
+      setEmailError(err instanceof Error ? err.message : 'Không thể gửi mã xác minh.');
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
+  // 4. Xác nhận OTP Gmail mới và hoàn tất
+  const handleVerifyNewGmailOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    if (emailOtp.length !== 6) {
+      setEmailError('Mã OTP xác minh Gmail phải gồm 6 chữ số.');
+      return;
+    }
+    setEmailLoading(true);
+    setEmailError('');
+    setEmailMessage('');
+    try {
+      const cleanEmail = recoveryEmail.trim().toLowerCase();
+      const result = await api.verifyEmailOtp(user.UserID, cleanEmail, emailOtp);
+      const updatedEmail = result.user?.Email || result.user?.RecoveryEmail || cleanEmail;
+      const updatedUser = {
+        ...user,
+        Email: updatedEmail,
+        RecoveryEmail: result.user?.RecoveryEmail || cleanEmail,
+        RecoveryEmailVerified: true
+      };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      sessionStorage.setItem('user', JSON.stringify(updatedUser));
+      window.dispatchEvent(new Event('user-updated'));
+
+      setIsChangingEmail(false);
+      setChangeEmailPhoneOtpSent(false);
+      setChangeEmailPhoneVerified(false);
+      setChangeEmailPhoneOtp('');
+      setChangeEmailDisplayedPhoneOtp(null);
+      setChangeEmailDisplayedEmailOtp(null);
+      setEmailOtpSent(false);
+      setEmailOtp('');
+      setEmailPassword('');
+      setEmailMessage('Thay đổi email liên kết thành công!');
+    } catch (err) {
+      setEmailError(err instanceof Error ? err.message : 'Mã xác minh không hợp lệ hoặc đã hết hạn.');
+    } finally {
+      setEmailLoading(false);
     }
   };
 
@@ -1221,15 +1349,211 @@ export default function AccountPage() {
 
                   {/* Recovery Email Section */}
                   <div className="mt-6">
-                    {user.RecoveryEmailVerified ? (
-                      <div className="rounded-xl bg-emerald-50 p-4 border border-emerald-200 flex items-center gap-3">
-                        <CheckCircleIcon className="w-6 h-6 text-emerald-600 shrink-0" />
-                        <div>
-                          <p className="text-xs font-bold text-emerald-800">
-                            Email khôi phục đã được xác minh:
-                          </p>
-                          <p className="text-sm font-black text-emerald-900">{user.RecoveryEmail}</p>
+                    {user.RecoveryEmailVerified && !isChangingEmail ? (
+                      <div className="rounded-2xl bg-emerald-50/80 p-5 border border-emerald-200">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-center gap-3.5">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
+                              <CheckCircleIcon className="w-6 h-6" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-emerald-800">Email liên kết đã xác minh</span>
+                                <span className="rounded-md bg-emerald-200/80 px-2 py-0.5 text-[10px] font-bold text-emerald-900">
+                                  ✓ Đã kích hoạt
+                                </span>
+                              </div>
+                              <p className="mt-1 text-base font-black text-slate-900">{user.RecoveryEmail}</p>
+                              <p className="mt-0.5 text-xs text-slate-500">Dùng để nhận thông báo đơn hàng và hỗ trợ khôi phục tài khoản.</p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsChangingEmail(true);
+                              setChangeEmailPhoneVerified(false);
+                              setChangeEmailPhoneOtpSent(false);
+                              setChangeEmailPhoneOtp('');
+                              setChangeEmailDisplayedPhoneOtp(null);
+                              setChangeEmailDisplayedEmailOtp(null);
+                              setRecoveryEmail('');
+                              setEmailOtpSent(false);
+                              setEmailOtp('');
+                              setEmailError('');
+                              setEmailMessage('');
+                            }}
+                            className="shrink-0 rounded-xl bg-white border border-slate-200 px-4 py-2 text-xs font-bold text-blue-600 hover:bg-blue-50 hover:border-blue-300 transition shadow-xs cursor-pointer"
+                          >
+                            🔄 Thay đổi email
+                          </button>
                         </div>
+                      </div>
+                    ) : isChangingEmail ? (
+                      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-base font-bold text-slate-900">Thay đổi email liên kết</span>
+                            <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-700 border border-blue-200">
+                              Xác thực 2 bước
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsChangingEmail(false);
+                              setEmailError('');
+                              setEmailMessage('');
+                            }}
+                            className="rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-500 hover:bg-slate-100 transition cursor-pointer"
+                          >
+                            ✕ Hủy bỏ
+                          </button>
+                        </div>
+
+                        {/* BƯỚC 1: XÁC THỰC SỐ ĐIỆN THOẠI */}
+                        {!changeEmailPhoneVerified ? (
+                          <div className="space-y-4">
+                            <div className="rounded-xl bg-amber-50/70 border border-amber-200 p-3.5 text-xs text-amber-900 leading-relaxed">
+                              <strong className="text-amber-950 font-black">Bước 1/2:</strong> Để bảo đảm an toàn, vui lòng xác nhận mã OTP gửi đến số điện thoại của bạn: <strong className="font-black text-slate-900">{user.Phone}</strong>
+                            </div>
+
+                            {/* Hộp OTP ngẫu nhiên hiển thị cho người dùng nhập */}
+                            {changeEmailDisplayedPhoneOtp && (
+                              <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                                <span className="text-xl">📩</span>
+                                <div>
+                                  <p className="text-xs font-semibold text-amber-700">Mã OTP xác thực số điện thoại:</p>
+                                  <p className="text-2xl font-black tracking-[0.3em] text-amber-900">{changeEmailDisplayedPhoneOtp}</p>
+                                </div>
+                              </div>
+                            )}
+
+                            {!changeEmailPhoneOtpSent ? (
+                              <button
+                                type="button"
+                                onClick={handleSendChangeEmailPhoneOtp}
+                                disabled={emailLoading}
+                                className="rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-blue-700 transition shadow-sm cursor-pointer disabled:opacity-50"
+                              >
+                                {emailLoading ? 'Đang gửi…' : 'Gửi mã OTP về số điện thoại'}
+                              </button>
+                            ) : (
+                              <div className="space-y-3">
+                                <div>
+                                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                                    Nhập mã OTP 6 số từ số điện thoại
+                                  </label>
+                                  <div className="flex gap-2">
+                                    <input
+                                      type="text"
+                                      inputMode="numeric"
+                                      maxLength={6}
+                                      value={changeEmailPhoneOtp}
+                                      onChange={(e) => setChangeEmailPhoneOtp(e.target.value.replace(/\D/g, ''))}
+                                      placeholder="123456"
+                                      className="w-48 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-center text-lg font-black tracking-widest text-slate-900 outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={handleVerifyChangeEmailPhoneOtp}
+                                      disabled={emailLoading || changeEmailPhoneOtp.length !== 6}
+                                      className="rounded-xl bg-blue-600 px-4 text-xs font-bold text-white hover:bg-blue-700 transition disabled:opacity-50 cursor-pointer shadow-sm"
+                                    >
+                                      {emailLoading ? 'Đang kiểm tra…' : 'Xác nhận OTP'}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={handleSendChangeEmailPhoneOtp}
+                                      disabled={emailLoading || changeEmailPhoneCountdown > 0}
+                                      className="rounded-xl border border-slate-200 px-3.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+                                    >
+                                      {changeEmailPhoneCountdown > 0 ? `Gửi lại (${changeEmailPhoneCountdown}s)` : 'Gửi lại OTP'}
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          /* BƯỚC 2: NHẬP VÀ XÁC MINH GMAIL MỚI */
+                          <form onSubmit={emailOtpSent ? handleVerifyNewGmailOtp : handleSendNewGmailOtp} className="space-y-4">
+                            <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-xs font-bold text-emerald-800 flex items-center gap-2">
+                              <span>✓</span> Đã xác thực số điện thoại ({user.Phone}). Bước 2/2: Nhập địa chỉ Gmail mới bạn muốn liên kết:
+                            </div>
+
+                            <div>
+                              <div className="flex items-center justify-between sm:w-96">
+                                <label htmlFor="change-rec-email" className="block text-xs font-bold text-slate-700">
+                                  Địa chỉ Gmail mới (@gmail.com) <span className="text-red-500">*</span>
+                                </label>
+                                <span className="text-[10px] font-bold text-blue-600">Bắt buộc @gmail.com</span>
+                              </div>
+                              <input
+                                id="change-rec-email"
+                                type="email"
+                                required
+                                disabled={emailOtpSent}
+                                value={recoveryEmail}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setRecoveryEmail(val);
+                                  setEmailOtpSent(false);
+                                  if (val.includes('@') && !val.toLowerCase().endsWith('@gmail.com') && !val.endsWith('@')) {
+                                    setEmailError('Email phải có đuôi @gmail.com (ví dụ: devora@gmail.com).');
+                                  } else {
+                                    setEmailError('');
+                                  }
+                                }}
+                                placeholder="diachimoi@gmail.com"
+                                className="mt-1.5 w-full sm:w-96 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+                              />
+                            </div>
+
+                            {/* Hộp mã OTP xác minh Gmail mới */}
+                            {changeEmailDisplayedEmailOtp && (
+                              <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 sm:w-96">
+                                <span className="text-xl">📩</span>
+                                <div>
+                                  <p className="text-xs font-semibold text-amber-700">Mã xác minh Gmail mới của bạn:</p>
+                                  <p className="text-2xl font-black tracking-[0.3em] text-amber-900">{changeEmailDisplayedEmailOtp}</p>
+                                </div>
+                              </div>
+                            )}
+
+                            {emailOtpSent && (
+                              <div>
+                                <label htmlFor="new-email-otp" className="block text-xs font-bold text-slate-700">
+                                  Nhập mã OTP gửi đến Gmail mới (6 số) <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                  id="new-email-otp"
+                                  type="text"
+                                  inputMode="numeric"
+                                  maxLength={6}
+                                  required
+                                  value={emailOtp}
+                                  onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, ''))}
+                                  placeholder="123456"
+                                  className="mt-1.5 w-full sm:w-64 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-center text-lg font-black tracking-widest text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                                />
+                              </div>
+                            )}
+
+                            <div className="pt-2">
+                              <button
+                                type="submit"
+                                disabled={emailLoading || !recoveryEmail.trim() || !recoveryEmail.toLowerCase().endsWith('@gmail.com')}
+                                className="rounded-xl bg-blue-600 px-6 py-2.5 text-xs font-black text-white shadow-md transition hover:bg-blue-700 active:scale-95 disabled:opacity-50 cursor-pointer"
+                              >
+                                {emailLoading
+                                  ? 'Đang xử lý…'
+                                  : emailOtpSent
+                                  ? 'Hoàn tất đổi email'
+                                  : 'Gửi mã xác minh về Gmail mới'}
+                              </button>
+                            </div>
+                          </form>
+                        )}
                       </div>
                     ) : (
                       <form onSubmit={emailOtpSent ? handleVerifyEmailOtp : handleSendEmailOtp} className="space-y-4">

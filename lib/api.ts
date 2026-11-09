@@ -683,8 +683,20 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
-  sendEmailVerificationOtp: (userId: number, email: string, currentPassword: string) =>
-    request<{ message: string }>("/auth/email/send-otp", {
+  sendChangeEmailPhoneOtp: (userId: number) =>
+    request<{ message: string; otp?: string; phone?: string }>("/auth/email/change/send-phone-otp", {
+      method: "POST",
+      body: JSON.stringify({ userId }),
+    }),
+
+  verifyChangeEmailPhoneOtp: (userId: number, otp: string) =>
+    request<{ message: string; verified: boolean }>("/auth/email/change/verify-phone-otp", {
+      method: "POST",
+      body: JSON.stringify({ userId, otp }),
+    }),
+
+  sendEmailVerificationOtp: (userId: number, email: string, currentPassword?: string) =>
+    request<{ message: string; otp?: string }>("/auth/email/send-otp", {
       method: "POST",
       body: JSON.stringify({ userId, email, currentPassword }),
     }),
