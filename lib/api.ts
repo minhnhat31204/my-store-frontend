@@ -637,7 +637,7 @@ export const api = {
     }),
 
   checkPhone: (phone: string) =>
-    request<{ available: boolean; message: string; error?: string }>(`/auth/check-phone/${encodeURIComponent(phone)}`),
+    request<{ available: boolean; isDuplicate?: boolean; message: string; error?: string }>(`/auth/check-phone/${encodeURIComponent(phone)}`),
 
   checkUsername: (username: string) =>
     request<{ available: boolean; message: string; error?: string }>(`/auth/check-username/${encodeURIComponent(username)}`),

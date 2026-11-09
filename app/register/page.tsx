@@ -38,8 +38,16 @@ export default function RegisterPage() {
   const [phoneStatus, setPhoneStatus] = useState<{
     checked: boolean;
     available: boolean;
+    isDuplicate: boolean;
+    isInvalid: boolean;
     message: string;
-  }>({ checked: false, available: true, message: '' });
+  }>({
+    checked: false,
+    available: true,
+    isDuplicate: false,
+    isInvalid: false,
+    message: '',
+  });
 
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
@@ -87,35 +95,59 @@ export default function RegisterPage() {
       clearTimeout(checkPhoneTimerRef.current);
     }
 
-    const clean = phone.trim().replace(/\D/g, '');
-    if (!clean || clean.length < 9) {
-      setPhoneStatus({ checked: false, available: true, message: '' });
+    const raw = phone.trim();
+    const digits = raw.replace(/[\s().-]/g, '');
+
+    // Khi người dùng chưa nhập hoặc đang nhập ít hơn 8 ký tự -> reset trạng thái
+    if (!digits || digits.length < 8) {
+      setPhoneStatus({ checked: false, available: true, isDuplicate: false, isInvalid: false, message: '' });
+      setError('');
       return;
     }
 
     setPhoneChecking(true);
     checkPhoneTimerRef.current = setTimeout(async () => {
       try {
-        const res = await api.checkPhone(clean);
-        setPhoneStatus({
-          checked: true,
-          available: Boolean(res.available),
-          message: res.available
-            ? 'Số điện thoại hợp lệ và có thể đăng ký.'
-            : (res.message || 'Số điện thoại này đã được đăng ký tài khoản.'),
-        });
-        if (!res.available) {
-          setError('Số điện thoại này đã được đăng ký tài khoản.');
+        const res = await api.checkPhone(raw);
+        if (res.isDuplicate) {
+          setPhoneStatus({
+            checked: true,
+            available: false,
+            isDuplicate: true,
+            isInvalid: false,
+            message: 'Số điện thoại này đã được đăng ký tài khoản.',
+          });
+          setError('');
+        } else if (res.available) {
+          setPhoneStatus({
+            checked: true,
+            available: true,
+            isDuplicate: false,
+            isInvalid: false,
+            message: 'Số điện thoại hợp lệ và có thể đăng ký.',
+          });
+          setError('');
         } else {
+          setPhoneStatus({
+            checked: true,
+            available: false,
+            isDuplicate: false,
+            isInvalid: true,
+            message: 'Số điện thoại không hợp lệ.',
+          });
           setError('');
         }
       } catch (err: any) {
+        const msg = String(err?.message || '');
+        const isDupe = msg.toLowerCase().includes('đã được đăng ký');
         setPhoneStatus({
           checked: true,
           available: false,
-          message: err?.message || 'Số điện thoại này đã được đăng ký tài khoản.',
+          isDuplicate: isDupe,
+          isInvalid: !isDupe,
+          message: isDupe ? 'Số điện thoại này đã được đăng ký tài khoản.' : 'Số điện thoại không hợp lệ.',
         });
-        setError(err?.message || 'Số điện thoại này đã được đăng ký tài khoản.');
+        setError('');
       } finally {
         setPhoneChecking(false);
       }
@@ -177,25 +209,38 @@ export default function RegisterPage() {
   async function sendOtp() {
     setError('');
     setMessage('');
-    const cleanPhone = phone.trim().replace(/\D/g, '');
-    if (!cleanPhone || cleanPhone.length < 9) return setError('Vui lòng nhập số điện thoại hợp lệ.');
+    const rawPhone = phone.trim();
+    const cleanDigits = rawPhone.replace(/[\s().-]/g, '');
+    if (!cleanDigits || cleanDigits.length < 8) {
+      setPhoneStatus({ checked: true, available: false, isDuplicate: false, isInvalid: true, message: 'Số điện thoại không hợp lệ.' });
+      return setError('Số điện thoại không hợp lệ.');
+    }
 
-    if (phoneStatus.checked && !phoneStatus.available) {
+    if (phoneStatus.checked && phoneStatus.isDuplicate) {
       return setError('Số điện thoại này đã được đăng ký tài khoản. Vui lòng đăng nhập hoặc sử dụng số khác.');
+    }
+    if (phoneStatus.checked && phoneStatus.isInvalid) {
+      return setError('Số điện thoại không hợp lệ.');
     }
 
     setLoading(true);
     try {
-      // Kiểm tra ngay số điện thoại có bị trùng không
-      const checkRes = await api.checkPhone(cleanPhone);
-      if (!checkRes.available) {
-        setPhoneStatus({ checked: true, available: false, message: checkRes.message || 'Số điện thoại này đã được đăng ký tài khoản.' });
+      // Kiểm tra ngay số điện thoại trước khi gửi OTP
+      const checkRes = await api.checkPhone(rawPhone);
+      if (checkRes.isDuplicate) {
+        setPhoneStatus({ checked: true, available: false, isDuplicate: true, isInvalid: false, message: 'Số điện thoại này đã được đăng ký tài khoản.' });
         setError('Số điện thoại này đã được đăng ký tài khoản. Vui lòng đăng nhập hoặc sử dụng số khác.');
         setLoading(false);
         return;
       }
+      if (!checkRes.available) {
+        setPhoneStatus({ checked: true, available: false, isDuplicate: false, isInvalid: true, message: 'Số điện thoại không hợp lệ.' });
+        setError('Số điện thoại không hợp lệ.');
+        setLoading(false);
+        return;
+      }
 
-      const result = await api.sendRegistrationOtp(cleanPhone);
+      const result = await api.sendRegistrationOtp(rawPhone);
       setOtpSent(true);
       setOtp('');
       setOtpVerified(false);
@@ -203,9 +248,14 @@ export default function RegisterPage() {
       if (result.otp) setDisplayedOtp(result.otp);
     } catch (err: any) {
       const errMsg = err instanceof Error ? err.message : 'Không gửi được mã xác thực.';
-      setError(errMsg);
-      if (errMsg.toLowerCase().includes('đã được đăng ký')) {
-        setPhoneStatus({ checked: true, available: false, message: errMsg });
+      const isDupe = errMsg.toLowerCase().includes('đã được đăng ký');
+      if (isDupe) {
+        setPhoneStatus({ checked: true, available: false, isDuplicate: true, isInvalid: false, message: errMsg });
+        setError(errMsg);
+      } else {
+        const cleanedMsg = errMsg.replace(/ Việt Nam/g, '');
+        setPhoneStatus({ checked: true, available: false, isDuplicate: false, isInvalid: true, message: cleanedMsg });
+        setError(cleanedMsg);
       }
     } finally {
       setLoading(false);
@@ -343,7 +393,9 @@ export default function RegisterPage() {
                       }}
                       placeholder="0901234567"
                       className={`w-full rounded-xl border px-4 py-3 outline-none transition ${
-                        phoneStatus.checked && !phoneStatus.available
+                        phoneStatus.checked && phoneStatus.isDuplicate
+                          ? 'border-red-400 bg-red-50/40 text-red-900 focus:border-red-500 focus:ring-2 focus:ring-red-100'
+                          : phoneStatus.checked && phoneStatus.isInvalid
                           ? 'border-red-400 bg-red-50/40 text-red-900 focus:border-red-500 focus:ring-2 focus:ring-red-100'
                           : phoneStatus.checked && phoneStatus.available
                           ? 'border-emerald-500 bg-emerald-50/30 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100'
@@ -366,8 +418,8 @@ export default function RegisterPage() {
                   </button>
                 </div>
 
-                {/* Cảnh báo SĐT đã tồn tại ngay lập tức */}
-                {phoneStatus.checked && !phoneStatus.available && (
+                {/* TH 1: ĐÃ ĐƯỢC ĐĂNG KÝ -> Chỉ hiện khi server xác nhận là duplicate */}
+                {phoneStatus.checked && phoneStatus.isDuplicate && (
                   <div className="mt-2.5 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700 flex items-center justify-between">
                     <span>⚠️ Số điện thoại này đã được đăng ký tài khoản.</span>
                     <Link href="/login" className="font-bold text-blue-700 hover:underline shrink-0 ml-2">
@@ -375,6 +427,15 @@ export default function RegisterPage() {
                     </Link>
                   </div>
                 )}
+
+                {/* TH 2: SĐT KHÔNG HỢP LỆ -> Chỉ thông báo không hợp lệ, tuyệt đối không báo đã đăng ký */}
+                {phoneStatus.checked && phoneStatus.isInvalid && !phoneStatus.isDuplicate && (
+                  <p className="mt-1.5 text-xs font-semibold text-red-600">
+                    ✕ Số điện thoại không hợp lệ.
+                  </p>
+                )}
+
+                {/* TH 3: SĐT HỢP LỆ VÀ CÓ THỂ ĐĂNG KÝ */}
                 {phoneStatus.checked && phoneStatus.available && !otpSent && (
                   <p className="mt-1.5 text-xs font-semibold text-emerald-600">
                     ✓ Số điện thoại hợp lệ và có thể đăng ký.
