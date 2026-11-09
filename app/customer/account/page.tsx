@@ -586,17 +586,34 @@ export default function AccountPage() {
     }
   };
 
-  // Send OTP for Email Verification
+  // Send OTP for Email Verification (Chỉ chấp nhận @gmail.com)
   const handleSendEmailOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+
+    const cleanEmail = recoveryEmail.trim().toLowerCase();
+    if (!cleanEmail) {
+      setEmailError('Vui lòng nhập địa chỉ email.');
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9._%+-]+@gmail\.com$/i.test(cleanEmail)) {
+      setEmailError('Email xác minh phải đúng định dạng @gmail.com (ví dụ: devora@gmail.com).');
+      return;
+    }
+
+    if (!emailPassword) {
+      setEmailError('Vui lòng nhập mật khẩu tài khoản để xác thực.');
+      return;
+    }
+
     setEmailLoading(true);
     setEmailError('');
     setEmailMessage('');
     try {
-      const result = await api.sendEmailVerificationOtp(user.UserID, recoveryEmail.trim(), emailPassword);
+      const result = await api.sendEmailVerificationOtp(user.UserID, cleanEmail, emailPassword);
       setEmailOtpSent(true);
-      setEmailMessage(result.message);
+      setEmailMessage(result.message || 'Đã gửi mã xác minh đến địa chỉ Gmail của bạn.');
     } catch (err) {
       setEmailError(err instanceof Error ? err.message : 'Không thể gửi mã xác minh.');
     } finally {
@@ -1217,19 +1234,28 @@ export default function AccountPage() {
                     ) : (
                       <form onSubmit={emailOtpSent ? handleVerifyEmailOtp : handleSendEmailOtp} className="space-y-4">
                         <div>
-                          <label htmlFor="rec-email" className="block text-xs font-bold text-slate-700">
-                            Email liên kết / khôi phục
-                          </label>
+                          <div className="flex items-center justify-between sm:w-96">
+                            <label htmlFor="rec-email" className="block text-xs font-bold text-slate-700">
+                              Email liên kết / khôi phục (@gmail.com)
+                            </label>
+                            <span className="text-[10px] font-bold text-blue-600">Định dạng @gmail.com</span>
+                          </div>
                           <input
                             id="rec-email"
                             type="email"
                             required
                             value={recoveryEmail}
                             onChange={(e) => {
-                              setRecoveryEmail(e.target.value);
+                              const val = e.target.value;
+                              setRecoveryEmail(val);
                               setEmailOtpSent(false);
+                              if (val.includes('@') && !val.toLowerCase().endsWith('@gmail.com') && !val.endsWith('@')) {
+                                setEmailError('Email phải có đuôi @gmail.com (ví dụ: example@gmail.com).');
+                              } else {
+                                setEmailError('');
+                              }
                             }}
-                            placeholder="email@example.com"
+                            placeholder="tentaikhoan@gmail.com"
                             className="mt-1.5 w-full sm:w-96 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
                           />
                         </div>
