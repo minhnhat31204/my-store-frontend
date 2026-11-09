@@ -32,7 +32,7 @@ type RegisterStep = 'phone_otp' | 'password' | 'user_id';
 export default function RegisterPage() {
   const [step, setStep] = useState<RegisterStep>('phone_otp');
 
-  // Step 1: Phone & OTP
+  // Step 1: Phone & OTP (Đúng chuẩn 10 số)
   const [phone, setPhone] = useState('');
   const [phoneChecking, setPhoneChecking] = useState(false);
   const [phoneStatus, setPhoneStatus] = useState<{
@@ -43,7 +43,7 @@ export default function RegisterPage() {
     message: string;
   }>({
     checked: false,
-    available: true,
+    available: false,
     isDuplicate: false,
     isInvalid: false,
     message: '',
@@ -87,7 +87,7 @@ export default function RegisterPage() {
     return () => window.clearTimeout(timer);
   }, [countdown]);
 
-  // Real-time check phone availability
+  // Real-time check phone availability: Chỉ kích hoạt khi đã nhập ĐỦ 10 SỐ
   useEffect(() => {
     if (step !== 'phone_otp') return;
 
@@ -95,20 +95,31 @@ export default function RegisterPage() {
       clearTimeout(checkPhoneTimerRef.current);
     }
 
-    const raw = phone.trim();
-    const digits = raw.replace(/[\s().-]/g, '');
+    const digits = phone.trim().replace(/\D/g, '');
 
-    // Khi người dùng chưa nhập hoặc đang nhập ít hơn 8 ký tự -> reset trạng thái
-    if (!digits || digits.length < 8) {
-      setPhoneStatus({ checked: false, available: true, isDuplicate: false, isInvalid: false, message: '' });
+    // Nếu người dùng đang gõ dở chưa đủ 10 số -> reset trạng thái, không báo gì cả
+    if (digits.length < 10) {
+      setPhoneStatus({ checked: false, available: false, isDuplicate: false, isInvalid: false, message: '' });
       setError('');
+      return;
+    }
+
+    // Nếu đủ 10 số nhưng không bắt đầu bằng 0
+    if (!/^0\d{9}$/.test(digits)) {
+      setPhoneStatus({
+        checked: true,
+        available: false,
+        isDuplicate: false,
+        isInvalid: true,
+        message: 'Số điện thoại không hợp lệ (phải gồm 10 số bắt đầu bằng số 0).',
+      });
       return;
     }
 
     setPhoneChecking(true);
     checkPhoneTimerRef.current = setTimeout(async () => {
       try {
-        const res = await api.checkPhone(raw);
+        const res = await api.checkPhone(digits);
         if (res.isDuplicate) {
           setPhoneStatus({
             checked: true,
@@ -151,7 +162,7 @@ export default function RegisterPage() {
       } finally {
         setPhoneChecking(false);
       }
-    }, 350);
+    }, 250);
 
     return () => {
       if (checkPhoneTimerRef.current) clearTimeout(checkPhoneTimerRef.current);
@@ -199,7 +210,7 @@ export default function RegisterPage() {
       } finally {
         setCheckingUsername(false);
       }
-    }, 400);
+    }, 350);
 
     return () => {
       if (checkUsernameTimerRef.current) clearTimeout(checkUsernameTimerRef.current);
@@ -209,24 +220,19 @@ export default function RegisterPage() {
   async function sendOtp() {
     setError('');
     setMessage('');
-    const rawPhone = phone.trim();
-    const cleanDigits = rawPhone.replace(/[\s().-]/g, '');
-    if (!cleanDigits || cleanDigits.length < 8) {
-      setPhoneStatus({ checked: true, available: false, isDuplicate: false, isInvalid: true, message: 'Số điện thoại không hợp lệ.' });
-      return setError('Số điện thoại không hợp lệ.');
+    const digits = phone.trim().replace(/\D/g, '');
+    if (digits.length !== 10 || !/^0\d{9}$/.test(digits)) {
+      setPhoneStatus({ checked: true, available: false, isDuplicate: false, isInvalid: true, message: 'Số điện thoại không hợp lệ (phải gồm 10 số bắt đầu bằng 0).' });
+      return setError('Số điện thoại không hợp lệ (phải gồm 10 số bắt đầu bằng 0).');
     }
 
     if (phoneStatus.checked && phoneStatus.isDuplicate) {
       return setError('Số điện thoại này đã được đăng ký tài khoản. Vui lòng đăng nhập hoặc sử dụng số khác.');
     }
-    if (phoneStatus.checked && phoneStatus.isInvalid) {
-      return setError('Số điện thoại không hợp lệ.');
-    }
 
     setLoading(true);
     try {
-      // Kiểm tra ngay số điện thoại trước khi gửi OTP
-      const checkRes = await api.checkPhone(rawPhone);
+      const checkRes = await api.checkPhone(digits);
       if (checkRes.isDuplicate) {
         setPhoneStatus({ checked: true, available: false, isDuplicate: true, isInvalid: false, message: 'Số điện thoại này đã được đăng ký tài khoản.' });
         setError('Số điện thoại này đã được đăng ký tài khoản. Vui lòng đăng nhập hoặc sử dụng số khác.');
@@ -240,7 +246,7 @@ export default function RegisterPage() {
         return;
       }
 
-      const result = await api.sendRegistrationOtp(rawPhone);
+      const result = await api.sendRegistrationOtp(digits);
       setOtpSent(true);
       setOtp('');
       setOtpVerified(false);
@@ -271,7 +277,6 @@ export default function RegisterPage() {
       setOtpVerified(true);
       setDisplayedOtp(null);
       setMessage('');
-      // Tự động chuyển sang bước 2: Tạo mật khẩu
       setStep('password');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Mã OTP không đúng hoặc đã hết hạn.');
@@ -370,20 +375,27 @@ export default function RegisterPage() {
               )}
 
               <div>
-                <label htmlFor="register-phone" className="mb-1 block text-sm font-semibold">
-                  Số điện thoại
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label htmlFor="register-phone" className="block text-sm font-semibold">
+                    Số điện thoại
+                  </label>
+                  <span className="text-[11px] text-slate-400 font-medium">
+                    {phone.length}/10 số
+                  </span>
+                </div>
                 <div className="flex gap-2">
                   <div className="relative min-w-0 flex-1">
                     <input
                       id="register-phone"
                       type="tel"
-                      inputMode="tel"
+                      inputMode="numeric"
                       autoComplete="tel"
+                      maxLength={10}
                       required
                       value={phone}
                       onChange={(e) => {
-                        setPhone(e.target.value);
+                        const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setPhone(val);
                         setOtpSent(false);
                         setOtp('');
                         setOtpVerified(false);
@@ -392,13 +404,13 @@ export default function RegisterPage() {
                         setError('');
                       }}
                       placeholder="0901234567"
-                      className={`w-full rounded-xl border px-4 py-3 outline-none transition ${
+                      className={`w-full rounded-xl border px-4 py-3 outline-none font-bold text-slate-800 transition tracking-wide ${
                         phoneStatus.checked && phoneStatus.isDuplicate
                           ? 'border-red-400 bg-red-50/40 text-red-900 focus:border-red-500 focus:ring-2 focus:ring-red-100'
                           : phoneStatus.checked && phoneStatus.isInvalid
                           ? 'border-red-400 bg-red-50/40 text-red-900 focus:border-red-500 focus:ring-2 focus:ring-red-100'
                           : phoneStatus.checked && phoneStatus.available
-                          ? 'border-emerald-500 bg-emerald-50/30 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100'
+                          ? 'border-emerald-500 bg-emerald-50/30 text-emerald-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100'
                           : 'border-slate-200 bg-white focus:border-blue-500'
                       }`}
                     />
@@ -411,7 +423,7 @@ export default function RegisterPage() {
                   <button
                     type="button"
                     onClick={sendOtp}
-                    disabled={loading || phoneChecking || !phone.trim() || (phoneStatus.checked && !phoneStatus.available) || countdown > 0}
+                    disabled={loading || phoneChecking || phone.length !== 10 || !phoneStatus.available || countdown > 0}
                     className="shrink-0 rounded-xl border border-blue-600 px-3.5 text-sm font-bold text-blue-700 disabled:opacity-50 hover:bg-blue-50 transition cursor-pointer"
                   >
                     {loading ? 'Đang gửi…' : countdown > 0 ? `Gửi lại (${countdown}s)` : otpSent ? 'Gửi lại mã' : 'Gửi OTP'}
@@ -428,10 +440,10 @@ export default function RegisterPage() {
                   </div>
                 )}
 
-                {/* TH 2: SĐT KHÔNG HỢP LỆ -> Chỉ thông báo không hợp lệ, tuyệt đối không báo đã đăng ký */}
+                {/* TH 2: SĐT KHÔNG HỢP LỆ */}
                 {phoneStatus.checked && phoneStatus.isInvalid && !phoneStatus.isDuplicate && (
                   <p className="mt-1.5 text-xs font-semibold text-red-600">
-                    ✕ Số điện thoại không hợp lệ.
+                    ✕ {phoneStatus.message || 'Số điện thoại không hợp lệ.'}
                   </p>
                 )}
 
