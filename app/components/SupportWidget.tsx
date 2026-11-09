@@ -7,6 +7,45 @@ import { api, getStoredUser, type SupportMessage, type SupportConversation } fro
 const ZALO_URL = process.env.NEXT_PUBLIC_ZALO_URL || 'https://zalo.me/0909680426';
 const VISITOR_KEY = 'devora-support-visitor';
 
+function playChatNotificationSound() {
+  if (typeof window === 'undefined') return;
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+    osc.frequency.setValueAtTime(880, ctx.currentTime + 0.08);
+    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.28);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.3);
+  } catch {}
+}
+
+function getSavedConversationId(channel: 'ai' | 'staff'): number | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const val = sessionStorage.getItem(`devora_conv_${channel}`);
+    return val ? parseInt(val, 10) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveConversationId(channel: 'ai' | 'staff', id: number | null) {
+  if (typeof window === 'undefined') return;
+  try {
+    if (id) sessionStorage.setItem(`devora_conv_${channel}`, String(id));
+    else sessionStorage.removeItem(`devora_conv_${channel}`);
+  } catch {}
+}
+
+
 function getVisitorKey(channel: 'ai' | 'staff') {
   const storageKey = `${VISITOR_KEY}-${channel}`;
   let key = typeof window !== 'undefined' ? (localStorage.getItem(storageKey) || localStorage.getItem(`manb-support-visitor-${channel}`)) : null;
@@ -23,7 +62,10 @@ export default function SupportWidget() {
   const [chatOpen, setChatOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [aiMode, setAiMode] = useState(false);
-  const [conversationIds, setConversationIds] = useState<{ ai: number | null; staff: number | null }>({ ai: null, staff: null });
+  const [conversationIds, setConversationIds] = useState<{ ai: number | null; staff: number | null }>(() => ({
+    ai: getSavedConversationId('ai'),
+    staff: getSavedConversationId('staff'),
+  }));
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [error, setError] = useState('');
@@ -65,7 +107,13 @@ export default function SupportWidget() {
   }, []);
 
   useEffect(() => {
-    const handleUserChange = () => {
+    const handleUserChange = (e?: Event) => {
+      // Chỉ reset khi thực sự là sự kiện đổi tài khoản người dùng
+      if (e instanceof StorageEvent && e.key && e.key !== 'auth_user' && e.key !== 'user') {
+        return;
+      }
+      saveConversationId('ai', null);
+      saveConversationId('staff', null);
       setConversationIds({ ai: null, staff: null });
     };
     window.addEventListener('user-updated', handleUserChange);
@@ -102,16 +150,26 @@ export default function SupportWidget() {
         ) {
           return prev;
         }
+
+        // Báo âm thanh nếu có tin nhắn mới từ Admin hoặc AI
+        const lastNew = newMsgs[newMsgs.length - 1];
+        const lastPrev = prev[prev.length - 1];
+        if (lastNew && lastNew.MessageID !== lastPrev?.MessageID && lastNew.SenderRole !== 'Customer') {
+          playChatNotificationSound();
+        }
+
         return newMsgs;
       });
 
       if (forceScroll || isUserNearBottomRef.current) {
         setTimeout(() => {
           scrollToBottom(forceScroll ? 'smooth' : 'auto');
-        }, 60);
+        }, 50);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Không thể tải tin nhắn');
+      if (forceScroll) {
+        setError(e instanceof Error ? e.message : 'Không thể tải tin nhắn');
+      }
     }
   }, [identity, scrollToBottom]);
 
@@ -144,6 +202,7 @@ export default function SupportWidget() {
     try {
       const result = await api.openSupportConversation(identity(channel));
       const id = result.conversation.ConversationID;
+      saveConversationId(channel, id);
       setConversationIds((current) => ({ ...current, [channel]: id }));
       await refreshMessages(result.conversation.ConversationID, channel, true);
     } catch (e) {
@@ -170,9 +229,20 @@ export default function SupportWidget() {
     const conversationId = conversationIds[aiMode ? 'ai' : 'staff'];
     if (!chatOpen || !conversationId) return;
     const channel = aiMode ? 'ai' : 'staff';
-    const timer = window.setInterval(() => { void refreshMessages(conversationId, channel, false); }, 3000);
+    const timer = window.setInterval(() => { void refreshMessages(conversationId, channel, false); }, 1200);
     return () => window.clearInterval(timer);
   }, [chatOpen, conversationIds, aiMode, refreshMessages]);
+
+  // Tự động cuộn xuống đáy ngay khi nhận tin nhắn mới
+  useEffect(() => {
+    if (!chatOpen) return;
+    const pane = messagesPane.current;
+    if (pane) {
+      requestAnimationFrame(() => {
+        pane.scrollTop = pane.scrollHeight;
+      });
+    }
+  }, [messages.length, chatOpen]);
 
   const sendText = async (textToSend: string) => {
     const message = textToSend.trim();
@@ -193,6 +263,7 @@ export default function SupportWidget() {
       if (!targetConversationId) {
         const opened = await api.openSupportConversation(owner);
         targetConversationId = opened.conversation.ConversationID;
+        saveConversationId(channel, targetConversationId);
         setConversationIds((current) => ({ ...current, [channel]: targetConversationId }));
       }
       const result = await api.sendSupportMessage(targetConversationId, { ...owner, message });

@@ -61,7 +61,7 @@ export default function AdminSupportPage() {
 
   useEffect(() => {
     void refreshConversations();
-    const timer = window.setInterval(() => void refreshConversations(), 4000);
+    const timer = window.setInterval(() => void refreshConversations(), 2500);
     return () => window.clearInterval(timer);
   }, [refreshConversations]);
 
@@ -69,7 +69,7 @@ export default function AdminSupportPage() {
     setMessages([]);
     if (!selectedId) return;
     void refreshMessages(selectedId);
-    const timer = window.setInterval(() => void refreshMessages(selectedId), 3000);
+    const timer = window.setInterval(() => void refreshMessages(selectedId), 1200);
     return () => window.clearInterval(timer);
   }, [selectedId, refreshMessages]);
 
