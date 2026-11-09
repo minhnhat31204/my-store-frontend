@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api, clearAllAuthSession, getStoredUser, resolveApiAssetUrl, type User } from '@/lib/api';
+import { api, clearAllAuthSession, getStoredUser, resolveApiAssetUrl, AUTH_TOKEN_KEY, type User } from '@/lib/api';
 
 // --- ICONS ---
 function CameraIcon({ className = "w-5 h-5" }: { className?: string }) {
@@ -435,7 +435,11 @@ export default function AccountPage() {
 
   // Load User Data
   useEffect(() => {
-    const refreshUser = () => {
+    const refreshUser = (e?: StorageEvent | Event) => {
+      if (e && 'key' in e && (e as StorageEvent).key) {
+        const hasOwnSession = typeof window !== 'undefined' && Boolean(sessionStorage.getItem("user") && sessionStorage.getItem(AUTH_TOKEN_KEY));
+        if (hasOwnSession) return;
+      }
       const stored = getStoredUser();
       applyUserData(stored, false);
     };
@@ -445,9 +449,11 @@ export default function AccountPage() {
     // Tự động đồng bộ thông tin mới nhất từ máy chủ (đặc biệt là email vừa xác minh)
     api.getCurrentUser().then((res) => {
       if (res?.user) {
+        const currentActive = getStoredUser();
+        if (currentActive && Number(currentActive.UserID) !== Number(res.user.UserID)) return;
         const cachedAvatar = typeof window !== 'undefined' ? localStorage.getItem(`devora_avatar_${res.user.UserID}`) : null;
         const userToSave = cachedAvatar ? { ...res.user, Avatar: cachedAvatar } : res.user;
-        localStorage.setItem('user', JSON.stringify(userToSave));
+        sessionStorage.setItem('user', JSON.stringify(userToSave));
         applyUserData(userToSave, false);
       }
     }).catch(() => {});

@@ -288,18 +288,18 @@ export type SupportMessage = {
   CreatedAt: string;
 };
 
-const AUTH_TOKEN_KEY = "auth_token";
+export const AUTH_TOKEN_KEY = "auth_token";
 
 export function getStoredToken(): string | null {
   if (typeof window === "undefined") return null;
   try {
     return (
-      localStorage.getItem(AUTH_TOKEN_KEY) ||
       sessionStorage.getItem(AUTH_TOKEN_KEY) ||
-      localStorage.getItem("token") ||
       sessionStorage.getItem("token") ||
-      localStorage.getItem("sessionToken") ||
       sessionStorage.getItem("sessionToken") ||
+      localStorage.getItem(AUTH_TOKEN_KEY) ||
+      localStorage.getItem("token") ||
+      localStorage.getItem("sessionToken") ||
       null
     );
   } catch {
@@ -972,7 +972,6 @@ export function getStoredUser(): User | null {
   const token = getStoredToken();
   if (!token) {
     try {
-      localStorage.removeItem("user");
       sessionStorage.removeItem("user");
     } catch {}
     return null;
@@ -982,6 +981,16 @@ export function getStoredUser(): User | null {
     const session = sessionStorage.getItem("user");
     let parsed: User | null = session ? JSON.parse(session) : JSON.parse(localStorage.getItem("user") || "null");
     if (parsed && parsed.UserID) {
+      // If newly opened tab has no sessionStorage yet, isolate its session into sessionStorage immediately
+      if (!session) {
+        try {
+          sessionStorage.setItem("user", JSON.stringify(parsed));
+          const localToken = localStorage.getItem(AUTH_TOKEN_KEY);
+          if (localToken && !sessionStorage.getItem(AUTH_TOKEN_KEY)) {
+            sessionStorage.setItem(AUTH_TOKEN_KEY, localToken);
+          }
+        } catch {}
+      }
       const cached = localStorage.getItem(`devora_avatar_${parsed.UserID}`);
       if (cached) {
         parsed.Avatar = cached;

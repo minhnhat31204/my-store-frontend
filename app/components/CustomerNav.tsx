@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { api, clearAllAuthSession, getCachedProductsSync, getPrimaryProductImage, getStoredUser, resolveApiAssetUrl, type Product, type User } from "@/lib/api";
+import { api, clearAllAuthSession, getCachedProductsSync, getPrimaryProductImage, getStoredUser, resolveApiAssetUrl, AUTH_TOKEN_KEY, type Product, type User } from "@/lib/api";
 import { getCart } from "@/lib/cart";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatedModal, AnimatedButton } from "@/app/components/ui/motion-primitives";
@@ -340,7 +340,12 @@ export default function CustomerNav({
   }, []);
 
   useEffect(() => {
-    const refreshUser = () => {
+    const refreshUser = (e?: StorageEvent | Event) => {
+      // If triggered by a storage change in another tab, but this tab already has its own active session, do not override
+      if (e && 'key' in e && (e as StorageEvent).key) {
+        const hasOwnSession = typeof window !== 'undefined' && Boolean(sessionStorage.getItem("user") && sessionStorage.getItem(AUTH_TOKEN_KEY));
+        if (hasOwnSession) return;
+      }
       setUser(getStoredUser());
       setAuthLoaded(true);
     };
@@ -376,7 +381,16 @@ export default function CustomerNav({
         const userToSave = cachedAvatar ? { ...result.user, Avatar: cachedAvatar } : result.user;
         if (JSON.stringify(userToSave) === JSON.stringify(latestCachedUser)) return;
 
-        localStorage.setItem("user", JSON.stringify(userToSave));
+        sessionStorage.setItem("user", JSON.stringify(userToSave));
+        const localUserStr = localStorage.getItem("user");
+        if (localUserStr) {
+          try {
+            const localU = JSON.parse(localUserStr);
+            if (Number(localU.UserID) === Number(userToSave.UserID)) {
+              localStorage.setItem("user", JSON.stringify(userToSave));
+            }
+          } catch {}
+        }
         setUser(userToSave);
         setAuthLoaded(true);
         window.dispatchEvent(new Event("user-updated"));

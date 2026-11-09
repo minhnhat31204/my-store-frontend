@@ -4,7 +4,7 @@ import { ReactNode, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { getStoredUser, api, User, clearAllAuthSession, resolveApiAssetUrl } from '@/lib/api';
+import { getStoredUser, api, User, clearAllAuthSession, resolveApiAssetUrl, AUTH_TOKEN_KEY } from '@/lib/api';
 import { useAdminGuard } from '@/lib/useAdminGuard';
 import { prefetch } from '@/lib/adminCache';
 
@@ -175,7 +175,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   }, [adminAvatarSrc]);
 
   useEffect(() => {
-    const refreshUser = () => {
+    const refreshUser = (e?: StorageEvent | Event) => {
+      if (e && 'key' in e && (e as StorageEvent).key) {
+        const hasOwnSession = typeof window !== 'undefined' && Boolean(sessionStorage.getItem("user") && sessionStorage.getItem(AUTH_TOKEN_KEY));
+        if (hasOwnSession) return;
+      }
       setCurrentUser(getStoredUser());
     };
     refreshUser();
