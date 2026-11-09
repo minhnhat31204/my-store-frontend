@@ -628,8 +628,8 @@ export default function AccountPage() {
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    if (newPassword.length < 6) {
-      setPasswordError('Mật khẩu mới phải có ít nhất 6 ký tự.');
+    if (newPassword.length < 8) {
+      setPasswordError('Mật khẩu mới phải có ít nhất 8 ký tự.');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -1316,14 +1316,14 @@ export default function AccountPage() {
 
                     <div>
                       <label htmlFor="new-pw" className="block text-xs font-bold text-slate-700">
-                        Mật khẩu mới (tối thiểu 6 ký tự) <span className="text-red-500">*</span>
+                        Mật khẩu mới (tối thiểu 8 ký tự) <span className="text-red-500">*</span>
                       </label>
                       <div className="relative mt-1.5 w-full sm:w-96">
                         <input
                           id="new-pw"
                           type={showNewPassword ? 'text' : 'password'}
                           required
-                          minLength={6}
+                          minLength={8}
                           value={newPassword}
                           onChange={(e) => setNewPassword(e.target.value)}
                           placeholder="••••••••"
