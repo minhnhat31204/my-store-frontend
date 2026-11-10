@@ -1,5 +1,7 @@
 "use client";
 
+import { getStoredUser } from "@/lib/api";
+
 /**
  * Hiệu ứng bay thẳng trực tiếp và thu nhỏ mượt mà vào icon giỏ hàng
  * Tương thích 100% với hệ thống CSS Zoom, màn hình thu nhỏ, và Web Animations API
@@ -9,6 +11,7 @@ export function animateFlyToCart(
   imageUrl?: string
 ) {
   if (typeof window === "undefined" || !source) return;
+  if (!getStoredUser()) return;
 
   // Luôn kích hoạt hiện lại thanh nav nếu đang bị ẩn
   window.dispatchEvent(new Event("show-nav"));

@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, type MouseEvent } from "react";
-import type { Product } from "@/lib/api";
+import { useRouter } from "next/navigation";
+import { getStoredUser, type Product } from "@/lib/api";
 import { useFavorites } from "./FavoritesProvider";
 
 export default function FavoriteButton({ product, className = "" }: { product: Product; className?: string }) {
+  const router = useRouter();
   const { isFavorite, toggleFavorite } = useFavorites();
   const [saving, setSaving] = useState(false);
   const active = isFavorite(product.ProductID);
@@ -12,6 +14,13 @@ export default function FavoriteButton({ product, className = "" }: { product: P
   async function handleClick(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault();
     event.stopPropagation();
+
+    const user = getStoredUser();
+    if (!user?.UserID) {
+      router.push("/login");
+      return;
+    }
+
     if (saving) return;
     setSaving(true);
     try {

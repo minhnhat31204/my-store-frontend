@@ -8,6 +8,7 @@ import {
   api,
   getCachedProductsSync,
   getPrimaryProductImage,
+  getStoredUser,
   Product,
   Promotion,
 } from "@/lib/api";
@@ -217,6 +218,11 @@ export default function Home() {
   const remainingCount = Math.max(filteredProducts.length - visibleCount, 0);
 
   async function handleAdd(product: Product, event: React.MouseEvent) {
+    const user = getStoredUser();
+    if (!user) {
+      router.push("/login");
+      return;
+    }
     animateFlyToCart(event, getPrimaryProductImage(product.ImageUrl));
     try {
       await addToCart({

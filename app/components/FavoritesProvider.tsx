@@ -3,8 +3,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api, getStoredUser, type Product } from "@/lib/api";
 
-const STORAGE_KEY = "devora-shop-favorites";
-
 type FavoritesContextValue = {
   products: Product[];
   loading: boolean;
@@ -14,16 +12,6 @@ type FavoritesContextValue = {
 
 const FavoritesContext = createContext<FavoritesContextValue | null>(null);
 
-function readGuestFavorites(): Product[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem("manb-shop-favorites") || "[]";
-    const stored = JSON.parse(raw);
-    return Array.isArray(stored) ? stored : [];
-  } catch {
-    return [];
-  }
-}
-
 export function FavoritesProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,7 +19,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     const user = getStoredUser();
     if (!user?.UserID) {
-      setProducts(readGuestFavorites());
+      setProducts([]);
       setLoading(false);
       return;
     }
@@ -64,20 +52,17 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
 
   const toggleFavorite = useCallback(async (product: Product) => {
     const user = getStoredUser();
-    if (user?.UserID) {
-      const result = await api.toggleFavorite(user.UserID, product.ProductID);
-      setProducts((current) => result.isFavorite
-        ? current.some((item) => item.ProductID === product.ProductID) ? current : [...current, product]
-        : current.filter((item) => item.ProductID !== product.ProductID));
+    if (!user?.UserID) {
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
       return;
     }
 
-    const current = readGuestFavorites();
-    const next = current.some((item) => item.ProductID === product.ProductID)
-      ? current.filter((item) => item.ProductID !== product.ProductID)
-      : [...current, product];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    setProducts(next);
+    const result = await api.toggleFavorite(user.UserID, product.ProductID);
+    setProducts((current) => result.isFavorite
+      ? current.some((item) => item.ProductID === product.ProductID) ? current : [...current, product]
+      : current.filter((item) => item.ProductID !== product.ProductID));
   }, []);
 
   const value = useMemo(() => ({ products, loading, isFavorite, toggleFavorite }), [products, loading, isFavorite, toggleFavorite]);

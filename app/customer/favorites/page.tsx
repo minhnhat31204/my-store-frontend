@@ -2,14 +2,22 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { useFavorites } from "@/app/components/FavoritesProvider";
 import FavoriteButton from "@/app/components/FavoriteButton";
 import ScrollReveal from "@/app/components/ScrollReveal";
-import { getPrimaryProductImage } from "@/lib/api";
+import { getPrimaryProductImage, getStoredUser } from "@/lib/api";
 
 export default function FavoritesPage() {
   const router = useRouter();
   const { products, loading } = useFavorites();
+
+  useEffect(() => {
+    const user = getStoredUser();
+    if (!user) {
+      router.push("/login");
+    }
+  }, [router]);
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
