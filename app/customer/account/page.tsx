@@ -571,6 +571,12 @@ export default function AccountPage() {
         setProfileError('Ngày sinh không thể là ngày trong tương lai.');
         return;
       }
+      const minDate = new Date(now.getFullYear() - 100, now.getMonth(), now.getDate());
+      minDate.setHours(0, 0, 0, 0);
+      if (bDate < minDate) {
+        setProfileError('Ngày sinh không được quá 100 năm so với hiện tại.');
+        return;
+      }
     }
 
     setProfileLoading(true);
@@ -1343,27 +1349,38 @@ export default function AccountPage() {
                         <label htmlFor="birthday" className="block text-xs font-bold text-slate-700">
                           Ngày sinh
                         </label>
-                        <span className="text-[10px] font-semibold text-slate-400">Tối đa là hôm nay</span>
+                        <span className="text-[10px] font-semibold text-slate-400">Tối đa 100 năm gần đây</span>
                       </div>
-                      <input
-                        id="birthday"
-                        type="date"
-                        max={new Date().toISOString().split('T')[0]}
-                        value={birthday}
-                        onChange={(e) => {
-                          isFormDirtyRef.current = true;
-                          const val = e.target.value;
-                          const todayStr = new Date().toISOString().split('T')[0];
-                          if (val && val > todayStr) {
-                            setProfileError('Ngày sinh không thể là ngày trong tương lai.');
-                            setBirthday(todayStr);
-                          } else {
-                            setProfileError('');
-                            setBirthday(val);
-                          }
-                        }}
-                        className="mt-1.5 w-full sm:w-64 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
-                      />
+                      {(() => {
+                        const now = new Date();
+                        const todayStr = now.toISOString().split('T')[0];
+                        const minDate = new Date(now.getFullYear() - 100, now.getMonth(), now.getDate());
+                        const minDateStr = minDate.toISOString().split('T')[0];
+                        return (
+                          <input
+                            id="birthday"
+                            type="date"
+                            min={minDateStr}
+                            max={todayStr}
+                            value={birthday}
+                            onChange={(e) => {
+                              isFormDirtyRef.current = true;
+                              const val = e.target.value;
+                              if (val && val > todayStr) {
+                                setProfileError('Ngày sinh không thể là ngày trong tương lai.');
+                                setBirthday(todayStr);
+                              } else if (val && val < minDateStr) {
+                                setProfileError('Ngày sinh không được quá 100 năm so với hiện tại.');
+                                setBirthday(minDateStr);
+                              } else {
+                                setProfileError('');
+                                setBirthday(val);
+                              }
+                            }}
+                            className="mt-1.5 w-full sm:w-64 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                          />
+                        );
+                      })()}
                     </div>
 
                     {/* Địa chỉ */}
