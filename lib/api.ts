@@ -95,6 +95,8 @@ export type User = {
   Birthday?: string | null;
   Role?: string;
   Avatar?: string | null;
+  CreatedAt?: string | null;
+  UpdatedAt?: string | null;
 };
 
 export type Promotion = {

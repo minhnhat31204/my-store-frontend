@@ -17,7 +17,7 @@ export default function AdminUsers() {
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
   const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'customer'>('all');
-  const [dateFilter, setDateFilter] = useState<DateFilterPeriod>('today');
+  const [dateFilter, setDateFilter] = useState<DateFilterPeriod>('all');
   const [customDate, setCustomDate] = useState('');
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
@@ -48,10 +48,11 @@ export default function AdminUsers() {
 
       const userRole = (u.Role || 'customer').toLowerCase();
       const matchRole = roleFilter === 'all' || userRole === roleFilter;
+      const matchDate = matchesDateFilter(u.CreatedAt, dateFilter, customDate);
 
-      return matchSearch && matchRole;
+      return matchSearch && matchRole && matchDate;
     });
-  }, [users, searchTerm, roleFilter]);
+  }, [users, searchTerm, roleFilter, dateFilter, customDate]);
 
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / 20));
   const currentPage = Math.min(page, totalPages);
@@ -80,6 +81,7 @@ export default function AdminUsers() {
           width: 26 
         },
         { header: 'Số điện thoại', key: 'Phone', width: 16 },
+        { header: 'Ngày tạo tài khoản', transform: (u) => u.CreatedAt ? new Date(u.CreatedAt).toLocaleString('vi-VN') : '', width: 22 },
         { header: 'Vai trò', transform: (u) => (u.Role || 'customer') === 'admin' ? 'Quản trị viên' : 'Khách hàng', width: 16 },
       ],
     });
@@ -249,6 +251,7 @@ export default function AdminUsers() {
                   <th className="px-5 py-4">Tên hiển thị / ID người dùng</th>
                   <th className="px-5 py-4">Email liên hệ</th>
                   <th className="px-5 py-4">Số điện thoại</th>
+                  <th className="px-5 py-4">Ngày tạo tài khoản</th>
                   <th className="px-5 py-4">Vai trò / Phân quyền</th>
                   <th className="px-5 py-4 text-right">Thao tác</th>
                 </tr>
@@ -308,6 +311,20 @@ export default function AdminUsers() {
                       </td>
                       <td className="px-5 py-4 text-slate-300 text-xs font-mono">
                         {user.Phone || '—'}
+                      </td>
+                      <td className="px-5 py-4 text-xs whitespace-nowrap">
+                        {user.CreatedAt ? (
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-slate-200">
+                              {new Date(user.CreatedAt).toLocaleDateString('vi-VN')}
+                            </span>
+                            <span className="text-[10px] text-slate-500 font-mono">
+                              {new Date(user.CreatedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-500 italic text-[11px]">Chưa xác định</span>
+                        )}
                       </td>
                       <td className="px-5 py-4 whitespace-nowrap">
                         <select

@@ -34,9 +34,9 @@ export function matchesDateFilter(
     case 'today':
       return isSameDay(target, now);
     case '7days': {
-      const diffTime = now.getTime() - target.getTime();
-      const diffDays = diffTime / (1000 * 3600 * 24);
-      return diffDays >= 0 && diffDays <= 7;
+      const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      const sevenDaysAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7, 0, 0, 0, 0);
+      return target >= sevenDaysAgo && target <= endOfToday;
     }
     case 'month':
       return target.getFullYear() === now.getFullYear() && target.getMonth() === now.getMonth();

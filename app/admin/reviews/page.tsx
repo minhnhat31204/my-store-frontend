@@ -57,7 +57,7 @@ export default function AdminReviewsPage() {
       const isReplied = Boolean(review.AdminReply?.trim());
       if (reviewTab === 'unreplied' && isReplied) return false;
       if (reviewTab === 'replied' && !isReplied) return false;
-      if (!matchesDateFilter(review.ReviewDate, dateFilter, customDate)) return false;
+      if (!matchesDateFilter(review.ReviewDate || (review as any).CreatedAt, dateFilter, customDate)) return false;
 
       if (!query) return true;
       return [

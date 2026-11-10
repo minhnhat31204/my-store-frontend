@@ -190,7 +190,7 @@ export default function AdminOrders() {
         ]),
       ].some((value) => value && value.toString().toLowerCase().includes(query));
       const matchesStatus = statusFilter === 'all' || normalizedStatus(order.Status) === statusFilter;
-      const matchesDate = matchesDateFilter(order.OrderDate, dateFilter, customDate);
+      const matchesDate = matchesDateFilter(order.OrderDate || (order as any).CreatedAt, dateFilter, customDate);
       const orderMonth = monthKey(order.OrderDate);
       return matchesQuery && matchesStatus && matchesDate && (!monthFilter || orderMonth === monthFilter);
     });
