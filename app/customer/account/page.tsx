@@ -1366,15 +1366,39 @@ export default function AccountPage() {
                             onChange={(e) => {
                               isFormDirtyRef.current = true;
                               const val = e.target.value;
-                              if (val && val > todayStr) {
-                                setProfileError('Ngày sinh không thể là ngày trong tương lai.');
-                                setBirthday(todayStr);
-                              } else if (val && val < minDateStr) {
-                                setProfileError('Ngày sinh không được quá 100 năm so với hiện tại.');
-                                setBirthday(minDateStr);
+                              setBirthday(val);
+                              if (!val) {
+                                setProfileError('');
+                                return;
+                              }
+                              // Chỉ kiểm tra khi đã nhập đủ năm 4 chữ số (>= 1000), tránh báo lỗi khi đang gõ dở
+                              const parts = val.split('-');
+                              const year = parts[0] ? parseInt(parts[0], 10) : 0;
+                              if (parts[0] && parts[0].length === 4 && year >= 1000) {
+                                if (val > todayStr) {
+                                  setProfileError('Ngày sinh không thể là ngày trong tương lai.');
+                                } else if (val < minDateStr) {
+                                  setProfileError('Ngày sinh không được quá 100 năm so với hiện tại.');
+                                } else {
+                                  setProfileError('');
+                                }
                               } else {
                                 setProfileError('');
-                                setBirthday(val);
+                              }
+                            }}
+                            onBlur={(e) => {
+                              const val = e.target.value;
+                              if (!val) return;
+                              const parts = val.split('-');
+                              const year = parts[0] ? parseInt(parts[0], 10) : 0;
+                              if (parts[0] && parts[0].length === 4 && year >= 1000) {
+                                if (val > todayStr) {
+                                  setProfileError('Ngày sinh không thể là ngày trong tương lai.');
+                                } else if (val < minDateStr) {
+                                  setProfileError('Ngày sinh không được quá 100 năm so với hiện tại.');
+                                } else {
+                                  setProfileError('');
+                                }
                               }
                             }}
                             className="mt-1.5 w-full sm:w-64 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"

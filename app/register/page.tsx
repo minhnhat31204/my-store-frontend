@@ -79,6 +79,17 @@ export default function RegisterPage() {
 
   const checkUsernameTimerRef = useRef<NodeJS.Timeout | null>(null);
   const checkPhoneTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isComposingRef = useRef(false);
+
+  function sanitizeUsername(input: string): string {
+    return (input || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[đĐ]/g, 'd')
+      .toLowerCase()
+      .replace(/[^a-z0-9_]/g, '')
+      .slice(0, 30);
+  }
 
   // Countdown timer cho gửi lại OTP
   useEffect(() => {
@@ -177,7 +188,7 @@ export default function RegisterPage() {
       clearTimeout(checkUsernameTimerRef.current);
     }
 
-    const clean = username.trim().toLowerCase().replace(/^@/, '');
+    const clean = sanitizeUsername(username.replace(/^@/, ''));
     if (!clean) {
       setUsernameStatus({ checked: false, available: false, message: '' });
       return;
@@ -305,7 +316,7 @@ export default function RegisterPage() {
       return setError('Mật khẩu không hợp lệ hoặc không khớp.');
     }
 
-    const cleanUsername = username.trim().toLowerCase().replace(/^@/, '');
+    const cleanUsername = sanitizeUsername(username.replace(/^@/, ''));
     if (!cleanUsername) return setError('Vui lòng nhập ID người dùng.');
     if (!/^[a-z0-9_]{3,30}$/.test(cleanUsername)) {
       return setError('ID người dùng chỉ được chứa chữ thường (a-z), số (0-9) và dấu gạch dưới (3 - 30 ký tự).');
@@ -622,12 +633,32 @@ export default function RegisterPage() {
                   <input
                     id="register-username"
                     type="text"
+                    inputMode="text"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    autoComplete="username"
                     required
                     maxLength={30}
                     value={username}
+                    onCompositionStart={() => {
+                      isComposingRef.current = true;
+                    }}
+                    onCompositionEnd={(e) => {
+                      isComposingRef.current = false;
+                      const clean = sanitizeUsername(e.currentTarget.value);
+                      setUsername(clean);
+                    }}
                     onChange={(e) => {
-                      const val = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
-                      setUsername(val);
+                      const raw = e.target.value;
+                      if (isComposingRef.current) {
+                        setUsername(raw);
+                      } else {
+                        setUsername(sanitizeUsername(raw));
+                      }
+                    }}
+                    onBlur={(e) => {
+                      setUsername(sanitizeUsername(e.target.value));
                     }}
                     placeholder="nguyenvana_2026"
                     className={`w-full rounded-xl border py-3 pl-9 pr-10 text-sm font-bold text-slate-900 outline-none transition ${
