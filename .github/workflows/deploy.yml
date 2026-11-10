@@ -5,10 +5,38 @@ on:
     branches: [ "master" ]
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Execute remote deploy via SSH
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Build Next.js on GitHub (Fast SWC native)
+        run: npx next build
+
+      - name: Package build artifacts
+        run: tar -czf next_prod.tar.gz --exclude=.next/cache --exclude=.next/dev .next
+
+      - name: Upload build to VPS via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          source: "next_prod.tar.gz"
+          target: "/var/www/devora/my-store-frontend"
+
+      - name: Deploy and restart on VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -16,14 +44,12 @@ jobs:
           password: ${{ secrets.VPS_PASSWORD }}
           port: ${{ secrets.VPS_PORT || 22 }}
           script: |
-            cd /var/www/my-store/backend
+            cd /var/www/devora/my-store-frontend
+            tar -xzf next_prod.tar.gz
+            pm2 restart devora-frontend
+
+            cd /var/www/devora/computer-store-api
             git reset --hard origin/main || true
             git pull origin main
             npm install --omit=dev
-            pm2 restart store-api
-            cd /var/www/my-store/frontend
-            git reset --hard origin/master || true
-            git pull origin master
-            npm install
-            npm run build
-            pm2 restart store-web
+            pm2 restart devora-api
