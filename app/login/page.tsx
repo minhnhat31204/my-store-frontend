@@ -247,7 +247,20 @@ export default function LoginPage() {
           {step === 'login' && <form onSubmit={handleLogin} className="space-y-4" autoComplete="off">
             <div>
               <label htmlFor="login-phone" className="mb-1 block text-sm font-semibold">Số điện thoại hoặc ID người dùng</label>
-              <input id="login-phone" type="text" inputMode="tel" autoComplete="off" required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0901234567 hoặc @id" className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500" />
+              <input
+                id="login-phone"
+                type="text"
+                inputMode="text"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                autoComplete="username"
+                required
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="0901234567 hoặc @id"
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500"
+              />
             </div>
             <div>
               <div className="mb-1 flex items-center justify-between">
