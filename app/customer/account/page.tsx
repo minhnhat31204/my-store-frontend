@@ -371,6 +371,16 @@ export default function AccountPage() {
     setAvatarLoadFailed(false);
   }, [avatarPreview, user?.Avatar]);
   const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [showAvatarViewer, setShowAvatarViewer] = useState(false);
+
+  useEffect(() => {
+    if (!showAvatarViewer) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowAvatarViewer(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showAvatarViewer]);
   const [rawImageSrc, setRawImageSrc] = useState('');
   const avatarFileInputRef = useRef<HTMLInputElement>(null);
   const previewBlobUrlRef = useRef<string | null>(null);
@@ -915,6 +925,76 @@ export default function AccountPage() {
           />
         )}
 
+        {/* Facebook-style Enlarged Avatar Viewer Modal */}
+        {showAvatarViewer && (
+          <div
+            className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-200"
+            onClick={() => setShowAvatarViewer(false)}
+          >
+            {/* Close Button Top-Right */}
+            <button
+              type="button"
+              onClick={() => setShowAvatarViewer(false)}
+              className="absolute top-5 right-5 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition hover:bg-white/20 active:scale-95 cursor-pointer shadow-lg"
+              title="Đóng (Phím ESC)"
+            >
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Modal Content */}
+            <div
+              className="relative flex flex-col items-center max-w-lg w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {currentAvatarSrc && !avatarLoadFailed ? (
+                <div className="relative overflow-hidden rounded-full border-4 border-white/20 shadow-2xl ring-4 ring-black/40 bg-slate-900 h-64 w-64 sm:h-80 sm:w-80 md:h-96 md:w-96">
+                  <img
+                    src={currentAvatarSrc}
+                    alt={user.FullName || 'Ảnh đại diện'}
+                    className="h-full w-full object-cover select-none"
+                  />
+                </div>
+              ) : (
+                <div className="flex h-64 w-64 sm:h-80 sm:w-80 md:h-96 md:w-96 items-center justify-center rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-7xl font-black text-white shadow-2xl border-4 border-white/20 select-none">
+                  {(user.FullName || user.Phone || 'U').charAt(0).toUpperCase()}
+                </div>
+              )}
+
+              {/* User Name & Info */}
+              <div className="mt-5 text-center text-white">
+                <h3 className="text-xl font-bold tracking-tight">{user.FullName || 'Khách hàng'}</h3>
+                {user.Username && (
+                  <p className="mt-0.5 text-sm font-semibold text-blue-400">ID: @{user.Username}</p>
+                )}
+              </div>
+
+              {/* Action Buttons in Viewer */}
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAvatarViewer(false);
+                    avatarFileInputRef.current?.click();
+                  }}
+                  className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg transition hover:bg-blue-700 active:scale-95 cursor-pointer"
+                >
+                  <CameraIcon className="w-4 h-4" />
+                  <span>Thay đổi ảnh mới</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAvatarViewer(false)}
+                  className="rounded-xl border border-white/20 bg-white/10 px-5 py-2.5 text-xs font-bold text-white transition hover:bg-white/20 active:scale-95 cursor-pointer"
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Page Header */}
         <div className="mb-6">
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900">Quản lý tài khoản</h1>
@@ -930,13 +1010,13 @@ export default function AccountPage() {
             {/* User Profile Overview Card with Clickable Camera Avatar */}
             <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm text-center">
               
-              {/* Avatar with Camera Icon Overlay */}
+              {/* Avatar with Click to View Enlarged */}
               <div className="relative mx-auto inline-block">
                 <button
                   type="button"
-                  onClick={() => avatarFileInputRef.current?.click()}
-                  className="group relative block h-28 w-28 rounded-full border-4 border-white shadow-lg overflow-hidden focus:outline-none focus:ring-4 focus:ring-blue-400"
-                  title="Bấm để thay đổi ảnh đại diện"
+                  onClick={() => setShowAvatarViewer(true)}
+                  className="group relative block h-28 w-28 rounded-full border-4 border-white shadow-lg overflow-hidden focus:outline-none focus:ring-4 focus:ring-blue-400 cursor-pointer"
+                  title="Bấm để xem ảnh đại diện"
                 >
                   {currentAvatarSrc && !avatarLoadFailed ? (
                     <img
@@ -951,21 +1031,14 @@ export default function AccountPage() {
                     </div>
                   )}
 
-                  {/* Hover Overlay */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 text-white opacity-0 transition group-hover:opacity-100">
-                    <CameraIcon className="w-6 h-6" />
-                    <span className="mt-1 text-[10px] font-bold">Đổi ảnh</span>
+                  {/* Hover Overlay - View Photo */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/35 text-white opacity-0 transition group-hover:opacity-100">
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    <span className="mt-1 text-[10px] font-bold">Xem ảnh</span>
                   </div>
-                </button>
-
-                {/* Floating Camera Badge Button */}
-                <button
-                  type="button"
-                  onClick={() => avatarFileInputRef.current?.click()}
-                  className="absolute bottom-0 right-0 flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-white shadow-md ring-2 ring-white transition hover:bg-blue-700 hover:scale-110 active:scale-95"
-                  title="Thay đổi ảnh đại diện"
-                >
-                  <CameraIcon className="w-4 h-4" />
                 </button>
               </div>
 
@@ -987,7 +1060,7 @@ export default function AccountPage() {
               <button
                 type="button"
                 onClick={() => avatarFileInputRef.current?.click()}
-                className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition"
+                className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition cursor-pointer active:scale-95 shadow-xs"
               >
                 <CameraIcon className="w-3.5 h-3.5" />
                 <span>Chỉnh sửa ảnh đại diện</span>
