@@ -196,11 +196,11 @@ export default function CheckoutPage() {
         window.location.assign(payment.checkoutUrl);
       } else {
         // Phương thức COD: không chuyển sang cổng PayOS, chuyển sang trang chi tiết đơn hàng
-        router.push(`/customer/orders/${result.order.OrderID}?status=success&method=cod`);
+        router.replace(`/customer/orders/${result.order.OrderID}?status=success&method=cod`);
       }
     } catch (err) {
       if (createdOrderId) {
-        router.push(`/customer/orders/${createdOrderId}?payment=retry`);
+        router.replace(`/customer/orders/${createdOrderId}?payment=retry`);
       } else {
         setError(err instanceof Error ? err.message : 'Không thể tạo đơn hàng.');
       }

@@ -229,10 +229,19 @@ export default function OrderDetailPage() {
             }
             if (isPaymentCancelled) {
               router.push("/checkout");
+            } else if (
+              isCodSuccess ||
+              (typeof window !== "undefined" &&
+                (window.location.search.includes("status=success") ||
+                  window.location.search.includes("method=cod") ||
+                  window.location.search.includes("payment=return") ||
+                  document.referrer.includes("/checkout")))
+            ) {
+              router.push("/");
             } else if (typeof window !== "undefined" && window.history.length > 1) {
               router.back();
             } else {
-              router.push("/checkout");
+              router.push("/customer/orders");
             }
           }}
           className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-xs transition hover:border-slate-300 hover:bg-slate-50 hover:text-blue-600 cursor-pointer"
