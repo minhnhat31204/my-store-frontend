@@ -815,10 +815,10 @@ export default function AccountPage() {
     try {
       const cleanEmail = recoveryEmail.trim();
       const result = await api.verifyEmailOtp(user.UserID, cleanEmail, emailOtp.trim());
-      const updatedEmail = result.user?.Email || result.user?.RecoveryEmail || cleanEmail;
       const updatedUser = { 
         ...user, 
-        Email: updatedEmail,
+        // Giữ nguyên Email đăng nhập riêng của user, chỉ cập nhật RecoveryEmail
+        Email: user.Email,
         RecoveryEmail: result.user?.RecoveryEmail || cleanEmail, 
         RecoveryEmailVerified: true 
       };
