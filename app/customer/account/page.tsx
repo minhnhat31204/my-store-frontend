@@ -399,6 +399,7 @@ export default function AccountPage() {
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailMessage, setEmailMessage] = useState('');
   const [emailError, setEmailError] = useState('');
+  const [emailOtpCountdown, setEmailOtpCountdown] = useState(0);
 
   // Change Email with Phone OTP States
   const [isChangingEmail, setIsChangingEmail] = useState(false);
@@ -433,6 +434,13 @@ export default function AccountPage() {
     const timer = window.setTimeout(() => setChangeEmailPhoneCountdown((v) => v - 1), 1000);
     return () => window.clearTimeout(timer);
   }, [changeEmailPhoneCountdown]);
+
+    // Countdown timer cho email OTP (20s)
+  useEffect(() => {
+    if (emailOtpCountdown <= 0) return;
+    const timer = window.setTimeout(() => setEmailOtpCountdown((v) => v - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [emailOtpCountdown]);
 
   const loadedUserIdRef = useRef<number | null>(null);
   const isFormDirtyRef = useRef(false);
@@ -753,21 +761,19 @@ export default function AccountPage() {
     }
   };
 
-  // Send OTP for Email Verification (Chỉ chấp nhận @gmail.com)
-  const handleSendEmailOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Gửi OTP xác minh Email
+  const handleSendEmailOtp = async (e?: React.FormEvent) => {
+    if (e && e.preventDefault) e.preventDefault();
     if (!user) return;
 
-    const cleanEmail = recoveryEmail.trim().toLowerCase();
+    const cleanEmail = recoveryEmail.trim();
+    // Yêu cầu 2: trong trường hợp người dùng để trống ô email thì thông báo "Vui lòng điền vào trường này!"
     if (!cleanEmail) {
-      setEmailError('Vui lòng nhập địa chỉ email.');
+      setEmailError('Vui lòng điền vào trường này!');
       return;
     }
 
-    if (!/^[a-zA-Z0-9._%+-]+@gmail\.com$/i.test(cleanEmail)) {
-      setEmailError('Email xác minh phải đúng định dạng @gmail.com (ví dụ: devora@gmail.com).');
-      return;
-    }
+    // Yêu cầu 3: Cố tình tạo ra lỗi: dù nhập sai định dạng email vẫn gửi thông báo đã gửi mã thành công (không chặn regex)
 
     if (!emailPassword) {
       setEmailError('Vui lòng nhập mật khẩu tài khoản để xác thực.');
@@ -780,7 +786,11 @@ export default function AccountPage() {
     try {
       const result = await api.sendEmailVerificationOtp(user.UserID, cleanEmail, emailPassword);
       setEmailOtpSent(true);
-      setEmailMessage(result.message || 'Đã gửi mã xác minh đến địa chỉ Gmail của bạn.');
+      setEmailOtpCountdown(20); // Có hạn là 20 giây
+      if (result.otp) {
+        setChangeEmailDisplayedEmailOtp(result.otp);
+      }
+      setEmailMessage(result.message || 'Đã gửi mã xác minh đến email thành công.');
     } catch (err) {
       setEmailError(err instanceof Error ? err.message : 'Không thể gửi mã xác minh.');
     } finally {
@@ -788,31 +798,42 @@ export default function AccountPage() {
     }
   };
 
-  // Verify OTP for Email
+  // Xác minh OTP Email
   const handleVerifyEmailOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+
+    // Yêu cầu 5: nếu để trống mã xác minh thì phải báo lỗi
+    if (!emailOtp.trim()) {
+      setEmailError('Vui lòng điền vào trường này!');
+      return;
+    }
+
     setEmailLoading(true);
     setEmailError('');
     setEmailMessage('');
     try {
-      const result = await api.verifyEmailOtp(user.UserID, recoveryEmail.trim(), emailOtp);
-      const updatedEmail = result.user?.Email || result.user?.RecoveryEmail || recoveryEmail.trim();
+      const cleanEmail = recoveryEmail.trim();
+      const result = await api.verifyEmailOtp(user.UserID, cleanEmail, emailOtp.trim());
+      const updatedEmail = result.user?.Email || result.user?.RecoveryEmail || cleanEmail;
       const updatedUser = { 
         ...user, 
         Email: updatedEmail,
-        RecoveryEmail: result.user?.RecoveryEmail || recoveryEmail.trim(), 
+        RecoveryEmail: result.user?.RecoveryEmail || cleanEmail, 
         RecoveryEmailVerified: true 
       };
       setUser(updatedUser);
       localStorage.setItem('user', JSON.stringify(updatedUser));
+      sessionStorage.setItem('user', JSON.stringify(updatedUser));
       window.dispatchEvent(new Event('user-updated'));
       setEmailOtpSent(false);
       setEmailOtp('');
       setEmailPassword('');
-      setEmailMessage('Email đã được xác minh và liên kết thành công!');
+      setEmailOtpCountdown(0);
+      setChangeEmailDisplayedEmailOtp(null);
+      setEmailMessage(result.message || 'Đã liên kết email thành công!');
     } catch (err) {
-      setEmailError(err instanceof Error ? err.message : 'Mã OTP không hợp lệ hoặc đã hết hạn.');
+      setEmailError(err instanceof Error ? err.message : 'Mã xác minh không hợp lệ.');
     } finally {
       setEmailLoading(false);
     }
@@ -1701,30 +1722,22 @@ export default function AccountPage() {
                         )}
                       </div>
                     ) : (
-                      <form onSubmit={emailOtpSent ? handleVerifyEmailOtp : handleSendEmailOtp} className="space-y-4">
+                      <form noValidate onSubmit={emailOtpSent ? handleVerifyEmailOtp : handleSendEmailOtp} className="space-y-4">
                         <div>
                           <div className="flex items-center justify-between sm:w-96">
                             <label htmlFor="rec-email" className="block text-xs font-bold text-slate-700">
-                              Email liên kết / khôi phục (@gmail.com)
+                              Email liên kết / khôi phục
                             </label>
-                            <span className="text-[10px] font-bold text-blue-600">Định dạng @gmail.com</span>
                           </div>
                           <input
                             id="rec-email"
-                            type="email"
-                            required
+                            type="text"
                             value={recoveryEmail}
                             onChange={(e) => {
-                              const val = e.target.value;
-                              setRecoveryEmail(val);
-                              setEmailOtpSent(false);
-                              if (val.includes('@') && !val.toLowerCase().endsWith('@gmail.com') && !val.endsWith('@')) {
-                                setEmailError('Email phải có đuôi @gmail.com (ví dụ: example@gmail.com).');
-                              } else {
-                                setEmailError('');
-                              }
+                              setRecoveryEmail(e.target.value);
+                              setEmailError('');
                             }}
-                            placeholder="tentaikhoan@gmail.com"
+                            placeholder="Nhập địa chỉ email liên kết"
                             className="mt-1.5 w-full sm:w-96 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
                           />
                         </div>
@@ -1738,7 +1751,6 @@ export default function AccountPage() {
                               <input
                                 id="rec-pw"
                                 type={showEmailPassword ? 'text' : 'password'}
-                                required
                                 value={emailPassword}
                                 onChange={(e) => setEmailPassword(e.target.value)}
                                 placeholder="Nhập mật khẩu tài khoản"
@@ -1759,18 +1771,51 @@ export default function AccountPage() {
                         {emailOtpSent && (
                           <div>
                             <label htmlFor="email-otp" className="block text-xs font-bold text-slate-700">
-                              Mã OTP xác minh (6 số)
+                              Mã xác minh Email
                             </label>
                             <input
                               id="email-otp"
                               type="text"
-                              maxLength={6}
-                              required
                               value={emailOtp}
-                              onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, ''))}
-                              placeholder="123456"
+                              onChange={(e) => {
+                                setEmailOtp(e.target.value);
+                                setEmailError('');
+                              }}
+                              placeholder="Nhập mã xác minh"
                               className="mt-1.5 w-full sm:w-64 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-center text-lg font-black tracking-widest text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
                             />
+
+                            <div className="mt-2 space-y-1.5">
+                              {emailOtpCountdown > 0 ? (
+                                <p className="text-xs font-semibold text-blue-600">
+                                  ⏱️ Mã xác minh có hiệu lực trong: <strong className="font-mono text-sm">{emailOtpCountdown}s</strong>
+                                </p>
+                              ) : (
+                                <p className="text-xs font-semibold text-amber-600">
+                                  ⚠️ Mã xác minh đã hết hạn (quá 20s). Bạn vẫn có thể nhập mã này để liên kết thành công!
+                                </p>
+                              )}
+
+                              {changeEmailDisplayedEmailOtp && (
+                                <div className="inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700">
+                                  <span>Mã xác minh vừa gửi:</span>
+                                  <code className="font-mono text-sm tracking-wider bg-white px-2 py-0.5 rounded border border-blue-200">
+                                    {changeEmailDisplayedEmailOtp}
+                                  </code>
+                                </div>
+                              )}
+
+                              <div className="pt-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSendEmailOtp()}
+                                  disabled={emailLoading}
+                                  className="text-xs font-bold text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                                >
+                                  Gửi lại mã mới
+                                </button>
+                              </div>
+                            </div>
                           </div>
                         )}
 
@@ -1787,8 +1832,8 @@ export default function AccountPage() {
 
                         <button
                           type="submit"
-                          disabled={emailLoading || (emailOtpSent && emailOtp.length !== 6)}
-                          className="rounded-xl bg-blue-600 px-6 py-3 text-xs font-black text-white shadow-md transition hover:bg-blue-700 active:scale-95 disabled:opacity-50"
+                          disabled={emailLoading}
+                          className="rounded-xl bg-blue-600 px-6 py-3 text-xs font-black text-white shadow-md transition hover:bg-blue-700 active:scale-95 disabled:opacity-50 cursor-pointer"
                         >
                           {emailLoading ? 'Đang xử lý…' : emailOtpSent ? 'Xác minh mã OTP' : 'Gửi mã xác minh đến Email'}
                         </button>
