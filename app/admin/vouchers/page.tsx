@@ -11,6 +11,7 @@ type FormState = {
   Name: string;
   DiscountPercentage: string;
   MaxDiscountAmount: string;
+  Quantity: string;
   ExpiryDate: string;
   IsActive: boolean;
 };
@@ -20,6 +21,7 @@ const emptyForm: FormState = {
   Name: '',
   DiscountPercentage: '',
   MaxDiscountAmount: '',
+  Quantity: '',
   ExpiryDate: '',
   IsActive: true,
 };
@@ -63,6 +65,7 @@ export default function AdminVouchersPage() {
     const now = new Date();
 
     for (const v of vouchers) {
+      const isOutOfStock = v.Quantity !== null && v.Quantity !== undefined && Number(v.Quantity) <= 0;
       if (v.IsActive === false) {
         paused++;
       } else if (v.ExpiryDate) {
@@ -74,7 +77,13 @@ export default function AdminVouchersPage() {
             continue;
           }
         }
-        active++;
+        if (isOutOfStock) {
+          expired++;
+        } else {
+          active++;
+        }
+      } else if (isOutOfStock) {
+        expired++;
       } else {
         active++;
       }
@@ -105,15 +114,16 @@ export default function AdminVouchersPage() {
           isExpired = exp < now;
         }
       }
+      const isOutOfStock = v.Quantity !== null && v.Quantity !== undefined && Number(v.Quantity) <= 0;
 
       if (statusFilter === 'active') {
-        return v.IsActive !== false && !isExpired;
+        return v.IsActive !== false && !isExpired && !isOutOfStock;
       }
       if (statusFilter === 'paused') {
         return v.IsActive === false;
       }
       if (statusFilter === 'expired') {
-        return isExpired;
+        return isExpired || isOutOfStock;
       }
 
       return true;
@@ -142,8 +152,9 @@ export default function AdminVouchersPage() {
         { header: 'Tên chương trình', key: 'Name', width: 26 },
         { header: 'Tỷ lệ giảm (%)', transform: (v) => Number(v.DiscountPercentage) + '%', width: 16 },
         { header: 'Giảm tối đa (₫)', transform: (v) => v.MaxDiscountAmount ? Number(v.MaxDiscountAmount) : 'Không giới hạn', width: 20 },
+        { header: 'Số lượng phát hành', transform: (v) => v.Quantity != null ? (v.Quantity <= 0 ? 'Hết lượt (0)' : `${v.Quantity} lượt`) : 'Không giới hạn', width: 20 },
         { header: 'Ngày hết hạn', transform: (v) => v.ExpiryDate ? new Date(v.ExpiryDate).toLocaleDateString('vi-VN') : 'Vô thời hạn', width: 18 },
-        { header: 'Trạng thái', transform: (v) => v.IsActive === false ? 'Tạm ngưng' : 'Hoạt động', width: 16 },
+        { header: 'Trạng thái', transform: (v) => v.IsActive === false ? 'Tạm ngưng' : (v.Quantity != null && v.Quantity <= 0 ? 'Hết lượt' : 'Hoạt động'), width: 16 },
       ],
     });
   };
@@ -155,6 +166,7 @@ export default function AdminVouchersPage() {
       Name: voucher.Name,
       DiscountPercentage: String(voucher.DiscountPercentage ?? ''),
       MaxDiscountAmount: voucher.MaxDiscountAmount ? String(voucher.MaxDiscountAmount) : '',
+      Quantity: voucher.Quantity != null ? String(voucher.Quantity) : '',
       ExpiryDate: voucher.ExpiryDate ? String(voucher.ExpiryDate).split('T')[0] : '',
       IsActive: voucher.IsActive !== false,
     });
@@ -184,20 +196,27 @@ export default function AdminVouchersPage() {
     const Name = form.Name.trim();
     const DiscountPercentage = Number(form.DiscountPercentage);
     const MaxDiscountAmount = form.MaxDiscountAmount ? Number(form.MaxDiscountAmount) : undefined;
+    const Quantity = form.Quantity !== '' && form.Quantity !== null && form.Quantity !== undefined
+      ? parseInt(form.Quantity, 10)
+      : null;
     const ExpiryDate = form.ExpiryDate || undefined;
     if (!Code) { setFormError('Vui lòng nhập mã voucher.'); return; }
     if (!DiscountPercentage || DiscountPercentage <= 0 || DiscountPercentage > 100) {
       setFormError('Tỷ lệ giảm phải từ 1 đến 100%.');
       return;
     }
+    if (Quantity !== null && (Number.isNaN(Quantity) || Quantity < 0)) {
+      setFormError('Số lượng voucher không hợp lệ (phải >= 0 hoặc để trống nếu không giới hạn).');
+      return;
+    }
     setSaving(true);
     setFormError('');
     try {
       if (editingId) {
-        await api.updateVoucher(editingId, { Code, Name, DiscountPercentage, MaxDiscountAmount, ExpiryDate, IsActive: form.IsActive });
+        await api.updateVoucher(editingId, { Code, Name, DiscountPercentage, MaxDiscountAmount, Quantity, ExpiryDate, IsActive: form.IsActive });
         setSuccessMsg('Đã cập nhật voucher "' + Code + '".');
       } else {
-        await api.createVoucher({ Code, Name, DiscountPercentage, MaxDiscountAmount, ExpiryDate, IsActive: form.IsActive });
+        await api.createVoucher({ Code, Name, DiscountPercentage, MaxDiscountAmount, Quantity, ExpiryDate, IsActive: form.IsActive });
         setSuccessMsg('Đã tạo voucher "' + Code + '".');
       }
       void reload(true);
@@ -392,6 +411,7 @@ export default function AdminVouchersPage() {
                   <th className="px-5 py-4">Mã Voucher</th>
                   <th className="px-5 py-4">Chương trình & Mức giảm</th>
                   <th className="px-5 py-4">Giảm tối đa</th>
+                  <th className="px-5 py-4">Số lượng</th>
                   <th className="px-5 py-4">Hạn dùng</th>
                   <th className="px-5 py-4">Trạng thái</th>
                   <th className="px-5 py-4 text-right">Thao tác</th>
@@ -409,7 +429,8 @@ export default function AdminVouchersPage() {
                     }
                   }
 
-                  const isActive = v.IsActive !== false && !isExpired;
+                  const isOutOfStock = v.Quantity !== null && v.Quantity !== undefined && Number(v.Quantity) <= 0;
+                  const isActive = v.IsActive !== false && !isExpired && !isOutOfStock;
 
                   return (
                     <tr key={v.VoucherID} className="hover:bg-slate-800/40 transition">
@@ -448,6 +469,18 @@ export default function AdminVouchersPage() {
                         {v.MaxDiscountAmount ? formatMoney(Number(v.MaxDiscountAmount)) : 'Không giới hạn'}
                       </td>
 
+                      <td className="px-5 py-4 font-bold text-xs whitespace-nowrap">
+                        {v.Quantity != null ? (
+                          v.Quantity <= 0 ? (
+                            <span className="text-rose-400 font-extrabold">0 (Hết lượt)</span>
+                          ) : (
+                            <span className="text-cyan-400 font-bold">{v.Quantity} lượt</span>
+                          )
+                        ) : (
+                          <span className="text-slate-400 font-normal">Không giới hạn</span>
+                        )}
+                      </td>
+
                       <td className="px-5 py-4 text-xs whitespace-nowrap">
                         {v.ExpiryDate ? (
                           <span className={isExpired ? 'text-rose-400 font-bold' : 'text-slate-400'}>
@@ -462,6 +495,10 @@ export default function AdminVouchersPage() {
                         {isExpired ? (
                           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">
                             Đã hết hạn
+                          </span>
+                        ) : isOutOfStock ? (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                            Hết lượt
                           </span>
                         ) : v.IsActive === false ? (
                           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
@@ -586,16 +623,30 @@ export default function AdminVouchersPage() {
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
                   Giảm tối đa (VNĐ)
                 </label>
                 <input
                   type="number"
-                  placeholder="VD: 500000 (để trống nếu không giới hạn)"
+                  placeholder="Không giới hạn"
                   value={form.MaxDiscountAmount}
                   onChange={(e) => setForm({ ...form, MaxDiscountAmount: e.target.value })}
+                  className="w-full rounded-2xl bg-slate-950 border border-slate-800 p-3 text-sm text-white focus:outline-none focus:border-blue-500 transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                  Số lượng phát hành
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="Không giới hạn"
+                  value={form.Quantity}
+                  onChange={(e) => setForm({ ...form, Quantity: e.target.value })}
                   className="w-full rounded-2xl bg-slate-950 border border-slate-800 p-3 text-sm text-white focus:outline-none focus:border-blue-500 transition"
                 />
               </div>

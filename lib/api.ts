@@ -126,6 +126,7 @@ export type Voucher = {
   ImageUrl?: string | null;
   DiscountPercentage?: number | string | null;
   MaxDiscountAmount?: number | string | null;
+  Quantity?: number | null;
   ExpiryDate?: string | null;
   IsActive?: boolean;
 };
@@ -483,6 +484,7 @@ export const api = {
     ImageUrl?: string | null;
     DiscountPercentage: number | string;
     MaxDiscountAmount?: number | string | null;
+    Quantity?: number | null;
     ExpiryDate?: string | null;
     IsActive?: boolean;
   }) =>
@@ -499,6 +501,7 @@ export const api = {
       ImageUrl?: string | null;
       DiscountPercentage: number | string;
       MaxDiscountAmount?: number | string | null;
+      Quantity?: number | null;
       ExpiryDate?: string | null;
       IsActive?: boolean;
     }>

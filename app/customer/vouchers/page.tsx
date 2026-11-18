@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api, getStoredUser, type User, type Voucher } from "@/lib/api";
-import { getSelectedVoucherId, isVoucherValid, isVoucherExpired, saveSelectedVoucher } from "@/lib/vouchers";
+import { getSelectedVoucherId, isVoucherValid, isVoucherExpired, isVoucherOutOfStock, saveSelectedVoucher } from "@/lib/vouchers";
 
 export default function VouchersPage() {
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
@@ -29,7 +29,9 @@ export default function VouchersPage() {
 
   function choose(voucher: Voucher | null) {
     if (voucher && !isVoucherValid(voucher)) {
-      if (isVoucherExpired(voucher)) {
+      if (isVoucherOutOfStock(voucher)) {
+        setError(`Mã ${voucher.Code} đã hết lượt sử dụng.`);
+      } else if (isVoucherExpired(voucher)) {
         setError(`Mã ${voucher.Code} đã hết hạn sử dụng (${voucher.ExpiryDate ? new Date(voucher.ExpiryDate).toLocaleDateString("vi-VN") : ""}).`);
       } else {
         setError(`Mã ${voucher.Code} đã tạm dừng áp dụng.`);
@@ -201,6 +203,7 @@ export default function VouchersPage() {
             {vouchers.map((voucher) => {
               const valid = isVoucherValid(voucher);
               const expired = isVoucherExpired(voucher);
+              const outOfStock = isVoucherOutOfStock(voucher);
               const active = selected === voucher.VoucherID;
 
               return (
@@ -237,6 +240,19 @@ export default function VouchersPage() {
                   )}
 
                   <p className="mt-1 text-[11px] text-slate-500">
+                    Số lượng còn lại:{" "}
+                    {voucher.Quantity !== null && voucher.Quantity !== undefined ? (
+                      voucher.Quantity <= 0 ? (
+                        <span className="font-bold text-rose-500">Hết lượt (0)</span>
+                      ) : (
+                        <span className="font-semibold text-slate-800">{voucher.Quantity} lượt</span>
+                      )
+                    ) : (
+                      <span className="font-medium text-slate-700">Không giới hạn</span>
+                    )}
+                  </p>
+
+                  <p className="mt-1 text-[11px] text-slate-500">
                     Hạn dùng:{" "}
                     {voucher.ExpiryDate ? (
                       <span className={expired ? "font-bold text-rose-500" : "font-medium text-slate-700"}>
@@ -260,7 +276,9 @@ export default function VouchersPage() {
                     }`}
                   >
                     {!valid
-                      ? expired
+                      ? outOfStock
+                        ? "Hết lượt sử dụng"
+                        : expired
                         ? "Hết hạn sử dụng"
                         : "Ngừng áp dụng"
                       : active

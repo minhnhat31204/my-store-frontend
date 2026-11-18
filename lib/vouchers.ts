@@ -6,8 +6,13 @@ export const voucherStorageKey = (userId?: number | null) =>
 export const legacyVoucherStorageKey = (userId?: number | null) =>
   userId ? `manb-voucher-${userId}` : 'manb-voucher-guest';
 
+export function isVoucherOutOfStock(voucher: Voucher) {
+  return voucher.Quantity !== null && voucher.Quantity !== undefined && Number(voucher.Quantity) <= 0;
+}
+
 export function isVoucherValid(voucher: Voucher, now = new Date()) {
   if (voucher.IsActive === false) return false;
+  if (isVoucherOutOfStock(voucher)) return false;
   if (!voucher.ExpiryDate) return true;
   const expiry = new Date(voucher.ExpiryDate);
   if (Number.isNaN(expiry.getTime())) return false;
