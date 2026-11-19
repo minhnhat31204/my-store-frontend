@@ -326,6 +326,11 @@ export default function RegisterPage() {
       return setError('ID người dùng này đã có người sử dụng. Vui lòng chọn ID khác.');
     }
 
+    const cleanFullName = fullName.trim();
+    if (!cleanFullName) {
+      return setError('Vui lòng nhập Tên hiển thị.');
+    }
+
     setLoading(true);
     try {
       await api.register({
@@ -333,7 +338,7 @@ export default function RegisterPage() {
         otp,
         password,
         username: cleanUsername,
-        fullName: fullName.trim() || undefined,
+        fullName: cleanFullName,
       });
       router.push('/login?registered=1');
     } catch (err) {
@@ -697,7 +702,7 @@ export default function RegisterPage() {
               <div className="pt-1">
                 <div className="flex items-center justify-between mb-1">
                   <label htmlFor="register-fullname" className="block text-sm font-semibold text-slate-900">
-                    Tên hiển thị
+                    Tên hiển thị <span className="text-red-500 font-bold">*</span>
                   </label>
                   <span className="text-[11px] text-slate-400">
                     (Có thể sửa sau)
@@ -708,9 +713,18 @@ export default function RegisterPage() {
                   type="text"
                   maxLength={50}
                   value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Nguyễn Văn A (hoặc để trống)"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  onChange={(e) => {
+                    setFullName(e.target.value);
+                    if (error && error.includes('Tên hiển thị')) {
+                      setError('');
+                    }
+                  }}
+                  placeholder="Nhập tên hiển thị (VD: Nguyễn Văn A)"
+                  className={`w-full rounded-xl border bg-white px-4 py-3 text-sm text-slate-900 outline-none transition ${
+                    error && !fullName.trim()
+                      ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100'
+                      : 'border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                  }`}
                 />
                 <p className="mt-1 text-[11px] text-slate-400">
                   Tên hiển thị trên hồ sơ, bình luận và đơn hàng. Tên này có thể trùng lặp và bạn có thể thay đổi bất cứ lúc nào trong cài đặt tài khoản.
