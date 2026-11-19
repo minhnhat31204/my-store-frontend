@@ -425,6 +425,7 @@ export default function AccountPage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Refs to prevent background syncs from wiping user draft edits
   const initialFormLoadedRef = useRef(false);
@@ -869,7 +870,7 @@ export default function AccountPage() {
     }
   };
 
-  const handleDeleteAccount = async (e: React.FormEvent) => {
+  const handleRequestDelete = (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
     const confirmInput = deleteConfirmText.trim();
@@ -878,23 +879,24 @@ export default function AccountPage() {
       setDeleteError('Vui lòng nhập đúng chữ "XÓA TÀI KHOẢN" hoặc số điện thoại của bạn để xác nhận.');
       return;
     }
-    if (!window.confirm('CẢNH BÁO NGUY HIỂM: Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản này khỏi hệ thống?')) {
-      return;
-    }
+    setDeleteError('');
+    setShowDeleteConfirm(true);
+  };
+
+  const handleExecuteDeleteAccount = async () => {
+    if (!user) return;
     setDeleteLoading(true);
     setDeleteError('');
     try {
       await api.deleteUser(user.UserID);
-      localStorage.removeItem('user');
-      localStorage.removeItem('sessionToken');
-      localStorage.removeItem('remembered_phone');
-      sessionStorage.removeItem('user');
+      clearAllAuthSession();
       setUser(null);
       window.dispatchEvent(new Event('user-updated'));
       window.location.href = '/login?deleted=1';
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : 'Không thể xóa tài khoản.');
       setDeleteLoading(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -1976,7 +1978,7 @@ export default function AccountPage() {
                     </ul>
                   </div>
 
-                  <form onSubmit={handleDeleteAccount} className="mt-6 space-y-5">
+                  <form onSubmit={handleRequestDelete} className="mt-6 space-y-5">
                     <div>
                       <label htmlFor="delete-confirm" className="block text-xs font-bold text-slate-700">
                         Để xác nhận, vui lòng nhập chữ <strong className="text-red-600 font-black">XÓA TÀI KHOẢN</strong> hoặc số điện thoại của bạn:
@@ -2003,7 +2005,7 @@ export default function AccountPage() {
                       disabled={deleteLoading || !deleteConfirmText.trim()}
                       className="rounded-xl bg-red-600 px-6 py-3 text-xs font-black text-white shadow-md transition hover:bg-red-700 active:scale-95 disabled:opacity-50"
                     >
-                      {deleteLoading ? 'Đang xóa tài khoản…' : 'Xác nhận xóa tài khoản vĩnh viễn'}
+                      {deleteLoading ? 'Đang xử lý…' : 'Xác nhận xóa tài khoản vĩnh viễn'}
                     </button>
                   </form>
                 </section>
@@ -2046,6 +2048,41 @@ export default function AccountPage() {
                 className="w-full rounded-xl bg-red-600 py-2.5 text-xs font-bold text-white hover:bg-red-700 transition cursor-pointer shadow-xs"
               >
                 Đăng xuất
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL XÁC NHẬN XÓA TÀI KHOẢN */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl border border-red-100 text-center space-y-4">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-100 text-red-600">
+              <TrashIcon className="h-7 w-7" />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-slate-900">Xác nhận xóa tài khoản?</h3>
+              <p className="mt-1.5 text-xs text-slate-600 leading-relaxed">
+                Hành động này <strong className="text-red-600">không thể khôi phục</strong>. Toàn bộ thông tin cá nhân, giỏ hàng và dữ liệu tài khoản sẽ bị xóa vĩnh viễn.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5 pt-2">
+              <button
+                type="button"
+                disabled={deleteLoading}
+                onClick={() => setShowDeleteConfirm(false)}
+                className="w-full rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer disabled:opacity-50"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                disabled={deleteLoading}
+                onClick={handleExecuteDeleteAccount}
+                className="w-full rounded-xl bg-red-600 py-2.5 text-xs font-bold text-white hover:bg-red-700 transition cursor-pointer shadow-md disabled:opacity-50"
+              >
+                {deleteLoading ? 'Đang xóa...' : 'Xóa vĩnh viễn'}
               </button>
             </div>
           </div>

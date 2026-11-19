@@ -166,6 +166,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [badges, setBadges] = useState<{ pendingOrders?: number; pendingRefunds?: number; lowStock?: number; unreadSupport?: number }>({});
   const [currentTime, setCurrentTime] = useState('');
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const adminAvatarSrc = (typeof window !== 'undefined' && currentUser?.UserID && localStorage.getItem(`devora_avatar_${currentUser.UserID}`))
     || (currentUser?.Avatar ? resolveApiAssetUrl(currentUser.Avatar, currentUser.UserID) : '');
@@ -376,7 +377,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               </div>
 
               <button
-                onClick={handleLogout}
+                onClick={() => setShowLogoutConfirm(true)}
                 title="Đăng xuất"
                 className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer"
               >
@@ -387,7 +388,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </div>
           ) : (
             <button
-              onClick={handleLogout}
+              onClick={() => setShowLogoutConfirm(true)}
               className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition text-left cursor-pointer"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -463,7 +464,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <span>Trở về Trang chủ Shop</span>
             </Link>
             <button
-              onClick={handleLogout}
+              onClick={() => {
+                setMobileMenuOpen(false);
+                setShowLogoutConfirm(true);
+              }}
               className="text-xs font-bold text-rose-400 hover:text-rose-300 cursor-pointer"
             >
               Đăng xuất
@@ -542,6 +546,43 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </div>
         </footer>
       </div>
+
+      {/* Modal Xác nhận Đăng xuất Admin */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="w-full max-w-sm rounded-3xl bg-slate-900 p-6 shadow-2xl border border-slate-800 text-center space-y-4">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20">
+              <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-white">Xác nhận đăng xuất?</h3>
+              <p className="mt-1.5 text-xs text-slate-400">
+                Bạn có chắc chắn muốn đăng xuất khỏi trang Quản trị viên không?
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowLogoutConfirm(false)}
+                className="w-full rounded-xl border border-slate-700 bg-slate-800/80 py-2.5 text-xs font-bold text-slate-300 hover:bg-slate-700 transition cursor-pointer"
+              >
+                Ở lại
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full rounded-xl bg-rose-600 py-2.5 text-xs font-bold text-white hover:bg-rose-500 transition cursor-pointer shadow-lg shadow-rose-600/30"
+              >
+                Đăng xuất
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
