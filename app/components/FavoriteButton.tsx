@@ -1,12 +1,10 @@
 "use client";
 
 import { useState, type MouseEvent } from "react";
-import { useRouter } from "next/navigation";
-import { getStoredUser, type Product } from "@/lib/api";
+import { type Product } from "@/lib/api";
 import { useFavorites } from "./FavoritesProvider";
 
 export default function FavoriteButton({ product, className = "" }: { product: Product; className?: string }) {
-  const router = useRouter();
   const { isFavorite, toggleFavorite } = useFavorites();
   const [saving, setSaving] = useState(false);
   const active = isFavorite(product.ProductID);
@@ -14,12 +12,6 @@ export default function FavoriteButton({ product, className = "" }: { product: P
   async function handleClick(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault();
     event.stopPropagation();
-
-    const user = getStoredUser();
-    if (!user?.UserID) {
-      router.push("/login");
-      return;
-    }
 
     if (saving) return;
     setSaving(true);
@@ -39,7 +31,8 @@ export default function FavoriteButton({ product, className = "" }: { product: P
       disabled={saving}
       aria-label={active ? "Bỏ khỏi danh sách yêu thích" : "Thêm vào danh sách yêu thích"}
       aria-pressed={active}
-      className={`favorite-button ${active ? "is-favorite" : ""} ${className}`}
+      className={`favorite-button ${active ? "is-favorite text-red-600" : ""} ${className}`}
+      style={active ? { color: "#e11d48" } : undefined}
     >
       {active ? "♥" : "♡"}
     </button>

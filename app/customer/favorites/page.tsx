@@ -12,13 +12,6 @@ export default function FavoritesPage() {
   const router = useRouter();
   const { products, loading } = useFavorites();
 
-  useEffect(() => {
-    const user = getStoredUser();
-    if (!user) {
-      router.push("/login");
-    }
-  }, [router]);
-
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">

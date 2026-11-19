@@ -12,6 +12,8 @@ type FavoritesContextValue = {
 
 const FavoritesContext = createContext<FavoritesContextValue | null>(null);
 
+const GUEST_FAVORITES_KEY = "guest_favorites";
+
 export function FavoritesProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,6 +21,16 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     const user = getStoredUser();
     if (!user?.UserID) {
+      if (typeof window !== "undefined") {
+        try {
+          const raw = localStorage.getItem(GUEST_FAVORITES_KEY);
+          if (raw) {
+            setProducts(JSON.parse(raw));
+            setLoading(false);
+            return;
+          }
+        } catch {}
+      }
       setProducts([]);
       setLoading(false);
       return;
@@ -53,9 +65,19 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   const toggleFavorite = useCallback(async (product: Product) => {
     const user = getStoredUser();
     if (!user?.UserID) {
-      if (typeof window !== "undefined") {
-        window.location.href = "/login";
-      }
+      // Cho phép khách yêu thích mà không yêu cầu đăng nhập
+      setProducts((current) => {
+        const exists = current.some((item) => item.ProductID === product.ProductID);
+        const next = exists
+          ? current.filter((item) => item.ProductID !== product.ProductID)
+          : [...current, product];
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem(GUEST_FAVORITES_KEY, JSON.stringify(next));
+          } catch {}
+        }
+        return next;
+      });
       return;
     }
 
