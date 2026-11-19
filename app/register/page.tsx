@@ -25,7 +25,7 @@ function EyeOffIcon({ className = 'h-5 w-5' }: { className?: string }) {
   );
 }
 
-const OTP_RESEND_SECONDS = 60;
+const OTP_RESEND_SECONDS = 0;
 
 type RegisterStep = 'phone_otp' | 'password' | 'user_id';
 
@@ -231,6 +231,7 @@ export default function RegisterPage() {
   async function sendOtp() {
     setError('');
     setMessage('');
+    setPhoneStatus((prev) => ({ ...prev, isInvalid: false, message: '' }));
     const digits = phone.trim().replace(/\D/g, '');
     if (digits.length !== 10 || !/^0\d{9}$/.test(digits)) {
       setPhoneStatus({ checked: true, available: false, isDuplicate: false, isInvalid: true, message: 'Số điện thoại không hợp lệ (phải gồm 10 số bắt đầu bằng 0).' });
