@@ -534,6 +534,10 @@ export default function ProductDetailPage() {
                     <span className={Number(displayStock ?? 0) > 0 ? "text-emerald-700 font-semibold" : "text-rose-600 font-semibold"}>
                       {Number(displayStock ?? 0) > 0 ? `Còn ${displayStock} sản phẩm` : "Tạm hết hàng"}
                     </span>
+                    <span>•</span>
+                    <span className="font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">
+                      Đã bán {product.SoldCount || 0}
+                    </span>
                   </div>
 
                   <div className="mt-3.5 flex flex-wrap items-baseline gap-2.5">

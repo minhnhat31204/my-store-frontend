@@ -18,6 +18,7 @@ export type Product = {
   Price: number | string;
   DiscountPrice?: number | string | null;
   StockQuantity?: number;
+  SoldCount?: number;
   ImageUrl?: string | null;
   CategoryID?: number | null;
   CPU?: string | null;

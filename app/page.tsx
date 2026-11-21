@@ -538,9 +538,14 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: (e: React.Mo
             <strong>{price.toLocaleString("vi-VN")} ₫</strong>
             {oldPrice > price && <del>{oldPrice.toLocaleString("vi-VN")} ₫</del>}
           </div>
-          <p className={`mb-2 text-xs font-semibold ${Number(product.StockQuantity ?? 0) > 0 ? "text-slate-500" : "text-red-600"}`}>
-            {Number(product.StockQuantity ?? 0) > 0 ? `Còn ${product.StockQuantity} sản phẩm` : "Tạm hết hàng"}
-          </p>
+          <div className="flex items-center justify-between gap-1 mb-2 text-xs font-semibold">
+            <span className={Number(product.StockQuantity ?? 0) > 0 ? "text-slate-500" : "text-red-600"}>
+              {Number(product.StockQuantity ?? 0) > 0 ? `Còn ${product.StockQuantity} sản phẩm` : "Tạm hết hàng"}
+            </span>
+            <span className="shrink-0 text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-full text-[11px]">
+              Đã bán {product.SoldCount || 0}
+            </span>
+          </div>
           <button
             onClick={(e) => {
               e.stopPropagation();

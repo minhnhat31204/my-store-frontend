@@ -109,6 +109,7 @@ export default function AdminProducts() {
         { header: 'Giá gốc (₫)', transform: (p) => Number(p.Price || 0), width: 16 },
         { header: 'Giá khuyến mãi (₫)', transform: (p) => p.DiscountPrice ? Number(p.DiscountPrice) : '', width: 18 },
         { header: 'Tồn kho', transform: (p) => Number(p.StockQuantity || 0), width: 12 },
+        { header: 'Đã bán', transform: (p) => Number(p.SoldCount || 0), width: 12 },
         { header: 'CPU', key: 'CPU', width: 18 },
         { header: 'RAM', key: 'RAM', width: 14 },
         { header: 'Ổ cứng', key: 'Storage', width: 16 },
@@ -698,6 +699,7 @@ export default function AdminProducts() {
                   <th className="px-5 py-4">Tên & Cấu hình</th>
                   <th className="px-5 py-4">Giá bán / Hiển thị</th>
                   <th className="px-5 py-4">Tồn kho</th>
+                  <th className="px-5 py-4 text-center">Đã bán</th>
                   <th className="px-5 py-4 text-right">Thao tác</th>
                 </tr>
               </thead>
@@ -788,6 +790,11 @@ export default function AdminProducts() {
                             Còn {stock} máy
                           </span>
                         )}
+                      </td>
+                      <td className="px-5 py-4 whitespace-nowrap text-center">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                          {item.SoldCount || 0}
+                        </span>
                       </td>
                       <td className="px-5 py-4 text-right whitespace-nowrap space-x-2">
                         <button
@@ -918,11 +925,18 @@ export default function AdminProducts() {
                     </span>
                   </div>
 
-                  {/* Số lượng tồn kho */}
+                  {/* Số lượng tồn kho & Đã bán */}
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
-                      Số lượng tồn kho
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+                        Số lượng tồn kho
+                      </label>
+                      {selected && (
+                        <span className="text-[11px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-full">
+                          Đã bán: {selected.SoldCount || 0}
+                        </span>
+                      )}
+                    </div>
                     <input
                       type="number"
                       min="0"
