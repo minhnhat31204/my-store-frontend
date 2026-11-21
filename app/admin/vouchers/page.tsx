@@ -283,8 +283,15 @@ export default function AdminVouchersPage() {
             <span>Xuất Excel</span>
           </button>
           <button
-            onClick={() => void reload(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-950 hover:bg-slate-800 border border-slate-700/80 rounded-2xl text-xs font-bold text-slate-300 transition active:scale-95"
+            onClick={() => {
+              setSearchTerm('');
+              setStatusFilter('all');
+              setPage(1);
+              setError('');
+              setSuccessMsg('');
+              void reload(true);
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-950 hover:bg-slate-800 border border-slate-700/80 rounded-2xl text-xs font-bold text-slate-300 transition active:scale-95 cursor-pointer"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -411,8 +418,21 @@ export default function AdminVouchersPage() {
           <p>Đang tải danh sách mã giảm giá...</p>
         </div>
       ) : filteredVouchers.length === 0 ? (
-        <div className="p-16 text-center border border-dashed border-slate-800 rounded-3xl text-slate-400 bg-slate-900/30">
-          Không tìm thấy mã giảm giá nào phù hợp.
+        <div className="p-16 text-center border border-dashed border-slate-800 rounded-3xl text-slate-400 bg-slate-900/30 flex flex-col items-center justify-center gap-3">
+          <p>Không tìm thấy mã giảm giá nào phù hợp.</p>
+          {(searchTerm || statusFilter !== 'all') && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchTerm('');
+                setStatusFilter('all');
+                setPage(1);
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30 text-xs font-bold hover:bg-blue-600/30 transition cursor-pointer"
+            >
+              ✕ Xóa bộ lọc & tìm kiếm để hiển thị tất cả voucher
+            </button>
+          )}
         </div>
       ) : (
         <div className="overflow-hidden rounded-3xl border border-slate-800/80 bg-slate-900/90 shadow-2xl">

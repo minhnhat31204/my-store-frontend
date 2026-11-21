@@ -303,7 +303,15 @@ export default function AdminOrders() {
             <span>Xuất Excel ({filteredOrders.length})</span>
           </button>
           <button
-            onClick={() => void reload(true)}
+            onClick={() => {
+              setSearch('');
+              setStatusFilter('all');
+              setDateFilter('all');
+              setMonthFilter('');
+              setPage(1);
+              setFeedback('');
+              void reload(true);
+            }}
             className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-700/80 px-4 py-2.5 text-xs font-bold text-slate-300 transition active:scale-95 cursor-pointer"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -499,8 +507,23 @@ export default function AdminOrders() {
           <p>Đang đồng bộ danh sách đơn hàng...</p>
         </div>
       ) : filteredOrders.length === 0 ? (
-        <div className="p-16 text-center border border-dashed border-slate-800 rounded-3xl text-slate-400 bg-slate-900/30 min-h-[420px] flex flex-col items-center justify-center">
-          {orders.length ? 'Không tìm thấy đơn hàng nào khớp với điều kiện lọc.' : 'Chưa có đơn hàng nào trong hệ thống.'}
+        <div className="p-16 text-center border border-dashed border-slate-800 rounded-3xl text-slate-400 bg-slate-900/30 min-h-[420px] flex flex-col items-center justify-center gap-3">
+          <p>{orders.length ? 'Không tìm thấy đơn hàng nào khớp với điều kiện lọc.' : 'Chưa có đơn hàng nào trong hệ thống.'}</p>
+          {(search || statusFilter !== 'all' || dateFilter !== 'all' || monthFilter) && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch('');
+                setStatusFilter('all');
+                setDateFilter('all');
+                setMonthFilter('');
+                setPage(1);
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30 text-xs font-bold hover:bg-blue-600/30 transition cursor-pointer"
+            >
+              ✕ Xóa bộ lọc & tìm kiếm để hiển thị tất cả đơn hàng
+            </button>
+          )}
         </div>
       ) : (
         <div className="overflow-hidden rounded-3xl border border-slate-800/80 bg-slate-900/90 shadow-2xl min-h-[420px]">

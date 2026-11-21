@@ -138,7 +138,14 @@ export default function AdminUsers() {
             <span>Xuất Excel</span>
           </button>
           <button
-            onClick={() => void reload(true)}
+            onClick={() => {
+              setSearchTerm('');
+              setRoleFilter('all');
+              setDateFilter('all');
+              setCustomDate('');
+              setPage(1);
+              void reload(true);
+            }}
             className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-700/80 px-4 py-2.5 text-xs font-bold text-slate-300 transition active:scale-95 cursor-pointer"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -237,8 +244,27 @@ export default function AdminUsers() {
           <p>Đang tải danh sách người dùng...</p>
         </div>
       ) : filteredUsers.length === 0 ? (
-        <div className="p-16 text-center border border-dashed border-slate-800 rounded-3xl text-slate-400 bg-slate-900/30">
-          Không tìm thấy tài khoản người dùng phù hợp với từ khóa &ldquo;{searchTerm}&rdquo;.
+        <div className="p-16 text-center border border-dashed border-slate-800 rounded-3xl text-slate-400 bg-slate-900/30 flex flex-col items-center justify-center gap-3">
+          <p>
+            {searchTerm
+              ? `Không tìm thấy tài khoản người dùng phù hợp với từ khóa "${searchTerm}".`
+              : 'Không tìm thấy người dùng nào phù hợp với bộ lọc hiện tại.'}
+          </p>
+          {(searchTerm || roleFilter !== 'all' || dateFilter !== 'all' || customDate) && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchTerm('');
+                setRoleFilter('all');
+                setDateFilter('all');
+                setCustomDate('');
+                setPage(1);
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30 text-xs font-bold hover:bg-blue-600/30 transition cursor-pointer"
+            >
+              ✕ Xóa bộ lọc & tìm kiếm để hiển thị tất cả người dùng
+            </button>
+          )}
         </div>
       ) : (
         <div className="overflow-hidden rounded-3xl border border-slate-800/80 bg-slate-900/90 shadow-2xl">
