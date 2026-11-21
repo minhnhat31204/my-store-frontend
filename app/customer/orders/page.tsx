@@ -2,55 +2,36 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { api, getStoredUser, type StoreOrder } from "@/lib/api";
+import { api, getStoredUser, getCanonicalOrderStatus, type StoreOrder } from "@/lib/api";
 
-type OrderBucket = "all" | "payment" | "pending" | "processing" | "shipping" | "delivered" | "cancelled";
+type OrderBucket = "all" | "payment" | "pending" | "confirmed" | "shipping" | "delivered" | "cancelled";
 
 const ORDER_TABS: { id: OrderBucket; label: string }[] = [
   { id: "all", label: "Tất cả" },
   { id: "payment", label: "Chờ thanh toán" },
   { id: "pending", label: "Chờ xác nhận" },
-  { id: "processing", label: "Đang xử lý" },
-  { id: "shipping", label: "Đang giao" },
-  { id: "delivered", label: "Đã giao" },
+  { id: "confirmed", label: "Đã xác nhận" },
+  { id: "shipping", label: "Đang giao hàng" },
+  { id: "delivered", label: "Giao thành công" },
   { id: "cancelled", label: "Đã hủy" },
 ];
 
 function orderBucket(order: StoreOrder): Exclude<OrderBucket, "all"> {
-  const value = (order.Status || "Pending").trim().toLowerCase();
-  if (["cancelled", "canceled"].includes(value)) return "cancelled";
-  const paymentStatus = order.Payments?.[0]?.Status?.toUpperCase();
-  if (order.PaymentMethod === "PayOS" && paymentStatus !== "PAID") return "payment";
-  if (order.PaymentMethod === "COD" && value === "pending") return "payment";
-
-  if (["shipping", "shipped", "delivering", "on delivery"].includes(value)) return "shipping";
-  if (["completed", "delivered"].includes(value)) return "delivered";
-  if (["confirmed", "processing", "preparing", "ready"].includes(value)) return "processing";
+  const canonical = getCanonicalOrderStatus(order);
+  const key = canonical.key.toLowerCase();
+  if (key === "payment") return "payment";
+  if (key === "confirmed") return "confirmed";
+  if (key === "shipping") return "shipping";
+  if (key === "delivered") return "delivered";
+  if (key === "cancelled") return "cancelled";
   return "pending";
-}
-
-function statusLabel(status?: string | null) {
-  const value = (status || "Pending").toLowerCase();
-  if (value === "pending") return "Chờ xác nhận";
-  if (["confirmed", "processing", "preparing", "ready"].includes(value)) return "Đang xử lý";
-  if (["shipping", "shipped", "delivering", "on delivery"].includes(value)) return "Đang giao";
-  if (["completed", "delivered"].includes(value)) return "Đã giao";
-  if (["cancelled", "canceled"].includes(value)) return "Đã hủy";
-  return status || "Chờ xác nhận";
-}
-
-function paymentLabel(order: StoreOrder) {
-  if (order.PaymentMethod === "COD") return "Chờ thanh toán (COD)";
-  const status = order.Payments?.[0]?.Status?.toUpperCase();
-  if (status === "FAILED") return "Thanh toán lỗi · cần thử lại";
-  return "Chờ thanh toán";
 }
 
 function statusStyle(bucket: OrderBucket) {
   if (bucket === "payment") return "bg-amber-100 text-amber-800";
-  if (bucket === "pending") return "bg-slate-100 text-slate-700";
-  if (bucket === "processing") return "bg-blue-100 text-blue-800";
-  if (bucket === "shipping") return "bg-violet-100 text-violet-800";
+  if (bucket === "pending") return "bg-yellow-50 text-yellow-800 border border-yellow-200";
+  if (bucket === "confirmed") return "bg-sky-100 text-sky-800";
+  if (bucket === "shipping") return "bg-purple-100 text-purple-800";
   if (bucket === "delivered") return "bg-emerald-100 text-emerald-800";
   if (bucket === "cancelled") return "bg-red-100 text-red-700";
   return "bg-blue-50 text-blue-700";
@@ -122,7 +103,7 @@ export default function OrdersPage() {
           {visibleOrders.length === 0 ? <div className="mt-3 rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500">Chưa có đơn hàng ở mục “{ORDER_TABS.find((tab) => tab.id === activeBucket)?.label}”.</div> : <div className="mt-3 space-y-4">
           {visibleOrders.map((order) => {
             const bucket = orderBucket(order);
-            const label = bucket === "payment" ? paymentLabel(order) : statusLabel(order.Status);
+            const canonical = getCanonicalOrderStatus(order);
             return (
             <Link key={order.OrderID} href={`/customer/orders/${order.OrderID}`} className="block rounded-2xl bg-white p-5 shadow-sm transition hover:shadow-md">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -134,7 +115,7 @@ export default function OrdersPage() {
                       : "Ngày đặt chưa cập nhật"}
                   </p>
                 </div>
-                <span className={`rounded-full px-3 py-1 text-sm font-bold ${statusStyle(bucket)}`}>{label}</span>
+                <span className={`rounded-full px-3 py-1 text-sm font-bold ${statusStyle(bucket)}`}>{canonical.label}</span>
               </div>
               <p className="mt-4 line-clamp-2 text-sm text-slate-600">
                 {order.OrderItems?.length

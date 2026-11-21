@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { api, getPrimaryProductImage, getStoredUser, type StoreOrder } from "@/lib/api";
+import { api, getPrimaryProductImage, getStoredUser, getCanonicalOrderStatus, type StoreOrder } from "@/lib/api";
 
 function statusLabel(status?: string | null) {
   const value = (status || "Pending").toLowerCase();
@@ -91,6 +91,19 @@ export default function OrderDetailPage() {
       if (!found) {
         setError("Không tìm thấy đơn hàng này trong tài khoản của bạn.");
       } else {
+        const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+        const isCancelledFromPayOS = params && (params.get("payment") === "cancel" || params.get("status") === "cancel" || params.get("cancel") === "true" || params.get("status") === "CANCELLED");
+        if (isCancelledFromPayOS && !["cancelled", "canceled"].includes(String(found.Status || "").toLowerCase())) {
+          try {
+            const cancelRes = await api.cancelOrder(found.OrderID, user.UserID);
+            if (cancelRes?.order) {
+              setOrder(cancelRes.order);
+              setRefundPhone(cancelRes.order.RecipientPhone || user.Phone || "");
+              setRefundBankHolder(cancelRes.order.RecipientName || user.FullName || "");
+              return;
+            }
+          } catch {}
+        }
         setOrder(found);
         setRefundPhone(found.RecipientPhone || user.Phone || "");
         setRefundBankHolder(found.RecipientName || user.FullName || "");
@@ -211,10 +224,11 @@ export default function OrderDetailPage() {
   const isPaid = order?.Payments?.[0]?.Status === "PAID";
   const orderStatus = (order?.Status || "").toLowerCase();
   const isCod = order?.PaymentMethod?.trim().toUpperCase() === "COD";
-  const canSimpleCancel = !isPaid && (orderStatus === "pending" || (isCod && ["confirmed", "processing", "preparing", "ready"].includes(orderStatus)));
-  const canRefundCancel = isPaid && !["shipping", "shipped", "delivering", "delivered", "completed", "cancelled", "canceled", "refundpending", "pending refund"].includes(orderStatus);
-  const isRefundPending = ["refundpending", "pending refund"].includes(orderStatus) || order?.RefundStatus === "pending";
-  const isDelivered = ["completed", "complete", "delivered", "đã giao", "giao thành công", "đã giao thành công"].includes(orderStatus);
+  const canonicalStatus = getCanonicalOrderStatus(order);
+  const canSimpleCancel = !isPaid && canonicalStatus.key !== "Cancelled" && ["payment", "pending", "confirmed"].includes(canonicalStatus.key.toLowerCase());
+  const canRefundCancel = isPaid && !["shipping", "shipped", "delivering", "delivered", "completed", "cancelled", "canceled", "refundpending", "pending refund"].includes(orderStatus) && canonicalStatus.key !== "Cancelled";
+  const isRefundPending = canonicalStatus.key === "RefundPending" || ["refundpending", "pending refund"].includes(orderStatus) || order?.RefundStatus === "pending";
+  const isDelivered = canonicalStatus.key === "Delivered" || ["completed", "complete", "delivered", "đã giao", "giao thành công", "đã giao thành công"].includes(orderStatus);
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
@@ -312,14 +326,16 @@ export default function OrderDetailPage() {
                 <h1 className="mt-1 text-3xl font-black">Đơn hàng #{order.OrderID}</h1>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-blue-100 px-4 py-2 text-sm font-bold text-blue-800">
-                  {isRefundPending
-                    ? "Chờ hoàn tiền"
-                    : order.PaymentMethod === "COD" && !["cancelled", "canceled", "delivered", "completed"].includes((order.Status || "").toLowerCase())
-                    ? "Chờ thanh toán (COD)"
-                    : order.PaymentMethod === "PayOS" && order.Payments?.[0]?.Status !== "PAID" && !["cancelled", "canceled"].includes((order.Status || "").toLowerCase())
-                    ? "Chờ thanh toán"
-                    : statusLabel(order.Status)}
+                <span className={`rounded-full px-4 py-2 text-sm font-bold ${
+                  canonicalStatus.key === 'Payment' ? 'bg-amber-100 text-amber-800' :
+                  canonicalStatus.key === 'Pending' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                  canonicalStatus.key === 'Confirmed' ? 'bg-sky-100 text-sky-800' :
+                  canonicalStatus.key === 'Shipping' ? 'bg-purple-100 text-purple-800' :
+                  canonicalStatus.key === 'Delivered' ? 'bg-emerald-100 text-emerald-800' :
+                  canonicalStatus.key === 'Cancelled' ? 'bg-rose-100 text-rose-800' :
+                  'bg-blue-100 text-blue-800'
+                }`}>
+                  {canonicalStatus.label}
                 </span>
 
                 {/* Nút hủy đơn thường (chưa thanh toán) */}

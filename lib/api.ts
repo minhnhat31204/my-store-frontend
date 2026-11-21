@@ -256,6 +256,113 @@ export type StoreOrder = {
   }>;
 };
 
+export interface CanonicalOrderStatus {
+  key: 'Payment' | 'Pending' | 'Confirmed' | 'Shipping' | 'Delivered' | 'Cancelled' | 'RefundPending' | 'Returned';
+  label: string;
+  badgeStyle: string;
+}
+
+export function getCanonicalOrderStatus(order?: Partial<StoreOrder> | null): CanonicalOrderStatus {
+  if (!order) {
+    return {
+      key: 'Pending',
+      label: 'Chờ xác nhận',
+      badgeStyle: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+    };
+  }
+
+  const rawStatus = String(order.Status || 'Pending').trim().toLowerCase();
+  const paymentMethod = String(order.PaymentMethod || '').trim().toUpperCase();
+  const latestPaymentStatus = String(order.Payments?.[0]?.Status || '').toUpperCase();
+
+  // 1. Đã hủy
+  if (['cancelled', 'canceled', 'đã hủy'].includes(rawStatus)) {
+    return {
+      key: 'Cancelled',
+      label: 'Đã hủy',
+      badgeStyle: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
+    };
+  }
+
+  // PayOS payment cancelled / expired without being completed -> Đã hủy
+  if (
+    paymentMethod === 'PAYOS' &&
+    ['CANCELLED', 'EXPIRED'].includes(latestPaymentStatus) &&
+    !['confirmed', 'shipping', 'shipped', 'delivered', 'completed'].includes(rawStatus)
+  ) {
+    return {
+      key: 'Cancelled',
+      label: 'Đã hủy',
+      badgeStyle: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
+    };
+  }
+
+  // 2. Yêu cầu hoàn tiền / Đã trả hàng
+  if (
+    ['refundpending', 'pending refund', 'cho hoan tien'].includes(rawStatus) ||
+    order.RefundStatus === 'pending'
+  ) {
+    return {
+      key: 'RefundPending',
+      label: 'Yêu cầu hoàn tiền',
+      badgeStyle: 'bg-pink-500/10 text-pink-400 border-pink-500/20',
+    };
+  }
+  if (['returned', 'da tra hang', 'tra hang'].includes(rawStatus)) {
+    return {
+      key: 'Returned',
+      label: 'Đã trả hàng',
+      badgeStyle: 'bg-teal-500/10 text-teal-300 border-teal-500/20',
+    };
+  }
+
+  // 3. Giao thành công
+  if (['delivered', 'completed', 'complete', 'giao thành công', 'đã giao', 'đã giao thành công'].includes(rawStatus)) {
+    return {
+      key: 'Delivered',
+      label: 'Giao thành công',
+      badgeStyle: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+    };
+  }
+
+  // 4. Đang giao hàng
+  if (['shipping', 'shipped', 'delivering', 'on delivery', 'đang giao', 'đang giao hàng'].includes(rawStatus)) {
+    return {
+      key: 'Shipping',
+      label: 'Đang giao hàng',
+      badgeStyle: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+    };
+  }
+
+  // 5. Đã xác nhận (bao gồm cả Confirmed, Processing, Preparing, Ready)
+  if (['confirmed', 'processing', 'preparing', 'ready', 'đã xác nhận', 'đang chuẩn bị', 'đang xử lý'].includes(rawStatus)) {
+    return {
+      key: 'Confirmed',
+      label: 'Đã xác nhận',
+      badgeStyle: 'bg-sky-500/10 text-sky-400 border-sky-500/20',
+    };
+  }
+
+  // 6. Chờ thanh toán
+  if (
+    ['awaitingpayment', 'payment', 'paymentpending'].includes(rawStatus) ||
+    (paymentMethod === 'PAYOS' && latestPaymentStatus !== 'PAID')
+  ) {
+    return {
+      key: 'Payment',
+      label: 'Chờ thanh toán',
+      badgeStyle: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+    };
+  }
+
+  // 7. Chờ xác nhận (Mặc định: đơn COD hoặc đơn PayOS đã thanh toán xong đang chờ shop duyệt)
+  return {
+    key: 'Pending',
+    label: 'Chờ xác nhận',
+    badgeStyle: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+  };
+}
+
 export type OrderNotification = {
   NotificationID: number;
   UserID: number;

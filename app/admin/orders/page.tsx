@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { api, getPrimaryProductImage, type StoreOrder } from '@/lib/api';
+import { api, getPrimaryProductImage, getCanonicalOrderStatus, type StoreOrder } from '@/lib/api';
 import Pagination from '@/app/admin/components/Pagination';
 import DateFilterBar, { matchesDateFilter, type DateFilterPeriod } from '@/app/admin/components/DateFilterBar';
 import { useAdminData } from '@/lib/useAdminData';
@@ -11,21 +11,22 @@ import { printOrderInvoice } from '@/lib/printUtils';
 
 const STATUS_ROW_1 = [
   { value: 'all', label: 'Tất cả đơn' },
+  { value: 'Payment', label: 'Chờ thanh toán' },
   { value: 'Pending', label: 'Chờ xác nhận' },
   { value: 'Confirmed', label: 'Đã xác nhận' },
-  { value: 'Processing', label: 'Đang chuẩn bị' },
   { value: 'Shipping', label: 'Đang giao hàng' },
   { value: 'Delivered', label: 'Giao thành công' },
+  { value: 'Cancelled', label: 'Đã hủy' },
 ];
 
 const STATUS_ROW_2 = [
-  { value: 'Cancelled', label: 'Đã hủy' },
-  { value: 'Returned', label: 'Đã trả hàng (Hoàn tiền)' },
   { value: 'RefundPending', label: 'Yêu cầu hoàn tiền' },
+  { value: 'Returned', label: 'Đã trả hàng (Hoàn tiền)' },
 ];
 
 const STATUS_OPTIONS = [
-  { value: 'Pending', label: 'Chờ xác nhận', style: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
+  { value: 'Payment', label: 'Chờ thanh toán', style: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
+  { value: 'Pending', label: 'Chờ xác nhận', style: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' },
   { value: 'Confirmed', label: 'Đã xác nhận', style: 'bg-sky-500/10 text-sky-400 border-sky-500/20' },
   { value: 'Processing', label: 'Đang chuẩn bị hàng', style: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' },
   { value: 'Shipping', label: 'Đang giao hàng', style: 'bg-purple-500/10 text-purple-400 border-purple-500/20' },
@@ -36,30 +37,41 @@ const STATUS_OPTIONS = [
 ];
 
 // Danh sách các trạng thái Admin được phép chủ động chọn thủ công
-// (Lưu ý: RefundPending và Returned do quy trình Hoàn tiền tự động kích hoạt)
 const ADMIN_SELECTABLE_STATUSES = [
   { value: 'Pending', label: 'Chờ xác nhận' },
   { value: 'Confirmed', label: 'Đã xác nhận' },
-  { value: 'Processing', label: 'Đang chuẩn bị hàng' },
   { value: 'Shipping', label: 'Đang giao hàng' },
   { value: 'Delivered', label: 'Giao thành công' },
   { value: 'Cancelled', label: 'Đã hủy' },
 ];
 
-function normalizedStatus(status?: string | null) {
-  const value = (status || 'Pending').toLowerCase();
+function normalizedStatus(orderOrStatus: StoreOrder | string | null | undefined): string {
+  if (typeof orderOrStatus === 'object' && orderOrStatus !== null) {
+    return getCanonicalOrderStatus(orderOrStatus).key;
+  }
+  const value = (orderOrStatus || 'Pending').toLowerCase();
+  if (['payment', 'awaitingpayment', 'paymentpending'].includes(value)) return 'Payment';
   if (['shipped', 'delivering'].includes(value)) return 'Shipping';
   if (['completed', 'complete'].includes(value)) return 'Delivered';
   if (['canceled', 'cancel'].includes(value)) return 'Cancelled';
-  if (['preparing', 'ready'].includes(value)) return 'Processing';
+  if (['confirmed', 'processing', 'preparing', 'ready'].includes(value)) return 'Confirmed';
   if (['returned', 'da tra hang', 'tra hang'].includes(value)) return 'Returned';
   if (['refundpending', 'pending refund', 'cho hoan tien'].includes(value)) return 'RefundPending';
   return STATUS_OPTIONS.find((item) => item.value.toLowerCase() === value)?.value || 'Pending';
 }
 
-function statusInfo(status?: string | null) {
-  const value = normalizedStatus(status);
-  return STATUS_OPTIONS.find((item) => item.value === value) || STATUS_OPTIONS[0];
+function statusInfo(orderOrStatus: StoreOrder | string | null | undefined) {
+  if (typeof orderOrStatus === 'object' && orderOrStatus !== null) {
+    const canonical = getCanonicalOrderStatus(orderOrStatus);
+    const matched = STATUS_OPTIONS.find((item) => item.value === canonical.key);
+    return {
+      value: canonical.key,
+      label: canonical.label,
+      style: matched ? matched.style : canonical.badgeStyle,
+    };
+  }
+  const value = normalizedStatus(orderOrStatus);
+  return STATUS_OPTIONS.find((item) => item.value === value) || STATUS_OPTIONS[1];
 }
 
 function money(value?: number | string | null) {
@@ -146,7 +158,7 @@ export default function AdminOrders() {
         { header: 'SĐT người nhận', key: 'RecipientPhone', width: 16 },
         { header: 'Địa chỉ giao hàng', key: 'ShippingAddress', width: 35 },
         { header: 'Phương thức thanh toán', key: 'PaymentMethod', width: 22 },
-        { header: 'Trạng thái đơn hàng', transform: (o) => statusInfo(o.Status).label, width: 20 },
+        { header: 'Trạng thái đơn hàng', transform: (o) => statusInfo(o).label, width: 20 },
         { header: 'Mã voucher áp dụng', key: 'VoucherCode', width: 18 },
         { header: 'Tổng tiền hàng', transform: (o) => Number(o.TotalAmount || 0), width: 16 },
         { header: 'Mã vận đơn', key: 'TrackingNumber', width: 16 },
@@ -160,7 +172,7 @@ export default function AdminOrders() {
     const map: Record<string, number> = { all: orders.length };
     for (const opt of STATUS_OPTIONS) map[opt.value] = 0;
     for (const o of orders) {
-      const s = normalizedStatus(o.Status);
+      const s = normalizedStatus(o);
       map[s] = (map[s] || 0) + 1;
     }
     return map;
@@ -189,7 +201,7 @@ export default function AdminOrders() {
           item.Product?.Series,
         ]),
       ].some((value) => value && value.toString().toLowerCase().includes(query));
-      const matchesStatus = statusFilter === 'all' || normalizedStatus(order.Status) === statusFilter;
+      const matchesStatus = statusFilter === 'all' || normalizedStatus(order) === statusFilter;
       const matchesDate = matchesDateFilter(order.OrderDate || (order as any).CreatedAt, dateFilter, customDate);
       const orderMonth = monthKey(order.OrderDate);
       return matchesQuery && matchesStatus && matchesDate && (!monthFilter || orderMonth === monthFilter);
@@ -201,7 +213,7 @@ export default function AdminOrders() {
 
   const openOrder = (order: StoreOrder) => {
     setSelected(order);
-    setDraftStatus(normalizedStatus(order.Status));
+    setDraftStatus(normalizedStatus(order));
     setCancellationReason('');
     setFeedback('');
     setCarrierName(order.CarrierName || '');
@@ -250,20 +262,20 @@ export default function AdminOrders() {
 
   const saveStatus = async () => {
     if (!selected) return;
-    if (draftStatus === 'Cancelled' && normalizedStatus(selected.Status) !== 'Cancelled' && !cancellationReason.trim()) {
+    if (draftStatus === 'Cancelled' && normalizedStatus(selected) !== 'Cancelled' && !cancellationReason.trim()) {
       setFeedback('Vui lòng nhập lý do admin chủ động hủy đơn hàng.');
       return;
     }
     // Nếu chuyển sang "Giao thành công" (Delivered) -> Hiện popup xác nhận chắc chắn
-    if (draftStatus === 'Delivered' && normalizedStatus(selected.Status) !== 'Delivered') {
+    if (draftStatus === 'Delivered' && normalizedStatus(selected) !== 'Delivered') {
       setConfirmDeliveredModal(true);
       return;
     }
     await executeSaveStatus();
   };
 
-  const selectedStatus = statusInfo(selected?.Status);
-  const isDelivered = ['delivered', 'completed', 'complete'].includes((selected?.Status || '').trim().toLowerCase());
+  const selectedStatus = statusInfo(selected);
+  const isDelivered = normalizedStatus(selected) === 'Delivered';
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn">
@@ -510,7 +522,7 @@ export default function AdminOrders() {
           <div className="divide-y divide-slate-800/80">
             {visibleOrders.map((order, index) => {
               const isSelected = selectedOrderIds.includes(order.OrderID);
-              const status = statusInfo(order.Status);
+              const status = statusInfo(order);
               const stt = (currentPage - 1) * 20 + index + 1;
 
               return (
@@ -844,14 +856,14 @@ export default function AdminOrders() {
 
                 <button
                   onClick={saveStatus}
-                  disabled={isDelivered || saving || draftStatus === normalizedStatus(selected.Status)}
+                  disabled={isDelivered || saving || draftStatus === normalizedStatus(selected)}
                   className="rounded-2xl bg-emerald-600 hover:bg-emerald-500 px-6 py-2.5 text-xs font-bold text-white transition disabled:opacity-50 shadow-lg shadow-emerald-950/50"
                 >
                   {isDelivered ? 'Đã Giao Thành Công' : saving ? 'Đang Lưu...' : 'Cập Nhật Trạng Thái'}
                 </button>
               </div>
 
-              {draftStatus === 'Cancelled' && normalizedStatus(selected.Status) !== 'Cancelled' && (
+              {draftStatus === 'Cancelled' && normalizedStatus(selected) !== 'Cancelled' && (
                 <div className="mt-3">
                   <label htmlFor="admin-cancellation-reason" className="mb-1.5 block text-[11px] font-bold text-rose-300">
                     Lý do admin hủy đơn <span className="text-rose-400">*</span>

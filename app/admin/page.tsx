@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { api, type Product, type StoreOrder, type User } from '@/lib/api';
+import { api, getCanonicalOrderStatus, type Product, type StoreOrder, type User } from '@/lib/api';
 import { useAdminData } from '@/lib/useAdminData';
 import { exportDashboardRevenueReport } from '@/lib/exportRevenueReport';
 
@@ -403,9 +403,7 @@ export default function AdminDashboard() {
             ) : (
               <div className="space-y-3">
                 {recentOrders.map((order) => {
-                  const status = (order.Status || 'pending').toLowerCase();
-                  const isDone = isDelivered(status);
-                  const isCancel = status === 'cancelled';
+                  const canonical = getCanonicalOrderStatus(order);
                   return (
                     <div
                       key={order.OrderID}
@@ -423,12 +421,8 @@ export default function AdminDashboard() {
 
                       <div className="text-right shrink-0">
                         <p className="text-xs font-bold text-emerald-400">{formatMoney(Number(order.TotalAmount || 0))}</p>
-                        <span className={`inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          isDone ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                          isCancel ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' :
-                          'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                        }`}>
-                          {order.Status || 'Chờ duyệt'}
+                        <span className={`inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${canonical.badgeStyle}`}>
+                          {canonical.label}
                         </span>
                       </div>
                     </div>
