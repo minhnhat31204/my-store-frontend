@@ -187,7 +187,13 @@ export default function AdminCategoriesPage() {
           </div>
           <button
             type="button"
-            onClick={() => void reloadCat(true)}
+            onClick={() => {
+              setSearch('');
+              setPage(1);
+              setError('');
+              setSuccess('');
+              void reloadCat(true);
+            }}
             disabled={loading}
             className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-xs font-semibold text-slate-200 transition hover:bg-slate-800 disabled:opacity-50 cursor-pointer"
           >
@@ -213,7 +219,21 @@ export default function AdminCategoriesPage() {
       {loading ? (
         <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-14 text-center text-slate-400">Đang tải danh mục…</div>
       ) : filteredCategories.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 p-14 text-center text-slate-400">{categories.length ? 'Không tìm thấy danh mục phù hợp.' : 'Chưa có danh mục. Hãy tạo danh mục đầu tiên.'}</div>
+        <div className="rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 p-14 text-center text-slate-400 space-y-3">
+          <p>{categories.length ? 'Không tìm thấy danh mục phù hợp.' : 'Chưa có danh mục. Hãy tạo danh mục đầu tiên.'}</p>
+          {search && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch('');
+                setPage(1);
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30 text-xs font-bold hover:bg-blue-600/30 transition cursor-pointer"
+            >
+              ✕ Xóa tìm kiếm để hiển thị tất cả danh mục
+            </button>
+          )}
+        </div>
       ) : (
         <div className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/80 shadow-xl">
           <div className="hidden grid-cols-[60px_minmax(0,1fr)_160px_180px] gap-4 border-b border-slate-800 bg-slate-950/60 px-5 py-3 text-[11px] font-black uppercase tracking-wider text-slate-500 sm:grid"><span className="text-center">STT</span><span>Danh mục</span><span>Sản phẩm</span><span className="text-right">Thao tác</span></div>
