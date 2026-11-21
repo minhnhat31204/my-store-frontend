@@ -12,6 +12,8 @@ type FormState = {
   DiscountPercentage: string;
   MaxDiscountAmount: string;
   Quantity: string;
+  Condition: string;
+  MinOrderAmount: string;
   ExpiryDate: string;
   IsActive: boolean;
 };
@@ -22,6 +24,8 @@ const emptyForm: FormState = {
   DiscountPercentage: '',
   MaxDiscountAmount: '',
   Quantity: '',
+  Condition: '',
+  MinOrderAmount: '',
   ExpiryDate: '',
   IsActive: true,
 };
@@ -152,6 +156,7 @@ export default function AdminVouchersPage() {
         { header: 'Tên chương trình', key: 'Name', width: 26 },
         { header: 'Tỷ lệ giảm (%)', transform: (v) => Number(v.DiscountPercentage) + '%', width: 16 },
         { header: 'Giảm tối đa (₫)', transform: (v) => v.MaxDiscountAmount ? Number(v.MaxDiscountAmount) : 'Không giới hạn', width: 20 },
+        { header: 'Điều kiện áp dụng', transform: (v) => v.Condition || (v.MinOrderAmount ? `Đơn từ ${Number(v.MinOrderAmount).toLocaleString('vi-VN')} ₫` : 'Không có'), width: 25 },
         { header: 'Số lượng phát hành', transform: (v) => v.Quantity != null ? (v.Quantity <= 0 ? 'Hết lượt (0)' : `${v.Quantity} lượt`) : 'Không giới hạn', width: 20 },
         { header: 'Ngày hết hạn', transform: (v) => v.ExpiryDate ? new Date(v.ExpiryDate).toLocaleDateString('vi-VN') : 'Vô thời hạn', width: 18 },
         { header: 'Trạng thái', transform: (v) => v.IsActive === false ? 'Tạm ngưng' : (v.Quantity != null && v.Quantity <= 0 ? 'Hết lượt' : 'Hoạt động'), width: 16 },
@@ -167,6 +172,8 @@ export default function AdminVouchersPage() {
       DiscountPercentage: String(voucher.DiscountPercentage ?? ''),
       MaxDiscountAmount: voucher.MaxDiscountAmount ? String(voucher.MaxDiscountAmount) : '',
       Quantity: voucher.Quantity != null ? String(voucher.Quantity) : '',
+      Condition: voucher.Condition ? String(voucher.Condition) : '',
+      MinOrderAmount: voucher.MinOrderAmount != null ? String(voucher.MinOrderAmount) : '',
       ExpiryDate: voucher.ExpiryDate ? String(voucher.ExpiryDate).split('T')[0] : '',
       IsActive: voucher.IsActive !== false,
     });
@@ -199,6 +206,8 @@ export default function AdminVouchersPage() {
     const Quantity = form.Quantity !== '' && form.Quantity !== null && form.Quantity !== undefined
       ? parseInt(form.Quantity, 10)
       : null;
+    const Condition = form.Condition.trim() || undefined;
+    const MinOrderAmount = form.MinOrderAmount ? Number(form.MinOrderAmount) : undefined;
     const ExpiryDate = form.ExpiryDate || undefined;
     if (!Code) { setFormError('Vui lòng nhập mã voucher.'); return; }
     if (!DiscountPercentage || DiscountPercentage <= 0 || DiscountPercentage > 100) {
@@ -209,14 +218,18 @@ export default function AdminVouchersPage() {
       setFormError('Số lượng voucher không hợp lệ (phải >= 0 hoặc để trống nếu không giới hạn).');
       return;
     }
+    if (MinOrderAmount !== undefined && (Number.isNaN(MinOrderAmount) || MinOrderAmount < 0)) {
+      setFormError('Số tiền đơn hàng tối thiểu không hợp lệ.');
+      return;
+    }
     setSaving(true);
     setFormError('');
     try {
       if (editingId) {
-        await api.updateVoucher(editingId, { Code, Name, DiscountPercentage, MaxDiscountAmount, Quantity, ExpiryDate, IsActive: form.IsActive });
+        await api.updateVoucher(editingId, { Code, Name, DiscountPercentage, MaxDiscountAmount, Quantity, Condition, MinOrderAmount, ExpiryDate, IsActive: form.IsActive });
         setSuccessMsg('Đã cập nhật voucher "' + Code + '".');
       } else {
-        await api.createVoucher({ Code, Name, DiscountPercentage, MaxDiscountAmount, Quantity, ExpiryDate, IsActive: form.IsActive });
+        await api.createVoucher({ Code, Name, DiscountPercentage, MaxDiscountAmount, Quantity, Condition, MinOrderAmount, ExpiryDate, IsActive: form.IsActive });
         setSuccessMsg('Đã tạo voucher "' + Code + '".');
       }
       void reload(true);
@@ -412,6 +425,7 @@ export default function AdminVouchersPage() {
                   <th className="px-5 py-4">Chương trình & Mức giảm</th>
                   <th className="px-5 py-4">Giảm tối đa</th>
                   <th className="px-5 py-4">Số lượng</th>
+                  <th className="px-5 py-4">Điều kiện</th>
                   <th className="px-5 py-4">Hạn dùng</th>
                   <th className="px-5 py-4">Trạng thái</th>
                   <th className="px-5 py-4 text-right">Thao tác</th>
@@ -478,6 +492,20 @@ export default function AdminVouchersPage() {
                           )
                         ) : (
                           <span className="text-slate-400 font-normal">Không giới hạn</span>
+                        )}
+                      </td>
+
+                      <td className="px-5 py-4 text-xs whitespace-nowrap">
+                        {v.Condition ? (
+                          <span className="font-semibold text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20">
+                            {v.Condition}
+                          </span>
+                        ) : v.MinOrderAmount ? (
+                          <span className="font-semibold text-cyan-300 bg-cyan-500/10 px-2.5 py-1 rounded-lg border border-cyan-500/20">
+                            Đơn ≥ {formatMoney(Number(v.MinOrderAmount))}
+                          </span>
+                        ) : (
+                          <span className="text-slate-500 italic">Không có</span>
                         )}
                       </td>
 
@@ -661,6 +689,41 @@ export default function AdminVouchersPage() {
                   onChange={(e) => setForm({ ...form, ExpiryDate: e.target.value })}
                   className="w-full rounded-2xl bg-slate-950 border border-slate-800 p-3 text-sm text-white focus:outline-none focus:border-blue-500 cursor-pointer transition"
                 />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                  Điều kiện áp dụng (Tuỳ chọn)
+                </label>
+                <input
+                  type="text"
+                  placeholder="VD: Đơn từ 200.000₫ (để trống nếu không có)"
+                  value={form.Condition}
+                  onChange={(e) => setForm({ ...form, Condition: e.target.value })}
+                  className="w-full rounded-2xl bg-slate-950 border border-slate-800 p-3 text-sm text-white focus:outline-none focus:border-blue-500 transition"
+                />
+                <p className="mt-1 text-[11px] text-slate-400">
+                  Mô tả điều kiện áp dụng, cho phép để trống (null).
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                  Đơn hàng tối thiểu (VNĐ)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="Không giới hạn (để trống)"
+                  value={form.MinOrderAmount}
+                  onChange={(e) => setForm({ ...form, MinOrderAmount: e.target.value })}
+                  className="w-full rounded-2xl bg-slate-950 border border-slate-800 p-3 text-sm text-white focus:outline-none focus:border-blue-500 transition"
+                />
+                <p className="mt-1 text-[11px] text-slate-400">
+                  Hệ thống tự động kiểm tra số tiền giỏ hàng (cho phép để trống).
+                </p>
               </div>
             </div>
 

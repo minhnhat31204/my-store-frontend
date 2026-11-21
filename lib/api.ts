@@ -127,6 +127,8 @@ export type Voucher = {
   DiscountPercentage?: number | string | null;
   MaxDiscountAmount?: number | string | null;
   Quantity?: number | null;
+  Condition?: string | null;
+  MinOrderAmount?: number | string | null;
   ExpiryDate?: string | null;
   IsActive?: boolean;
 };

@@ -176,6 +176,11 @@ export default function VouchersPage() {
                   Mã đang kích hoạt: <span className="font-mono">{selectedVoucher.Code}</span>
                 </p>
                 <p className="text-sm font-black text-slate-900">{selectedVoucher.Name}</p>
+                {(selectedVoucher.Condition || selectedVoucher.MinOrderAmount) && (
+                  <p className="text-[11px] font-medium text-emerald-700">
+                    Điều kiện: {selectedVoucher.Condition || `Đơn tối thiểu ${Number(selectedVoucher.MinOrderAmount).toLocaleString("vi-VN")} ₫`}
+                  </p>
+                )}
               </div>
             </div>
             <button
@@ -238,6 +243,17 @@ export default function VouchersPage() {
                       Giảm tối đa: <span className="font-bold text-slate-900">{Number(voucher.MaxDiscountAmount).toLocaleString("vi-VN")} ₫</span>
                     </p>
                   )}
+
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    Điều kiện:{" "}
+                    {voucher.Condition ? (
+                      <span className="font-semibold text-amber-700">{voucher.Condition}</span>
+                    ) : voucher.MinOrderAmount ? (
+                      <span className="font-semibold text-blue-700">Đơn tối thiểu {Number(voucher.MinOrderAmount).toLocaleString("vi-VN")} ₫</span>
+                    ) : (
+                      <span className="font-medium text-slate-700">Không có điều kiện</span>
+                    )}
+                  </p>
 
                   <p className="mt-1 text-[11px] text-slate-500">
                     Số lượng còn lại:{" "}
