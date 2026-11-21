@@ -487,6 +487,8 @@ export const api = {
     DiscountPercentage: number | string;
     MaxDiscountAmount?: number | string | null;
     Quantity?: number | null;
+    Condition?: string | null;
+    MinOrderAmount?: number | string | null;
     ExpiryDate?: string | null;
     IsActive?: boolean;
   }) =>
@@ -504,6 +506,8 @@ export const api = {
       DiscountPercentage: number | string;
       MaxDiscountAmount?: number | string | null;
       Quantity?: number | null;
+      Condition?: string | null;
+      MinOrderAmount?: number | string | null;
       ExpiryDate?: string | null;
       IsActive?: boolean;
     }>
