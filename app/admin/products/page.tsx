@@ -931,9 +931,9 @@ export default function AdminProducts() {
                       <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider">
                         Số lượng tồn kho
                       </label>
-                      {selected && (
+                      {editingId !== null && (
                         <span className="text-[11px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-full">
-                          Đã bán: {selected.SoldCount || 0}
+                          Đã bán: {products.find((p) => p.ProductID === editingId)?.SoldCount || 0}
                         </span>
                       )}
                     </div>
